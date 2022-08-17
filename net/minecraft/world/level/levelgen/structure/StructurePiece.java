@@ -1,6 +1,7 @@
 package net.minecraft.world.level.levelgen.structure;
 
 import com.google.common.collect.ImmutableSet;
+import com.mojang.logging.LogUtils;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -31,14 +32,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.feature.NoiseEffect;
-import net.minecraft.world.level.levelgen.feature.StructurePieceType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.minecraft.world.level.material.FluidState;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public abstract class StructurePiece {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    protected static final BlockState CAVE_AIR = Blocks.CAVE_AIR.defaultBlockState();
    protected BoundingBox boundingBox;
    @Nullable
@@ -49,17 +49,17 @@ public abstract class StructurePiece {
    private final StructurePieceType type;
    private static final Set<Block> SHAPE_CHECK_BLOCKS = ImmutableSet.<Block>builder().add(Blocks.NETHER_BRICK_FENCE).add(Blocks.TORCH).add(Blocks.WALL_TORCH).add(Blocks.OAK_FENCE).add(Blocks.SPRUCE_FENCE).add(Blocks.DARK_OAK_FENCE).add(Blocks.ACACIA_FENCE).add(Blocks.BIRCH_FENCE).add(Blocks.JUNGLE_FENCE).add(Blocks.LADDER).add(Blocks.IRON_BARS).build();
 
-   protected StructurePiece(StructurePieceType p_163538_, int p_163539_, BoundingBox p_163540_) {
-      this.type = p_163538_;
-      this.genDepth = p_163539_;
-      this.boundingBox = p_163540_;
+   protected StructurePiece(StructurePieceType p_209994_, int p_209995_, BoundingBox p_209996_) {
+      this.type = p_209994_;
+      this.genDepth = p_209995_;
+      this.boundingBox = p_209996_;
    }
 
-   public StructurePiece(StructurePieceType p_73390_, CompoundTag p_73391_) {
-      this(p_73390_, p_73391_.getInt("GD"), BoundingBox.CODEC.parse(NbtOps.INSTANCE, p_73391_.get("BB")).resultOrPartial(LOGGER::error).orElseThrow(() -> {
+   public StructurePiece(StructurePieceType p_209998_, CompoundTag p_209999_) {
+      this(p_209998_, p_209999_.getInt("GD"), BoundingBox.CODEC.parse(NbtOps.INSTANCE, p_209999_.get("BB")).resultOrPartial(LOGGER::error).orElseThrow(() -> {
          return new IllegalArgumentException("Invalid boundingbox");
       }));
-      int i = p_73391_.getInt("O");
+      int i = p_209999_.getInt("O");
       this.setOrientation(i == -1 ? null : Direction.from2DDataValue(i));
    }
 

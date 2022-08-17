@@ -3,7 +3,6 @@ package net.minecraft.world.level.block;
 import java.util.List;
 import java.util.Random;
 import javax.annotation.Nullable;
-import net.minecraft.Util;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -54,7 +53,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class BeehiveBlock extends BaseEntityBlock {
-   private static final Direction[] SPAWN_DIRECTIONS = new Direction[]{Direction.WEST, Direction.EAST, Direction.SOUTH};
    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
    public static final IntegerProperty HONEY_LEVEL = BlockStateProperties.LEVEL_HONEY;
    public static final int MAX_HONEY_LEVELS = 5;
@@ -292,9 +290,5 @@ public class BeehiveBlock extends BaseEntityBlock {
       }
 
       return super.updateShape(p_49639_, p_49640_, p_49641_, p_49642_, p_49643_, p_49644_);
-   }
-
-   public static Direction getRandomOffset(Random p_49648_) {
-      return Util.getRandom(SPAWN_DIRECTIONS, p_49648_);
    }
 }

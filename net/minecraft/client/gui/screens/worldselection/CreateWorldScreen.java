@@ -1,8 +1,13 @@
 package net.minecraft.client.gui.screens.worldselection;
 
 import com.google.common.collect.ImmutableList;
+import com.google.gson.JsonElement;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.JsonOps;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,8 +41,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ServerResources;
+import net.minecraft.server.WorldStem;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.FolderRepositorySource;
 import net.minecraft.server.packs.repository.PackRepository;
@@ -51,15 +57,16 @@ import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.storage.LevelResource;
 import net.minecraft.world.level.storage.LevelStorageSource;
+import net.minecraft.world.level.storage.PrimaryLevelData;
+import net.minecraft.world.level.storage.WorldData;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.mutable.MutableObject;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class CreateWorldScreen extends Screen {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final String TEMP_WORLD_PREFIX = "mcworld-";
    private static final Component GAME_MODEL_LABEL = new TranslatableComponent("selectWorld.gameMode");
    private static final Component SEED_LABEL = new TranslatableComponent("selectWorld.enterSeed");
@@ -67,6 +74,7 @@ public class CreateWorldScreen extends Screen {
    private static final Component NAME_LABEL = new TranslatableComponent("selectWorld.enterName");
    private static final Component OUTPUT_DIR_INFO = new TranslatableComponent("selectWorld.resultFolder");
    private static final Component COMMANDS_INFO = new TranslatableComponent("selectWorld.allowCommands.info");
+   @Nullable
    private final Screen lastScreen;
    private EditBox nameEdit;
    String resultFolder;
@@ -96,27 +104,33 @@ public class CreateWorldScreen extends Screen {
    private GameRules gameRules = new GameRules();
    public final WorldGenSettingsComponent worldGenSettingsComponent;
 
-   public CreateWorldScreen(@Nullable Screen p_100865_, LevelSettings p_100866_, WorldGenSettings p_100867_, @Nullable Path p_100868_, DataPackConfig p_100869_, RegistryAccess.RegistryHolder p_100870_) {
-      this(p_100865_, p_100869_, new WorldGenSettingsComponent(p_100870_, p_100867_, WorldPreset.of(p_100867_), OptionalLong.of(p_100867_.seed())));
-      this.initName = p_100866_.levelName();
-      this.commands = p_100866_.allowCommands();
-      this.commandsChanged = true;
-      this.difficulty = p_100866_.difficulty();
-      this.gameRules.assignFrom(p_100866_.gameRules(), (MinecraftServer)null);
-      if (p_100866_.hardcore()) {
-         this.gameMode = CreateWorldScreen.SelectedGameMode.HARDCORE;
-      } else if (p_100866_.gameType().isSurvival()) {
-         this.gameMode = CreateWorldScreen.SelectedGameMode.SURVIVAL;
-      } else if (p_100866_.gameType().isCreative()) {
-         this.gameMode = CreateWorldScreen.SelectedGameMode.CREATIVE;
-      }
-
-      this.tempDataPackDir = p_100868_;
+   public static CreateWorldScreen createFresh(@Nullable Screen p_205425_) {
+      RegistryAccess.Frozen registryaccess$frozen = RegistryAccess.BUILTIN.get();
+      return new CreateWorldScreen(p_205425_, DataPackConfig.DEFAULT, new WorldGenSettingsComponent(registryaccess$frozen, WorldGenSettings.makeDefault(registryaccess$frozen), Optional.of(WorldPreset.NORMAL), OptionalLong.empty()));
    }
 
-   public static CreateWorldScreen create(@Nullable Screen p_100899_) {
-      RegistryAccess.RegistryHolder registryaccess$registryholder = RegistryAccess.builtin();
-      return new CreateWorldScreen(p_100899_, DataPackConfig.DEFAULT, new WorldGenSettingsComponent(registryaccess$registryholder, WorldGenSettings.makeDefault(registryaccess$registryholder), Optional.of(WorldPreset.NORMAL), OptionalLong.empty()));
+   public static CreateWorldScreen createFromExisting(@Nullable Screen p_205427_, WorldStem p_205428_, @Nullable Path p_205429_) {
+      WorldData worlddata = p_205428_.worldData();
+      LevelSettings levelsettings = worlddata.getLevelSettings();
+      WorldGenSettings worldgensettings = worlddata.worldGenSettings();
+      RegistryAccess.Frozen registryaccess$frozen = p_205428_.registryAccess();
+      DataPackConfig datapackconfig = levelsettings.getDataPackConfig();
+      CreateWorldScreen createworldscreen = new CreateWorldScreen(p_205427_, datapackconfig, new WorldGenSettingsComponent(registryaccess$frozen, worldgensettings, WorldPreset.of(worldgensettings), OptionalLong.of(worldgensettings.seed())));
+      createworldscreen.initName = levelsettings.levelName();
+      createworldscreen.commands = levelsettings.allowCommands();
+      createworldscreen.commandsChanged = true;
+      createworldscreen.difficulty = levelsettings.difficulty();
+      createworldscreen.gameRules.assignFrom(levelsettings.gameRules(), (MinecraftServer)null);
+      if (levelsettings.hardcore()) {
+         createworldscreen.gameMode = CreateWorldScreen.SelectedGameMode.HARDCORE;
+      } else if (levelsettings.gameType().isSurvival()) {
+         createworldscreen.gameMode = CreateWorldScreen.SelectedGameMode.SURVIVAL;
+      } else if (levelsettings.gameType().isCreative()) {
+         createworldscreen.gameMode = CreateWorldScreen.SelectedGameMode.CREATIVE;
+      }
+
+      createworldscreen.tempDataPackDir = p_205429_;
+      return createworldscreen;
    }
 
    private CreateWorldScreen(@Nullable Screen p_100861_, DataPackConfig p_100862_, WorldGenSettingsComponent p_100863_) {
@@ -228,16 +242,19 @@ public class CreateWorldScreen extends Screen {
       if (this.copyTempDataPackDirToNewWorld()) {
          this.cleanupTempResources();
          WorldGenSettings worldgensettings = this.worldGenSettingsComponent.makeSettings(this.hardCore);
-         LevelSettings levelsettings;
-         if (worldgensettings.isDebug()) {
-            GameRules gamerules = new GameRules();
-            gamerules.getRule(GameRules.RULE_DAYLIGHT).set(false, (MinecraftServer)null);
-            levelsettings = new LevelSettings(this.nameEdit.getValue().trim(), GameType.SPECTATOR, false, Difficulty.PEACEFUL, true, gamerules, DataPackConfig.DEFAULT);
-         } else {
-            levelsettings = new LevelSettings(this.nameEdit.getValue().trim(), this.gameMode.gameType, this.hardCore, this.getEffectiveDifficulty(), this.commands && !this.hardCore, this.gameRules, this.dataPacks);
-         }
-
+         LevelSettings levelsettings = this.createLevelSettings(worldgensettings.isDebug());
          this.minecraft.createLevel(this.resultFolder, levelsettings, this.worldGenSettingsComponent.registryHolder(), worldgensettings);
+      }
+   }
+
+   private LevelSettings createLevelSettings(boolean p_205448_) {
+      String s = this.nameEdit.getValue().trim();
+      if (p_205448_) {
+         GameRules gamerules = new GameRules();
+         gamerules.getRule(GameRules.RULE_DAYLIGHT).set(false, (MinecraftServer)null);
+         return new LevelSettings(s, GameType.SPECTATOR, false, Difficulty.PEACEFUL, true, gamerules, DataPackConfig.DEFAULT);
+      } else {
+         return new LevelSettings(s, this.gameMode.gameType, this.hardCore, this.getEffectiveDifficulty(), this.commands && !this.hardCore, this.gameRules, this.dataPacks);
       }
    }
 
@@ -406,16 +423,29 @@ public class CreateWorldScreen extends Screen {
          this.minecraft.tell(() -> {
             this.minecraft.setScreen(new GenericDirtMessageScreen(new TranslatableComponent("dataPack.validation.working")));
          });
-         ServerResources.loadResources(p_100879_.openAllSelected(), this.worldGenSettingsComponent.registryHolder(), Commands.CommandSelection.INTEGRATED, 2, Util.backgroundExecutor(), this.minecraft).thenAcceptAsync((p_170154_) -> {
+         WorldStem.load(new WorldStem.InitConfig(p_100879_, Commands.CommandSelection.INTEGRATED, 2, false), () -> {
+            return datapackconfig;
+         }, (p_205414_, p_205415_) -> {
+            RegistryAccess registryaccess = this.worldGenSettingsComponent.registryHolder();
+            RegistryAccess.Writable registryaccess$writable = RegistryAccess.builtinCopy();
+            DynamicOps<JsonElement> dynamicops = RegistryOps.create(JsonOps.INSTANCE, registryaccess);
+            DynamicOps<JsonElement> dynamicops1 = RegistryOps.createAndLoad(JsonOps.INSTANCE, registryaccess$writable, p_205414_);
+            DataResult<WorldGenSettings> dataresult = WorldGenSettings.CODEC.encodeStart(dynamicops, this.worldGenSettingsComponent.makeSettings(this.hardCore)).flatMap((p_205423_) -> {
+               return WorldGenSettings.CODEC.parse(dynamicops1, p_205423_);
+            });
+            WorldGenSettings worldgensettings = dataresult.getOrThrow(false, Util.prefix("Error parsing worldgen settings after loading data packs: ", LOGGER::error));
+            LevelSettings levelsettings = this.createLevelSettings(worldgensettings.isDebug());
+            return Pair.of(new PrimaryLevelData(levelsettings, worldgensettings, dataresult.lifecycle()), registryaccess$writable.freeze());
+         }, Util.backgroundExecutor(), this.minecraft).thenAcceptAsync((p_205420_) -> {
             this.dataPacks = datapackconfig;
-            this.worldGenSettingsComponent.updateDataPacks(p_170154_);
-            p_170154_.close();
-         }, this.minecraft).handle((p_170171_, p_170172_) -> {
-            if (p_170172_ != null) {
-               LOGGER.warn("Failed to validate datapack", p_170172_);
+            this.worldGenSettingsComponent.updateDataPacks(p_205420_);
+            p_205420_.close();
+         }, this.minecraft).handle((p_205431_, p_205432_) -> {
+            if (p_205432_ != null) {
+               LOGGER.warn("Failed to validate datapack", p_205432_);
                this.minecraft.tell(() -> {
-                  this.minecraft.setScreen(new ConfirmScreen((p_170203_) -> {
-                     if (p_170203_) {
+                  this.minecraft.setScreen(new ConfirmScreen((p_205450_) -> {
+                     if (p_205450_) {
                         this.openDataPackSelectionScreen();
                      } else {
                         this.dataPacks = DataPackConfig.DEFAULT;
@@ -441,11 +471,11 @@ public class CreateWorldScreen extends Screen {
             Stream<Path> stream = Files.walk(this.tempDataPackDir);
 
             try {
-               stream.sorted(Comparator.reverseOrder()).forEach((p_170192_) -> {
+               stream.sorted(Comparator.reverseOrder()).forEach((p_205443_) -> {
                   try {
-                     Files.delete(p_170192_);
+                     Files.delete(p_205443_);
                   } catch (IOException ioexception1) {
-                     LOGGER.warn("Failed to remove temporary file {}", p_170192_, ioexception1);
+                     LOGGER.warn("Failed to remove temporary file {}", p_205443_, ioexception1);
                   }
 
                });
@@ -493,10 +523,10 @@ public class CreateWorldScreen extends Screen {
                try {
                   Path path = levelstoragesource$levelstorageaccess.getLevelPath(LevelResource.DATAPACK_DIR);
                   Files.createDirectories(path);
-                  stream.filter((p_170174_) -> {
-                     return !p_170174_.equals(this.tempDataPackDir);
-                  }).forEach((p_170195_) -> {
-                     copyBetweenDirs(this.tempDataPackDir, path, p_170195_);
+                  stream.filter((p_205434_) -> {
+                     return !p_205434_.equals(this.tempDataPackDir);
+                  }).forEach((p_205446_) -> {
+                     copyBetweenDirs(this.tempDataPackDir, path, p_205446_);
                   });
                } catch (Throwable throwable2) {
                   if (stream != null) {
@@ -547,9 +577,9 @@ public class CreateWorldScreen extends Screen {
          Stream<Path> stream = Files.walk(p_100907_);
 
          try {
-            stream.filter((p_170177_) -> {
-               return !p_170177_.equals(p_100907_);
-            }).forEach((p_170186_) -> {
+            stream.filter((p_205437_) -> {
+               return !p_205437_.equals(p_100907_);
+            }).forEach((p_205441_) -> {
                Path path = mutableobject.getValue();
                if (path == null) {
                   try {
@@ -562,7 +592,7 @@ public class CreateWorldScreen extends Screen {
                   mutableobject.setValue(path);
                }
 
-               copyBetweenDirs(p_100907_, path, p_170186_);
+               copyBetweenDirs(p_100907_, path, p_205441_);
             });
          } catch (Throwable throwable1) {
             if (stream != null) {

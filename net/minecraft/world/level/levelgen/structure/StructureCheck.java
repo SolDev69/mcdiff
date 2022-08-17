@@ -1,7 +1,7 @@
 package net.minecraft.world.level.levelgen.structure;
 
-import com.google.common.collect.Multimap;
 import com.mojang.datafixers.DataFixer;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.longs.Long2BooleanMap;
 import it.unimi.dsi.fastutil.longs.Long2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -9,12 +9,8 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
@@ -23,7 +19,9 @@ import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.visitors.CollectFields;
+import net.minecraft.nbt.visitors.FieldSelector;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -37,15 +35,15 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.StructureFeature;
 import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfiguration;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureManager;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class StructureCheck {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int NO_STRUCTURE = -1;
    private final ChunkScanAccess storageAccess;
    private final RegistryAccess registryAccess;
    private final Registry<Biome> biomes;
+   private final Registry<ConfiguredStructureFeature<?, ?>> structureConfigs;
    private final StructureManager structureManager;
    private final ResourceKey<Level> dimension;
    private final ChunkGenerator chunkGenerator;
@@ -53,8 +51,8 @@ public class StructureCheck {
    private final BiomeSource biomeSource;
    private final long seed;
    private final DataFixer fixerUpper;
-   private final Long2ObjectMap<Object2IntMap<StructureFeature<?>>> loadedChunks = new Long2ObjectOpenHashMap<>();
-   private final Map<StructureFeature<?>, Long2BooleanMap> featureChecks = new HashMap<>();
+   private final Long2ObjectMap<Object2IntMap<ConfiguredStructureFeature<?, ?>>> loadedChunks = new Long2ObjectOpenHashMap<>();
+   private final Map<ConfiguredStructureFeature<?, ?>, Long2BooleanMap> featureChecks = new HashMap<>();
 
    public StructureCheck(ChunkScanAccess p_197251_, RegistryAccess p_197252_, StructureManager p_197253_, ResourceKey<Level> p_197254_, ChunkGenerator p_197255_, LevelHeightAccessor p_197256_, BiomeSource p_197257_, long p_197258_, DataFixer p_197259_) {
       this.storageAccess = p_197251_;
@@ -67,51 +65,41 @@ public class StructureCheck {
       this.seed = p_197258_;
       this.fixerUpper = p_197259_;
       this.biomes = p_197252_.ownedRegistryOrThrow(Registry.BIOME_REGISTRY);
+      this.structureConfigs = p_197252_.ownedRegistryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY);
    }
 
-   public <F extends StructureFeature<?>> StructureCheckResult checkStart(ChunkPos p_197274_, F p_197275_, boolean p_197276_) {
-      long i = p_197274_.toLong();
-      Object2IntMap<StructureFeature<?>> object2intmap = this.loadedChunks.get(i);
+   public StructureCheckResult checkStart(ChunkPos p_209965_, ConfiguredStructureFeature<?, ?> p_209966_, boolean p_209967_) {
+      long i = p_209965_.toLong();
+      Object2IntMap<ConfiguredStructureFeature<?, ?>> object2intmap = this.loadedChunks.get(i);
       if (object2intmap != null) {
-         return this.checkStructureInfo(object2intmap, p_197275_, p_197276_);
+         return this.checkStructureInfo(object2intmap, p_209966_, p_209967_);
       } else {
-         StructureCheckResult structurecheckresult = this.tryLoadFromStorage(p_197274_, p_197275_, p_197276_, i);
+         StructureCheckResult structurecheckresult = this.tryLoadFromStorage(p_209965_, p_209966_, p_209967_, i);
          if (structurecheckresult != null) {
             return structurecheckresult;
          } else {
-            boolean flag = this.featureChecks.computeIfAbsent(p_197275_, (p_197286_) -> {
+            boolean flag = this.featureChecks.computeIfAbsent(p_209966_, (p_209974_) -> {
                return new Long2BooleanOpenHashMap();
-            }).computeIfAbsent(i, (p_197290_) -> {
-               Multimap<ConfiguredStructureFeature<?, ?>, ResourceKey<Biome>> multimap = this.chunkGenerator.getSettings().structures(p_197275_);
-
-               for(Entry<ConfiguredStructureFeature<?, ?>, Collection<ResourceKey<Biome>>> entry : multimap.asMap().entrySet()) {
-                  if (this.canCreateStructure(p_197274_, entry.getKey(), entry.getValue())) {
-                     return true;
-                  }
-               }
-
-               return false;
+            }).computeIfAbsent(i, (p_209963_) -> {
+               return this.canCreateStructure(p_209965_, p_209966_);
             });
             return !flag ? StructureCheckResult.START_NOT_PRESENT : StructureCheckResult.CHUNK_LOAD_NEEDED;
          }
       }
    }
 
-   private <FC extends FeatureConfiguration, F extends StructureFeature<FC>> boolean canCreateStructure(ChunkPos p_197267_, ConfiguredStructureFeature<FC, F> p_197268_, Collection<ResourceKey<Biome>> p_197269_) {
-      Predicate<Biome> predicate = (p_197310_) -> {
-         return this.biomes.getResourceKey(p_197310_).filter(p_197269_::contains).isPresent();
-      };
-      return p_197268_.feature.canGenerate(this.registryAccess, this.chunkGenerator, this.biomeSource, this.structureManager, this.seed, p_197267_, p_197268_.config, this.heightAccessor, predicate);
+   private <FC extends FeatureConfiguration, F extends StructureFeature<FC>> boolean canCreateStructure(ChunkPos p_209991_, ConfiguredStructureFeature<FC, F> p_209992_) {
+      return p_209992_.feature.canGenerate(this.registryAccess, this.chunkGenerator, this.biomeSource, this.structureManager, this.seed, p_209991_, p_209992_.config, this.heightAccessor, p_209992_.biomes()::contains);
    }
 
    @Nullable
-   private StructureCheckResult tryLoadFromStorage(ChunkPos p_197278_, StructureFeature<?> p_197279_, boolean p_197280_, long p_197281_) {
-      CollectFields collectfields = new CollectFields(new CollectFields.WantedField(IntTag.TYPE, "DataVersion"), new CollectFields.WantedField("Level", "Structures", CompoundTag.TYPE, "Starts"), new CollectFields.WantedField("structures", CompoundTag.TYPE, "starts"));
+   private StructureCheckResult tryLoadFromStorage(ChunkPos p_209969_, ConfiguredStructureFeature<?, ?> p_209970_, boolean p_209971_, long p_209972_) {
+      CollectFields collectfields = new CollectFields(new FieldSelector(IntTag.TYPE, "DataVersion"), new FieldSelector("Level", "Structures", CompoundTag.TYPE, "Starts"), new FieldSelector("structures", CompoundTag.TYPE, "starts"));
 
       try {
-         this.storageAccess.scanChunk(p_197278_, collectfields).join();
+         this.storageAccess.scanChunk(p_209969_, collectfields).join();
       } catch (Exception exception1) {
-         LOGGER.warn("Failed to read chunk {}", p_197278_, exception1);
+         LOGGER.warn("Failed to read chunk {}", p_209969_, exception1);
          return StructureCheckResult.CHUNK_LOAD_NEEDED;
       }
 
@@ -130,23 +118,23 @@ public class StructureCheck {
             try {
                compoundtag1 = NbtUtils.update(this.fixerUpper, DataFixTypes.CHUNK, compoundtag, i);
             } catch (Exception exception) {
-               LOGGER.warn("Failed to partially datafix chunk {}", p_197278_, exception);
+               LOGGER.warn("Failed to partially datafix chunk {}", p_209969_, exception);
                return StructureCheckResult.CHUNK_LOAD_NEEDED;
             }
 
-            Object2IntMap<StructureFeature<?>> object2intmap = this.loadStructures(compoundtag1);
+            Object2IntMap<ConfiguredStructureFeature<?, ?>> object2intmap = this.loadStructures(compoundtag1);
             if (object2intmap == null) {
                return null;
             } else {
-               this.storeFullResults(p_197281_, object2intmap);
-               return this.checkStructureInfo(object2intmap, p_197279_, p_197280_);
+               this.storeFullResults(p_209972_, object2intmap);
+               return this.checkStructureInfo(object2intmap, p_209970_, p_209971_);
             }
          }
       }
    }
 
    @Nullable
-   private Object2IntMap<StructureFeature<?>> loadStructures(CompoundTag p_197312_) {
+   private Object2IntMap<ConfiguredStructureFeature<?, ?>> loadStructures(CompoundTag p_197312_) {
       if (!p_197312_.contains("structures", 10)) {
          return null;
       } else {
@@ -158,18 +146,21 @@ public class StructureCheck {
             if (compoundtag1.isEmpty()) {
                return Object2IntMaps.emptyMap();
             } else {
-               Object2IntMap<StructureFeature<?>> object2intmap = new Object2IntOpenHashMap<>();
+               Object2IntMap<ConfiguredStructureFeature<?, ?>> object2intmap = new Object2IntOpenHashMap<>();
+               Registry<ConfiguredStructureFeature<?, ?>> registry = this.registryAccess.registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY);
 
                for(String s : compoundtag1.getAllKeys()) {
-                  String s1 = s.toLowerCase(Locale.ROOT);
-                  StructureFeature<?> structurefeature = StructureFeature.STRUCTURES_REGISTRY.get(s1);
-                  if (structurefeature != null) {
-                     CompoundTag compoundtag2 = compoundtag1.getCompound(s);
-                     if (!compoundtag2.isEmpty()) {
-                        String s2 = compoundtag2.getString("id");
-                        if (!"INVALID".equals(s2)) {
-                           int i = compoundtag2.getInt("references");
-                           object2intmap.put(structurefeature, i);
+                  ResourceLocation resourcelocation = ResourceLocation.tryParse(s);
+                  if (resourcelocation != null) {
+                     ConfiguredStructureFeature<?, ?> configuredstructurefeature = registry.get(resourcelocation);
+                     if (configuredstructurefeature != null) {
+                        CompoundTag compoundtag2 = compoundtag1.getCompound(s);
+                        if (!compoundtag2.isEmpty()) {
+                           String s1 = compoundtag2.getString("id");
+                           if (!"INVALID".equals(s1)) {
+                              int i = compoundtag2.getInt("references");
+                              object2intmap.put(configuredstructurefeature, i);
+                           }
                         }
                      }
                   }
@@ -181,44 +172,44 @@ public class StructureCheck {
       }
    }
 
-   private static Object2IntMap<StructureFeature<?>> deduplicateEmptyMap(Object2IntMap<StructureFeature<?>> p_197299_) {
+   private static Object2IntMap<ConfiguredStructureFeature<?, ?>> deduplicateEmptyMap(Object2IntMap<ConfiguredStructureFeature<?, ?>> p_197299_) {
       return p_197299_.isEmpty() ? Object2IntMaps.emptyMap() : p_197299_;
    }
 
-   private StructureCheckResult checkStructureInfo(Object2IntMap<StructureFeature<?>> p_197305_, StructureFeature<?> p_197306_, boolean p_197307_) {
-      int i = p_197305_.getOrDefault(p_197306_, -1);
-      return i == -1 || p_197307_ && i != 0 ? StructureCheckResult.START_NOT_PRESENT : StructureCheckResult.START_PRESENT;
+   private StructureCheckResult checkStructureInfo(Object2IntMap<ConfiguredStructureFeature<?, ?>> p_209987_, ConfiguredStructureFeature<?, ?> p_209988_, boolean p_209989_) {
+      int i = p_209987_.getOrDefault(p_209988_, -1);
+      return i == -1 || p_209989_ && i != 0 ? StructureCheckResult.START_NOT_PRESENT : StructureCheckResult.START_PRESENT;
    }
 
-   public void onStructureLoad(ChunkPos p_197283_, Map<StructureFeature<?>, StructureStart<?>> p_197284_) {
+   public void onStructureLoad(ChunkPos p_197283_, Map<ConfiguredStructureFeature<?, ?>, StructureStart> p_197284_) {
       long i = p_197283_.toLong();
-      Object2IntMap<StructureFeature<?>> object2intmap = new Object2IntOpenHashMap<>();
-      p_197284_.forEach((p_197302_, p_197303_) -> {
-         if (p_197303_.isValid()) {
-            object2intmap.put(p_197302_, p_197303_.getReferences());
+      Object2IntMap<ConfiguredStructureFeature<?, ?>> object2intmap = new Object2IntOpenHashMap<>();
+      p_197284_.forEach((p_209984_, p_209985_) -> {
+         if (p_209985_.isValid()) {
+            object2intmap.put(p_209984_, p_209985_.getReferences());
          }
 
       });
       this.storeFullResults(i, object2intmap);
    }
 
-   private void storeFullResults(long p_197264_, Object2IntMap<StructureFeature<?>> p_197265_) {
+   private void storeFullResults(long p_197264_, Object2IntMap<ConfiguredStructureFeature<?, ?>> p_197265_) {
       this.loadedChunks.put(p_197264_, deduplicateEmptyMap(p_197265_));
-      this.featureChecks.values().forEach((p_197262_) -> {
-         p_197262_.remove(p_197264_);
+      this.featureChecks.values().forEach((p_209956_) -> {
+         p_209956_.remove(p_197264_);
       });
    }
 
-   public void incrementReference(ChunkPos p_197271_, StructureFeature<?> p_197272_) {
-      this.loadedChunks.compute(p_197271_.toLong(), (p_197296_, p_197297_) -> {
-         if (p_197297_ == null || p_197297_.isEmpty()) {
-            p_197297_ = new Object2IntOpenHashMap<>();
+   public void incrementReference(ChunkPos p_209958_, ConfiguredStructureFeature<?, ?> p_209959_) {
+      this.loadedChunks.compute(p_209958_.toLong(), (p_209980_, p_209981_) -> {
+         if (p_209981_ == null || p_209981_.isEmpty()) {
+            p_209981_ = new Object2IntOpenHashMap<>();
          }
 
-         p_197297_.computeInt(p_197272_, (p_197292_, p_197293_) -> {
-            return p_197293_ == null ? 1 : p_197293_ + 1;
+         p_209981_.computeInt(p_209959_, (p_209976_, p_209977_) -> {
+            return p_209977_ == null ? 1 : p_209977_ + 1;
          });
-         return p_197297_;
+         return p_209981_;
       });
    }
 }

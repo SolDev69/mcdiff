@@ -64,7 +64,7 @@ public class SpikeFeature extends Feature<SpikeConfiguration> {
       int i = p_66857_.getRadius();
 
       for(BlockPos blockpos : BlockPos.betweenClosed(new BlockPos(p_66857_.getCenterX() - i, p_66854_.getMinBuildHeight(), p_66857_.getCenterZ() - i), new BlockPos(p_66857_.getCenterX() + i, p_66857_.getHeight() + 10, p_66857_.getCenterZ() + i))) {
-         if (blockpos.distSqr((double)p_66857_.getCenterX(), (double)blockpos.getY(), (double)p_66857_.getCenterZ(), false) <= (double)(i * i + 1) && blockpos.getY() < p_66857_.getHeight()) {
+         if (blockpos.distToLowCornerSqr((double)p_66857_.getCenterX(), (double)blockpos.getY(), (double)p_66857_.getCenterZ()) <= (double)(i * i + 1) && blockpos.getY() < p_66857_.getHeight()) {
             this.setBlock(p_66854_, blockpos, Blocks.OBSIDIAN.defaultBlockState());
          } else if (blockpos.getY() > 65) {
             this.setBlock(p_66854_, blockpos, Blocks.AIR.defaultBlockState());

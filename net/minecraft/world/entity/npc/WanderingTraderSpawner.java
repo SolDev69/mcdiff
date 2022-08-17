@@ -100,7 +100,7 @@ public class WanderingTraderSpawner implements CustomSpawner {
          BlockPos blockpos1 = optional.orElse(blockpos);
          BlockPos blockpos2 = this.findSpawnPositionNear(p_35916_, blockpos1, 48);
          if (blockpos2 != null && this.hasEnoughSpace(p_35916_, blockpos2)) {
-            if (p_35916_.getBiomeName(blockpos2).equals(Optional.of(Biomes.THE_VOID))) {
+            if (p_35916_.getBiome(blockpos2).is(Biomes.THE_VOID)) {
                return false;
             }
 

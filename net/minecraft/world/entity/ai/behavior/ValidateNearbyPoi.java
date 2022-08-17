@@ -28,7 +28,7 @@ public class ValidateNearbyPoi extends Behavior<LivingEntity> {
 
    protected boolean checkExtraStartConditions(ServerLevel p_24521_, LivingEntity p_24522_) {
       GlobalPos globalpos = p_24522_.getBrain().getMemory(this.memoryType).get();
-      return p_24521_.dimension() == globalpos.dimension() && globalpos.pos().closerThan(p_24522_.position(), 16.0D);
+      return p_24521_.dimension() == globalpos.dimension() && globalpos.pos().closerToCenterThan(p_24522_.position(), 16.0D);
    }
 
    protected void start(ServerLevel p_24524_, LivingEntity p_24525_, long p_24526_) {

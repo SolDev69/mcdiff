@@ -103,13 +103,13 @@ public class Explosion {
          int i = 0;
          int j = 0;
 
-         for(float f = 0.0F; f <= 1.0F; f = (float)((double)f + d0)) {
-            for(float f1 = 0.0F; f1 <= 1.0F; f1 = (float)((double)f1 + d1)) {
-               for(float f2 = 0.0F; f2 <= 1.0F; f2 = (float)((double)f2 + d2)) {
-                  double d5 = Mth.lerp((double)f, aabb.minX, aabb.maxX);
-                  double d6 = Mth.lerp((double)f1, aabb.minY, aabb.maxY);
-                  double d7 = Mth.lerp((double)f2, aabb.minZ, aabb.maxZ);
-                  Vec3 vec3 = new Vec3(d5 + d3, d6, d7 + d4);
+         for(double d5 = 0.0D; d5 <= 1.0D; d5 += d0) {
+            for(double d6 = 0.0D; d6 <= 1.0D; d6 += d1) {
+               for(double d7 = 0.0D; d7 <= 1.0D; d7 += d2) {
+                  double d8 = Mth.lerp(d5, aabb.minX, aabb.maxX);
+                  double d9 = Mth.lerp(d6, aabb.minY, aabb.maxY);
+                  double d10 = Mth.lerp(d7, aabb.minZ, aabb.maxZ);
+                  Vec3 vec3 = new Vec3(d8 + d3, d9, d10 + d4);
                   if (p_46066_.level.clip(new ClipContext(vec3, p_46065_, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, p_46066_)).getType() == HitResult.Type.MISS) {
                      ++i;
                   }

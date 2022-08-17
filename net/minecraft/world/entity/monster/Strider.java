@@ -58,7 +58,7 @@ import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.LiquidBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.level.pathfinder.PathFinder;
@@ -164,8 +164,8 @@ public class Strider extends Animal implements ItemSteerable, Saddleable {
       return this.getVehicle() instanceof Strider ? ((Strider)this.getVehicle()).isSuffocating() : this.entityData.get(DATA_SUFFOCATING);
    }
 
-   public boolean canStandOnFluid(Fluid p_33893_) {
-      return p_33893_.is(FluidTags.LAVA);
+   public boolean canStandOnFluid(FluidState p_204067_) {
+      return p_204067_.is(FluidTags.LAVA);
    }
 
    public double getPassengersRidingOffset() {

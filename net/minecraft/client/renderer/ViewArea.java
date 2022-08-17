@@ -1,6 +1,7 @@
 package net.minecraft.client.renderer;
 
 import javax.annotation.Nullable;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.chunk.ChunkRenderDispatcher;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
@@ -25,19 +26,22 @@ public class ViewArea {
    }
 
    protected void createChunks(ChunkRenderDispatcher p_110865_) {
-      int i = this.chunkGridSizeX * this.chunkGridSizeY * this.chunkGridSizeZ;
-      this.chunks = new ChunkRenderDispatcher.RenderChunk[i];
+      if (!Minecraft.getInstance().isSameThread()) {
+         throw new IllegalStateException("createChunks called from wrong thread: " + Thread.currentThread().getName());
+      } else {
+         int i = this.chunkGridSizeX * this.chunkGridSizeY * this.chunkGridSizeZ;
+         this.chunks = new ChunkRenderDispatcher.RenderChunk[i];
 
-      for(int j = 0; j < this.chunkGridSizeX; ++j) {
-         for(int k = 0; k < this.chunkGridSizeY; ++k) {
-            for(int l = 0; l < this.chunkGridSizeZ; ++l) {
-               int i1 = this.getChunkIndex(j, k, l);
-               this.chunks[i1] = p_110865_.new RenderChunk(i1);
-               this.chunks[i1].setOrigin(j * 16, k * 16, l * 16);
+         for(int j = 0; j < this.chunkGridSizeX; ++j) {
+            for(int k = 0; k < this.chunkGridSizeY; ++k) {
+               for(int l = 0; l < this.chunkGridSizeZ; ++l) {
+                  int i1 = this.getChunkIndex(j, k, l);
+                  this.chunks[i1] = p_110865_.new RenderChunk(i1, j * 16, k * 16, l * 16);
+               }
             }
          }
-      }
 
+      }
    }
 
    public void releaseAllBuffers() {
@@ -59,8 +63,8 @@ public class ViewArea {
    }
 
    public void repositionCamera(double p_110851_, double p_110852_) {
-      int i = Mth.floor(p_110851_);
-      int j = Mth.floor(p_110852_);
+      int i = Mth.ceil(p_110851_);
+      int j = Mth.ceil(p_110852_);
 
       for(int k = 0; k < this.chunkGridSizeX; ++k) {
          int l = this.chunkGridSizeX * 16;
@@ -75,7 +79,10 @@ public class ViewArea {
             for(int k2 = 0; k2 < this.chunkGridSizeY; ++k2) {
                int l2 = this.level.getMinBuildHeight() + k2 * 16;
                ChunkRenderDispatcher.RenderChunk chunkrenderdispatcher$renderchunk = this.chunks[this.getChunkIndex(k, k2, k1)];
-               chunkrenderdispatcher$renderchunk.setOrigin(j1, l2, j2);
+               BlockPos blockpos = chunkrenderdispatcher$renderchunk.getOrigin();
+               if (j1 != blockpos.getX() || l2 != blockpos.getY() || j2 != blockpos.getZ()) {
+                  chunkrenderdispatcher$renderchunk.setOrigin(j1, l2, j2);
+               }
             }
          }
       }

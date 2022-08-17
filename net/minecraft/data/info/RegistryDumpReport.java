@@ -23,8 +23,8 @@ public class RegistryDumpReport implements DataProvider {
 
    public void run(HashCache p_124061_) throws IOException {
       JsonObject jsonobject = new JsonObject();
-      Registry.REGISTRY.keySet().forEach((p_124057_) -> {
-         jsonobject.add(p_124057_.toString(), dumpRegistry(Registry.REGISTRY.get(p_124057_)));
+      Registry.REGISTRY.holders().forEach((p_211088_) -> {
+         jsonobject.add(p_211088_.key().location().toString(), dumpRegistry(p_211088_.value()));
       });
       Path path = this.generator.getOutputFolder().resolve("reports/registries.json");
       DataProvider.save(GSON, p_124061_, jsonobject, path);
@@ -37,18 +37,16 @@ public class RegistryDumpReport implements DataProvider {
          jsonobject.addProperty("default", resourcelocation.toString());
       }
 
-      int j = ((Registry)Registry.REGISTRY).getId(p_124059_);
-      jsonobject.addProperty("protocol_id", j);
+      int i = ((Registry)Registry.REGISTRY).getId(p_124059_);
+      jsonobject.addProperty("protocol_id", i);
       JsonObject jsonobject1 = new JsonObject();
-
-      for(ResourceLocation resourcelocation1 : p_124059_.keySet()) {
-         T t = p_124059_.get(resourcelocation1);
-         int i = p_124059_.getId(t);
+      p_124059_.holders().forEach((p_211092_) -> {
+         T t = p_211092_.value();
+         int j = p_124059_.getId(t);
          JsonObject jsonobject2 = new JsonObject();
-         jsonobject2.addProperty("protocol_id", i);
-         jsonobject1.add(resourcelocation1.toString(), jsonobject2);
-      }
-
+         jsonobject2.addProperty("protocol_id", j);
+         jsonobject1.add(p_211092_.key().location().toString(), jsonobject2);
+      });
       jsonobject.add("entries", jsonobject1);
       return jsonobject;
    }

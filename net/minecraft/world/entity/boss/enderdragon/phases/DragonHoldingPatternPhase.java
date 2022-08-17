@@ -61,7 +61,7 @@ public class DragonHoldingPatternPhase extends AbstractDragonPhaseInstance {
          double d0 = 64.0D;
          Player player = this.dragon.level.getNearestPlayer(NEW_TARGET_TARGETING, this.dragon, (double)blockpos.getX(), (double)blockpos.getY(), (double)blockpos.getZ());
          if (player != null) {
-            d0 = blockpos.distSqr(player.position(), true) / 512.0D;
+            d0 = blockpos.distToCenterSqr(player.position()) / 512.0D;
          }
 
          if (player != null && (this.dragon.getRandom().nextInt(Mth.abs((int)d0) + 2) == 0 || this.dragon.getRandom().nextInt(i + 2) == 0)) {

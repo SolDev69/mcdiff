@@ -16,8 +16,7 @@ import javax.annotation.Nullable;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.SerializationTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.EnchantedBookItem;
 import net.minecraft.world.item.Item;
@@ -31,7 +30,7 @@ import net.minecraft.world.level.ItemLike;
 public class ItemPredicate {
    public static final ItemPredicate ANY = new ItemPredicate();
    @Nullable
-   private final Tag<Item> tag;
+   private final TagKey<Item> tag;
    @Nullable
    private final Set<Item> items;
    private final MinMaxBounds.Ints count;
@@ -53,15 +52,15 @@ public class ItemPredicate {
       this.nbt = NbtPredicate.ANY;
    }
 
-   public ItemPredicate(@Nullable Tag<Item> p_151429_, @Nullable Set<Item> p_151430_, MinMaxBounds.Ints p_151431_, MinMaxBounds.Ints p_151432_, EnchantmentPredicate[] p_151433_, EnchantmentPredicate[] p_151434_, @Nullable Potion p_151435_, NbtPredicate p_151436_) {
-      this.tag = p_151429_;
-      this.items = p_151430_;
-      this.count = p_151431_;
-      this.durability = p_151432_;
-      this.enchantments = p_151433_;
-      this.storedEnchantments = p_151434_;
-      this.potion = p_151435_;
-      this.nbt = p_151436_;
+   public ItemPredicate(@Nullable TagKey<Item> p_204137_, @Nullable Set<Item> p_204138_, MinMaxBounds.Ints p_204139_, MinMaxBounds.Ints p_204140_, EnchantmentPredicate[] p_204141_, EnchantmentPredicate[] p_204142_, @Nullable Potion p_204143_, NbtPredicate p_204144_) {
+      this.tag = p_204137_;
+      this.items = p_204138_;
+      this.count = p_204139_;
+      this.durability = p_204140_;
+      this.enchantments = p_204141_;
+      this.storedEnchantments = p_204142_;
+      this.potion = p_204143_;
+      this.nbt = p_204144_;
    }
 
    public boolean matches(ItemStack p_45050_) {
@@ -129,12 +128,10 @@ public class ItemPredicate {
                set = builder.build();
             }
 
-            Tag<Item> tag = null;
+            TagKey<Item> tagkey = null;
             if (jsonobject.has("tag")) {
                ResourceLocation resourcelocation1 = new ResourceLocation(GsonHelper.getAsString(jsonobject, "tag"));
-               tag = SerializationTags.getInstance().getTagOrThrow(Registry.ITEM_REGISTRY, resourcelocation1, (p_45054_) -> {
-                  return new JsonSyntaxException("Unknown item tag '" + p_45054_ + "'");
-               });
+               tagkey = TagKey.create(Registry.ITEM_REGISTRY, resourcelocation1);
             }
 
             Potion potion = null;
@@ -147,7 +144,7 @@ public class ItemPredicate {
 
             EnchantmentPredicate[] aenchantmentpredicate = EnchantmentPredicate.fromJsonArray(jsonobject.get("enchantments"));
             EnchantmentPredicate[] aenchantmentpredicate1 = EnchantmentPredicate.fromJsonArray(jsonobject.get("stored_enchantments"));
-            return new ItemPredicate(tag, set, minmaxbounds$ints, minmaxbounds$ints1, aenchantmentpredicate, aenchantmentpredicate1, potion, nbtpredicate);
+            return new ItemPredicate(tagkey, set, minmaxbounds$ints, minmaxbounds$ints1, aenchantmentpredicate, aenchantmentpredicate1, potion, nbtpredicate);
          }
       } else {
          return ANY;
@@ -170,9 +167,7 @@ public class ItemPredicate {
          }
 
          if (this.tag != null) {
-            jsonobject.addProperty("tag", SerializationTags.getInstance().getIdOrThrow(Registry.ITEM_REGISTRY, this.tag, () -> {
-               return new IllegalStateException("Unknown item tag");
-            }).toString());
+            jsonobject.addProperty("tag", this.tag.location().toString());
          }
 
          jsonobject.add("count", this.count.serializeToJson());
@@ -227,7 +222,7 @@ public class ItemPredicate {
       @Nullable
       private Set<Item> items;
       @Nullable
-      private Tag<Item> tag;
+      private TagKey<Item> tag;
       private MinMaxBounds.Ints count = MinMaxBounds.Ints.ANY;
       private MinMaxBounds.Ints durability = MinMaxBounds.Ints.ANY;
       @Nullable
@@ -246,8 +241,8 @@ public class ItemPredicate {
          return this;
       }
 
-      public ItemPredicate.Builder of(Tag<Item> p_45070_) {
-         this.tag = p_45070_;
+      public ItemPredicate.Builder of(TagKey<Item> p_204146_) {
+         this.tag = p_204146_;
          return this;
       }
 

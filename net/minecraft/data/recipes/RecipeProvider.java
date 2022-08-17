@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -34,7 +35,7 @@ import net.minecraft.data.DataProvider;
 import net.minecraft.data.HashCache;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.HoneycombItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -44,11 +45,10 @@ import net.minecraft.world.item.crafting.SimpleCookingSerializer;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class RecipeProvider implements DataProvider {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Gson GSON = (new GsonBuilder()).setPrettyPrinting().create();
    private static final ImmutableList<ItemLike> COAL_SMELTABLES = ImmutableList.of(Items.COAL_ORE, Items.DEEPSLATE_COAL_ORE);
    private static final ImmutableList<ItemLike> IRON_SMELTABLES = ImmutableList.of(Items.IRON_ORE, Items.DEEPSLATE_IRON_ORE, Items.RAW_IRON);
@@ -1008,12 +1008,12 @@ public class RecipeProvider implements DataProvider {
       UpgradeRecipeBuilder.smithing(Ingredient.of(p_125996_), Ingredient.of(Items.NETHERITE_INGOT), p_125997_).unlocks("has_netherite_ingot", has(Items.NETHERITE_INGOT)).save(p_125995_, getItemName(p_125997_) + "_smithing");
    }
 
-   private static void planksFromLog(Consumer<FinishedRecipe> p_125999_, ItemLike p_126000_, Tag<Item> p_126001_) {
-      ShapelessRecipeBuilder.shapeless(p_126000_, 4).requires(p_126001_).group("planks").unlockedBy("has_log", has(p_126001_)).save(p_125999_);
+   private static void planksFromLog(Consumer<FinishedRecipe> p_206409_, ItemLike p_206410_, TagKey<Item> p_206411_) {
+      ShapelessRecipeBuilder.shapeless(p_206410_, 4).requires(p_206411_).group("planks").unlockedBy("has_log", has(p_206411_)).save(p_206409_);
    }
 
-   private static void planksFromLogs(Consumer<FinishedRecipe> p_126018_, ItemLike p_126019_, Tag<Item> p_126020_) {
-      ShapelessRecipeBuilder.shapeless(p_126019_, 4).requires(p_126020_).group("planks").unlockedBy("has_logs", has(p_126020_)).save(p_126018_);
+   private static void planksFromLogs(Consumer<FinishedRecipe> p_206413_, ItemLike p_206414_, TagKey<Item> p_206415_) {
+      ShapelessRecipeBuilder.shapeless(p_206414_, 4).requires(p_206415_).group("planks").unlockedBy("has_logs", has(p_206415_)).save(p_206413_);
    }
 
    private static void woodFromLogs(Consumer<FinishedRecipe> p_126003_, ItemLike p_126004_, ItemLike p_126005_) {
@@ -1247,8 +1247,8 @@ public class RecipeProvider implements DataProvider {
       return inventoryTrigger(ItemPredicate.Builder.item().of(p_125978_).build());
    }
 
-   private static InventoryChangeTrigger.TriggerInstance has(Tag<Item> p_125976_) {
-      return inventoryTrigger(ItemPredicate.Builder.item().of(p_125976_).build());
+   private static InventoryChangeTrigger.TriggerInstance has(TagKey<Item> p_206407_) {
+      return inventoryTrigger(ItemPredicate.Builder.item().of(p_206407_).build());
    }
 
    private static InventoryChangeTrigger.TriggerInstance inventoryTrigger(ItemPredicate... p_126012_) {

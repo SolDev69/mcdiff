@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.logging.LogUtils;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -15,9 +16,8 @@ import net.minecraft.CrashReport;
 import net.minecraft.SharedConstants;
 import net.minecraft.SystemReport;
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ServerResources;
+import net.minecraft.server.WorldStem;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.progress.ChunkProgressListenerFactory;
 import net.minecraft.server.packs.repository.PackRepository;
@@ -27,15 +27,13 @@ import net.minecraft.util.ModCheck;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.storage.LevelStorageSource;
-import net.minecraft.world.level.storage.WorldData;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class IntegratedServer extends MinecraftServer {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int MIN_SIM_DISTANCE = 2;
    private final Minecraft minecraft;
    private boolean paused = true;
@@ -48,12 +46,12 @@ public class IntegratedServer extends MinecraftServer {
    private UUID uuid;
    private int previousSimulationDistance = 0;
 
-   public IntegratedServer(Thread p_120022_, Minecraft p_120023_, RegistryAccess.RegistryHolder p_120024_, LevelStorageSource.LevelStorageAccess p_120025_, PackRepository p_120026_, ServerResources p_120027_, WorldData p_120028_, MinecraftSessionService p_120029_, GameProfileRepository p_120030_, GameProfileCache p_120031_, ChunkProgressListenerFactory p_120032_) {
-      super(p_120022_, p_120024_, p_120025_, p_120028_, p_120026_, p_120023_.getProxy(), p_120023_.getFixerUpper(), p_120027_, p_120029_, p_120030_, p_120031_, p_120032_);
-      this.setSingleplayerName(p_120023_.getUser().getName());
-      this.setDemo(p_120023_.isDemo());
-      this.setPlayerList(new IntegratedPlayerList(this, this.registryHolder, this.playerDataStorage));
-      this.minecraft = p_120023_;
+   public IntegratedServer(Thread p_205653_, Minecraft p_205654_, LevelStorageSource.LevelStorageAccess p_205655_, PackRepository p_205656_, WorldStem p_205657_, MinecraftSessionService p_205658_, GameProfileRepository p_205659_, GameProfileCache p_205660_, ChunkProgressListenerFactory p_205661_) {
+      super(p_205653_, p_205655_, p_205656_, p_205657_, p_205654_.getProxy(), p_205654_.getFixerUpper(), p_205658_, p_205659_, p_205660_, p_205661_);
+      this.setSingleplayerName(p_205654_.getUser().getName());
+      this.setDemo(p_205654_.isDemo());
+      this.setPlayerList(new IntegratedPlayerList(this, this.registryAccess(), this.playerDataStorage));
+      this.minecraft = p_205654_;
    }
 
    public boolean initServer() {

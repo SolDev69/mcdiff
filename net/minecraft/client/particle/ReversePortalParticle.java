@@ -9,7 +9,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public class ReversePortalParticle extends PortalParticle {
    ReversePortalParticle(ClientLevel p_107590_, double p_107591_, double p_107592_, double p_107593_, double p_107594_, double p_107595_, double p_107596_) {
       super(p_107590_, p_107591_, p_107592_, p_107593_, p_107594_, p_107595_, p_107596_);
-      this.quadSize = (float)((double)this.quadSize * 1.5D);
+      this.quadSize *= 1.5F;
       this.lifetime = (int)(Math.random() * 2.0D) + 60;
    }
 

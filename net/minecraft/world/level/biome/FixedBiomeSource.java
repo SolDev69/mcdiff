@@ -2,29 +2,24 @@ package net.minecraft.world.level.biome;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
+import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 
 public class FixedBiomeSource extends BiomeSource implements BiomeManager.NoiseBiomeSource {
-   public static final Codec<FixedBiomeSource> CODEC = Biome.CODEC.fieldOf("biome").xmap(FixedBiomeSource::new, (p_48278_) -> {
-      return p_48278_.biome;
+   public static final Codec<FixedBiomeSource> CODEC = Biome.CODEC.fieldOf("biome").xmap(FixedBiomeSource::new, (p_204259_) -> {
+      return p_204259_.biome;
    }).stable().codec();
-   private final Supplier<Biome> biome;
+   private final Holder<Biome> biome;
 
-   public FixedBiomeSource(Biome p_48255_) {
-      this(() -> {
-         return p_48255_;
-      });
-   }
-
-   public FixedBiomeSource(Supplier<Biome> p_48257_) {
-      super(ImmutableList.of(p_48257_.get()));
-      this.biome = p_48257_;
+   public FixedBiomeSource(Holder<Biome> p_204257_) {
+      super(ImmutableList.of(p_204257_));
+      this.biome = p_204257_;
    }
 
    protected Codec<? extends BiomeSource> codec() {
@@ -35,24 +30,24 @@ public class FixedBiomeSource extends BiomeSource implements BiomeManager.NoiseB
       return this;
    }
 
-   public Biome getNoiseBiome(int p_187044_, int p_187045_, int p_187046_, Climate.Sampler p_187047_) {
-      return this.biome.get();
+   public Holder<Biome> getNoiseBiome(int p_204265_, int p_204266_, int p_204267_, Climate.Sampler p_204268_) {
+      return this.biome;
    }
 
-   public Biome getNoiseBiome(int p_48280_, int p_48281_, int p_48282_) {
-      return this.biome.get();
+   public Holder<Biome> getNoiseBiome(int p_204261_, int p_204262_, int p_204263_) {
+      return this.biome;
    }
 
    @Nullable
-   public BlockPos findBiomeHorizontal(int p_187028_, int p_187029_, int p_187030_, int p_187031_, int p_187032_, Predicate<Biome> p_187033_, Random p_187034_, boolean p_187035_, Climate.Sampler p_187036_) {
-      if (p_187033_.test(this.biome.get())) {
-         return p_187035_ ? new BlockPos(p_187028_, p_187029_, p_187030_) : new BlockPos(p_187028_ - p_187031_ + p_187034_.nextInt(p_187031_ * 2 + 1), p_187029_, p_187030_ - p_187031_ + p_187034_.nextInt(p_187031_ * 2 + 1));
+   public Pair<BlockPos, Holder<Biome>> findBiomeHorizontal(int p_207885_, int p_207886_, int p_207887_, int p_207888_, int p_207889_, Predicate<Holder<Biome>> p_207890_, Random p_207891_, boolean p_207892_, Climate.Sampler p_207893_) {
+      if (p_207890_.test(this.biome)) {
+         return p_207892_ ? Pair.of(new BlockPos(p_207885_, p_207886_, p_207887_), this.biome) : Pair.of(new BlockPos(p_207885_ - p_207888_ + p_207891_.nextInt(p_207888_ * 2 + 1), p_207886_, p_207887_ - p_207888_ + p_207891_.nextInt(p_207888_ * 2 + 1)), this.biome);
       } else {
          return null;
       }
    }
 
-   public Set<Biome> getBiomesWithin(int p_187038_, int p_187039_, int p_187040_, int p_187041_, Climate.Sampler p_187042_) {
-      return Sets.newHashSet(this.biome.get());
+   public Set<Holder<Biome>> getBiomesWithin(int p_187038_, int p_187039_, int p_187040_, int p_187041_, Climate.Sampler p_187042_) {
+      return Sets.newHashSet(Set.of(this.biome));
    }
 }

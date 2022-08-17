@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -85,8 +86,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import org.slf4j.Logger;
 
 public class Villager extends AbstractVillager implements ReputationEventHandler, VillagerDataHolder {
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final EntityDataAccessor<VillagerData> DATA_VILLAGER_DATA = SynchedEntityData.defineId(Villager.class, EntityDataSerializers.VILLAGER_DATA);
    public static final int BREEDING_FOOD_THRESHOLD = 12;
    public static final Map<Item, Integer> FOOD_POINTS = ImmutableMap.of(Items.BREAD, 4, Items.POTATO, 1, Items.CARROT, 1, Items.BEETROOT, 1);
@@ -106,7 +109,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
    @Nullable
    private Player lastTradedPlayer;
    private boolean chasing;
-   private byte foodLevel;
+   private int foodLevel;
    private final GossipContainer gossips = new GossipContainer();
    private long lastGossipTime;
    private long lastGossipDecayTime;
@@ -420,7 +423,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
       VillagerData.CODEC.encodeStart(NbtOps.INSTANCE, this.getVillagerData()).resultOrPartial(LOGGER::error).ifPresent((p_35454_) -> {
          p_35481_.put("VillagerData", p_35454_);
       });
-      p_35481_.putByte("FoodLevel", this.foodLevel);
+      p_35481_.putByte("FoodLevel", (byte)this.foodLevel);
       p_35481_.put("Gossips", this.gossips.store(NbtOps.INSTANCE).getValue());
       p_35481_.putInt("Xp", this.villagerXp);
       p_35481_.putLong("LastRestock", this.lastRestockGameTime);
@@ -612,7 +615,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
                   int j = itemstack.getCount();
 
                   for(int k = j; k > 0; --k) {
-                     this.foodLevel = (byte)(this.foodLevel + integer);
+                     this.foodLevel += integer;
                      this.getInventory().removeItem(i, 1);
                      if (!this.hungry()) {
                         return;
@@ -632,7 +635,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
    }
 
    private void digestFood(int p_35549_) {
-      this.foodLevel = (byte)(this.foodLevel - p_35549_);
+      this.foodLevel -= p_35549_;
    }
 
    public void eatAndDigestFood() {
@@ -680,7 +683,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
       }
 
       if (p_35441_ == MobSpawnType.COMMAND || p_35441_ == MobSpawnType.SPAWN_EGG || p_35441_ == MobSpawnType.SPAWNER || p_35441_ == MobSpawnType.DISPENSER) {
-         this.setVillagerData(this.getVillagerData().setType(VillagerType.byBiome(p_35439_.getBiomeName(this.blockPosition()))));
+         this.setVillagerData(this.getVillagerData().setType(VillagerType.byBiome(p_35439_.getBiome(this.blockPosition()))));
       }
 
       if (p_35441_ == MobSpawnType.STRUCTURE) {
@@ -694,7 +697,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
       double d0 = this.random.nextDouble();
       VillagerType villagertype;
       if (d0 < 0.5D) {
-         villagertype = VillagerType.byBiome(p_150012_.getBiomeName(this.blockPosition()));
+         villagertype = VillagerType.byBiome(p_150012_.getBiome(this.blockPosition()));
       } else if (d0 < 0.75D) {
          villagertype = this.getVillagerData().getType();
       } else {

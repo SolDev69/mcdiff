@@ -29,7 +29,7 @@ public class VillagerRenderer extends MobRenderer<Villager, VillagerModel<Villag
    protected void scale(Villager p_116314_, PoseStack p_116315_, float p_116316_) {
       float f = 0.9375F;
       if (p_116314_.isBaby()) {
-         f = (float)((double)f * 0.5D);
+         f *= 0.5F;
          this.shadowRadius = 0.25F;
       } else {
          this.shadowRadius = 0.5F;

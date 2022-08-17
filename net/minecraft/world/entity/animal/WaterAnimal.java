@@ -71,6 +71,6 @@ public abstract class WaterAnimal extends PathfinderMob {
    public static boolean checkSurfaceWaterAnimalSpawnRules(EntityType<? extends WaterAnimal> p_186238_, LevelAccessor p_186239_, MobSpawnType p_186240_, BlockPos p_186241_, Random p_186242_) {
       int i = p_186239_.getSeaLevel();
       int j = i - 13;
-      return p_186239_.getFluidState(p_186241_.below()).is(FluidTags.WATER) && p_186239_.getBlockState(p_186241_.above()).is(Blocks.WATER) && p_186241_.getY() >= j && p_186241_.getY() <= i;
+      return p_186241_.getY() >= j && p_186241_.getY() <= i && p_186239_.getFluidState(p_186241_.below()).is(FluidTags.WATER) && p_186239_.getBlockState(p_186241_.above()).is(Blocks.WATER);
    }
 }

@@ -11,13 +11,15 @@ import net.minecraft.SharedConstants;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.ItemTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -173,13 +175,13 @@ public abstract class AbstractFurnaceBlockEntity extends BaseContainerBlockEntit
    }
 
    private static boolean isNeverAFurnaceFuel(Item p_58398_) {
-      return ItemTags.NON_FLAMMABLE_WOOD.contains(p_58398_);
+      return p_58398_.builtInRegistryHolder().is(ItemTags.NON_FLAMMABLE_WOOD);
    }
 
-   private static void add(Map<Item, Integer> p_58371_, Tag<Item> p_58372_, int p_58373_) {
-      for(Item item : p_58372_.getValues()) {
-         if (!isNeverAFurnaceFuel(item)) {
-            p_58371_.put(item, p_58373_);
+   private static void add(Map<Item, Integer> p_204303_, TagKey<Item> p_204304_, int p_204305_) {
+      for(Holder<Item> holder : Registry.ITEM.getTagOrEmpty(p_204304_)) {
+         if (!isNeverAFurnaceFuel(holder.value())) {
+            p_204303_.put(holder.value(), p_204305_);
          }
       }
 

@@ -75,7 +75,7 @@ public class Pufferfish extends AbstractFish {
 
    public void readAdditionalSaveData(CompoundTag p_29613_) {
       super.readAdditionalSaveData(p_29613_);
-      this.setPuffState(p_29613_.getInt("PuffState"));
+      this.setPuffState(Math.min(p_29613_.getInt("PuffState"), 2));
    }
 
    public ItemStack getBucketItemStack() {

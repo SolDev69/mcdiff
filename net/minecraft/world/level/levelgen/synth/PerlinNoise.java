@@ -24,6 +24,7 @@ public class PerlinNoise {
    private final DoubleList amplitudes;
    private final double lowestFreqValueFactor;
    private final double lowestFreqInputFactor;
+   private final double maxValue;
 
    /** @deprecated */
    @Deprecated
@@ -33,8 +34,8 @@ public class PerlinNoise {
 
    /** @deprecated */
    @Deprecated
-   public static PerlinNoise createLegacyForLegacyNormalNoise(RandomSource p_192879_, int p_192880_, DoubleList p_192881_) {
-      return new PerlinNoise(p_192879_, Pair.of(p_192880_, p_192881_), false);
+   public static PerlinNoise createLegacyForLegacyNetherBiome(RandomSource p_210646_, int p_210647_, DoubleList p_210648_) {
+      return new PerlinNoise(p_210646_, Pair.of(p_210647_, p_210648_), false);
    }
 
    public static PerlinNoise create(RandomSource p_192894_, IntStream p_192895_) {
@@ -128,6 +129,11 @@ public class PerlinNoise {
 
       this.lowestFreqInputFactor = Math.pow(2.0D, (double)(-j));
       this.lowestFreqValueFactor = Math.pow(2.0D, (double)(i - 1)) / (Math.pow(2.0D, (double)i) - 1.0D);
+      this.maxValue = this.edgeValue(2.0D);
+   }
+
+   protected double maxValue() {
+      return this.maxValue;
    }
 
    private static void skipOctave(RandomSource p_164380_) {
@@ -154,6 +160,26 @@ public class PerlinNoise {
 
          d1 *= 2.0D;
          d2 /= 2.0D;
+      }
+
+      return d0;
+   }
+
+   public double maxBrokenValue(double p_210644_) {
+      return this.edgeValue(p_210644_ + 2.0D);
+   }
+
+   private double edgeValue(double p_210650_) {
+      double d0 = 0.0D;
+      double d1 = this.lowestFreqValueFactor;
+
+      for(int i = 0; i < this.noiseLevels.length; ++i) {
+         ImprovedNoise improvednoise = this.noiseLevels[i];
+         if (improvednoise != null) {
+            d0 += this.amplitudes.getDouble(i) * p_210650_ * d1;
+         }
+
+         d1 /= 2.0D;
       }
 
       return d0;

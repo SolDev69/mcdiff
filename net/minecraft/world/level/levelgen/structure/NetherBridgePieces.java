@@ -18,8 +18,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.SpawnerBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.StructurePieceType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 
@@ -79,8 +79,8 @@ public class NetherBridgePieces {
          this.setOrientation(p_162639_);
       }
 
-      protected BridgeCrossing(StructurePieceType p_71569_, CompoundTag p_71570_) {
-         super(p_71569_, p_71570_);
+      protected BridgeCrossing(StructurePieceType p_209884_, CompoundTag p_209885_) {
+         super(p_209884_, p_209885_);
       }
 
       public BridgeCrossing(CompoundTag p_192081_) {
@@ -889,12 +889,12 @@ public class NetherBridgePieces {
    }
 
    abstract static class NetherBridgePiece extends StructurePiece {
-      protected NetherBridgePiece(StructurePieceType p_162851_, int p_162852_, BoundingBox p_162853_) {
-         super(p_162851_, p_162852_, p_162853_);
+      protected NetherBridgePiece(StructurePieceType p_209887_, int p_209888_, BoundingBox p_209889_) {
+         super(p_209887_, p_209888_, p_209889_);
       }
 
-      public NetherBridgePiece(StructurePieceType p_71901_, CompoundTag p_71902_) {
-         super(p_71901_, p_71902_);
+      public NetherBridgePiece(StructurePieceType p_209891_, CompoundTag p_209892_) {
+         super(p_209891_, p_209892_);
       }
 
       protected void addAdditionalSaveData(StructurePieceSerializationContext p_192213_, CompoundTag p_192214_) {

@@ -7,10 +7,11 @@ import java.util.BitSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 import java.util.stream.LongStream;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
@@ -101,14 +102,14 @@ public final class BelowZeroRetrogen {
       return this.missingBedrock.get((p_198216_ & 15) * 16 + (p_198215_ & 15));
    }
 
-   public static BiomeResolver getBiomeResolver(BiomeResolver p_196982_, Registry<Biome> p_196983_, ChunkAccess p_196984_) {
-      if (!p_196984_.isUpgrading()) {
-         return p_196982_;
+   public static BiomeResolver getBiomeResolver(BiomeResolver p_204532_, ChunkAccess p_204533_) {
+      if (!p_204533_.isUpgrading()) {
+         return p_204532_;
       } else {
-         Set<Biome> set = RETAINED_RETROGEN_BIOMES.stream().map(p_196983_::get).collect(Collectors.toSet());
-         return (p_196989_, p_196990_, p_196991_, p_196992_) -> {
-            Biome biome = p_196982_.getNoiseBiome(p_196989_, p_196990_, p_196991_, p_196992_);
-            return set.contains(biome) ? biome : p_196984_.getNoiseBiome(p_196989_, 0, p_196991_);
+         Predicate<ResourceKey<Biome>> predicate = RETAINED_RETROGEN_BIOMES::contains;
+         return (p_204538_, p_204539_, p_204540_, p_204541_) -> {
+            Holder<Biome> holder = p_204532_.getNoiseBiome(p_204538_, p_204539_, p_204540_, p_204541_);
+            return holder.is(predicate) ? holder : p_204533_.getNoiseBiome(p_204538_, 0, p_204540_);
          };
       }
    }

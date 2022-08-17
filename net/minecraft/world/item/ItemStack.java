@@ -3,8 +3,10 @@ package net.minecraft.world.item;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.Streams;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.text.DecimalFormat;
@@ -17,15 +19,18 @@ import java.util.Random;
 import java.util.Map.Entry;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.commands.arguments.blocks.BlockStateParser;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.HoverEvent;
@@ -37,9 +42,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.stats.Stats;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.Tag;
-import net.minecraft.tags.TagContainer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -67,8 +70,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public final class ItemStack {
    public static final Codec<ItemStack> CODEC = RecordCodecBuilder.create((p_41697_) -> {
@@ -80,7 +82,7 @@ public final class ItemStack {
          return Optional.ofNullable(p_150939_.tag);
       })).apply(p_41697_, ItemStack::new);
    });
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    public static final ItemStack EMPTY = new ItemStack((Item)null);
    public static final DecimalFormat ATTRIBUTE_MODIFIER_FORMAT = Util.make(new DecimalFormat("#.##"), (p_41704_) -> {
       p_41704_.setDecimalFormatSymbols(DecimalFormatSymbols.getInstance(Locale.ROOT));
@@ -119,6 +121,10 @@ public final class ItemStack {
 
    public ItemStack(ItemLike p_41599_) {
       this(p_41599_, 1);
+   }
+
+   public ItemStack(Holder<Item> p_204116_) {
+      this(p_204116_.value(), 1);
    }
 
    private ItemStack(ItemLike p_41604_, int p_41605_, Optional<CompoundTag> p_41606_) {
@@ -187,19 +193,23 @@ public final class ItemStack {
       return this.emptyCacheFlag ? Items.AIR : this.item;
    }
 
-   public boolean is(Tag<Item> p_150923_) {
-      return p_150923_.contains(this.getItem());
+   public boolean is(TagKey<Item> p_204118_) {
+      return this.getItem().builtInRegistryHolder().is(p_204118_);
    }
 
    public boolean is(Item p_150931_) {
       return this.getItem() == p_150931_;
    }
 
+   public Stream<TagKey<Item>> getTags() {
+      return this.getItem().builtInRegistryHolder().tags();
+   }
+
    public InteractionResult useOn(UseOnContext p_41662_) {
       Player player = p_41662_.getPlayer();
       BlockPos blockpos = p_41662_.getClickedPos();
       BlockInWorld blockinworld = new BlockInWorld(p_41662_.getLevel(), blockpos, false);
-      if (player != null && !player.getAbilities().mayBuild && !this.hasAdventureModePlaceTagForBlock(p_41662_.getLevel().getTagManager(), blockinworld)) {
+      if (player != null && !player.getAbilities().mayBuild && !this.hasAdventureModePlaceTagForBlock(p_41662_.getLevel().registryAccess().registryOrThrow(Registry.BLOCK_REGISTRY), blockinworld)) {
          return InteractionResult.PASS;
       } else {
          Item item = this.getItem();
@@ -758,22 +768,21 @@ public final class ItemStack {
       try {
          BlockStateParser blockstateparser = (new BlockStateParser(new StringReader(p_41762_), true)).parse(true);
          BlockState blockstate = blockstateparser.getState();
-         ResourceLocation resourcelocation = blockstateparser.getTag();
+         TagKey<Block> tagkey = blockstateparser.getTag();
          boolean flag = blockstate != null;
-         boolean flag1 = resourcelocation != null;
-         if (flag || flag1) {
-            if (flag) {
-               return Lists.newArrayList(blockstate.getBlock().getName().withStyle(ChatFormatting.DARK_GRAY));
-            }
+         boolean flag1 = tagkey != null;
+         if (flag) {
+            return Lists.newArrayList(blockstate.getBlock().getName().withStyle(ChatFormatting.DARK_GRAY));
+         }
 
-            Tag<Block> tag = BlockTags.getAllTags().getTag(resourcelocation);
-            if (tag != null) {
-               Collection<Block> collection = tag.getValues();
-               if (!collection.isEmpty()) {
-                  return collection.stream().map(Block::getName).map((p_41717_) -> {
-                     return p_41717_.withStyle(ChatFormatting.DARK_GRAY);
-                  }).collect(Collectors.toList());
-               }
+         if (flag1) {
+            List<Component> list = Streams.stream(Registry.BLOCK.getTagOrEmpty(tagkey)).map((p_204120_) -> {
+               return p_204120_.value().getName();
+            }).map((p_204125_) -> {
+               return p_204125_.withStyle(ChatFormatting.DARK_GRAY);
+            }).collect(Collectors.toList());
+            if (!list.isEmpty()) {
+               return list;
             }
          }
       } catch (CommandSyntaxException commandsyntaxexception) {
@@ -816,7 +825,7 @@ public final class ItemStack {
       }
    }
 
-   public void addTagElement(String p_41701_, net.minecraft.nbt.Tag p_41702_) {
+   public void addTagElement(String p_41701_, Tag p_41702_) {
       this.getOrCreateTag().put(p_41701_, p_41702_);
    }
 
@@ -895,28 +904,28 @@ public final class ItemStack {
 
       MutableComponent mutablecomponent1 = ComponentUtils.wrapInSquareBrackets(mutablecomponent);
       if (!this.emptyCacheFlag) {
-         mutablecomponent1.withStyle(this.getRarity().color).withStyle((p_41719_) -> {
-            return p_41719_.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(this)));
+         mutablecomponent1.withStyle(this.getRarity().color).withStyle((p_204127_) -> {
+            return p_204127_.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackInfo(this)));
          });
       }
 
       return mutablecomponent1;
    }
 
-   public boolean hasAdventureModePlaceTagForBlock(TagContainer p_41724_, BlockInWorld p_41725_) {
+   public boolean hasAdventureModePlaceTagForBlock(Registry<Block> p_204122_, BlockInWorld p_204123_) {
       if (this.adventurePlaceCheck == null) {
          this.adventurePlaceCheck = new AdventureModeCheck("CanPlaceOn");
       }
 
-      return this.adventurePlaceCheck.test(this, p_41724_, p_41725_);
+      return this.adventurePlaceCheck.test(this, p_204122_, p_204123_);
    }
 
-   public boolean hasAdventureModeBreakTagForBlock(TagContainer p_41634_, BlockInWorld p_41635_) {
+   public boolean hasAdventureModeBreakTagForBlock(Registry<Block> p_204129_, BlockInWorld p_204130_) {
       if (this.adventureBreakCheck == null) {
          this.adventureBreakCheck = new AdventureModeCheck("CanDestroy");
       }
 
-      return this.adventureBreakCheck.test(this, p_41634_, p_41635_);
+      return this.adventureBreakCheck.test(this, p_204129_, p_204130_);
    }
 
    public int getPopTime() {

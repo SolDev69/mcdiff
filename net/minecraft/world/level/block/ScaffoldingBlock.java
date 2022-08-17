@@ -89,7 +89,7 @@ public class ScaffoldingBlock extends Block implements SimpleWaterloggedBlock {
       BlockState blockstate = p_56032_.setValue(DISTANCE, Integer.valueOf(i)).setValue(BOTTOM, Boolean.valueOf(this.isBottom(p_56033_, p_56034_, i)));
       if (blockstate.getValue(DISTANCE) == 7) {
          if (p_56032_.getValue(DISTANCE) == 7) {
-            p_56033_.addFreshEntity(new FallingBlockEntity(p_56033_, (double)p_56034_.getX() + 0.5D, (double)p_56034_.getY(), (double)p_56034_.getZ() + 0.5D, blockstate.setValue(WATERLOGGED, Boolean.valueOf(false))));
+            FallingBlockEntity.fall(p_56033_, p_56034_, blockstate);
          } else {
             p_56033_.destroyBlock(p_56034_, true);
          }
@@ -153,6 +153,6 @@ public class ScaffoldingBlock extends Block implements SimpleWaterloggedBlock {
       VoxelShape voxelshape6 = Block.box(14.0D, 0.0D, 0.0D, 16.0D, 2.0D, 16.0D);
       VoxelShape voxelshape7 = Block.box(0.0D, 0.0D, 14.0D, 16.0D, 2.0D, 16.0D);
       VoxelShape voxelshape8 = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 2.0D, 2.0D);
-      UNSTABLE_SHAPE = Shapes.or(ScaffoldingBlock.UNSTABLE_SHAPE_BOTTOM, STABLE_SHAPE, voxelshape6, voxelshape5, voxelshape8, voxelshape7);
+      UNSTABLE_SHAPE = Shapes.or(UNSTABLE_SHAPE_BOTTOM, STABLE_SHAPE, voxelshape6, voxelshape5, voxelshape8, voxelshape7);
    }
 }

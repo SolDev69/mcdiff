@@ -6,6 +6,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
@@ -26,11 +27,10 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.GsonHelper;
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class TagLoader<T> {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Gson GSON = new Gson();
    private static final String PATH_SUFFIX = ".json";
    private static final int PATH_SUFFIX_LENGTH = ".json".length();
@@ -135,37 +135,37 @@ public class TagLoader<T> {
 
    }
 
-   public TagCollection<T> build(Map<ResourceLocation, Tag.Builder> p_144508_) {
+   public Map<ResourceLocation, Tag<T>> build(Map<ResourceLocation, Tag.Builder> p_203899_) {
       Map<ResourceLocation, Tag<T>> map = Maps.newHashMap();
       Function<ResourceLocation, Tag<T>> function = map::get;
       Function<ResourceLocation, T> function1 = (p_144540_) -> {
          return this.idToValue.apply(p_144540_).orElse((T)null);
       };
       Multimap<ResourceLocation, ResourceLocation> multimap = HashMultimap.create();
-      p_144508_.forEach((p_144548_, p_144549_) -> {
+      p_203899_.forEach((p_144548_, p_144549_) -> {
          p_144549_.visitRequiredDependencies((p_144563_) -> {
             addDependencyIfNotCyclic(multimap, p_144548_, p_144563_);
          });
       });
-      p_144508_.forEach((p_144499_, p_144500_) -> {
+      p_203899_.forEach((p_144499_, p_144500_) -> {
          p_144500_.visitOptionalDependencies((p_144559_) -> {
             addDependencyIfNotCyclic(multimap, p_144499_, p_144559_);
          });
       });
       Set<ResourceLocation> set = Sets.newHashSet();
-      p_144508_.keySet().forEach((p_144522_) -> {
-         visitDependenciesAndElement(p_144508_, multimap, set, p_144522_, (p_144537_, p_144538_) -> {
+      p_203899_.keySet().forEach((p_144522_) -> {
+         visitDependenciesAndElement(p_203899_, multimap, set, p_144522_, (p_144537_, p_144538_) -> {
             p_144538_.build(function, function1).ifLeft((p_144543_) -> {
-               LOGGER.error("Couldn't load tag {} as it is missing following references: {}", p_144537_, p_144543_.stream().map(Objects::toString).collect(Collectors.joining(",")));
+               LOGGER.error("Couldn't load tag {} as it is missing following references: {}", p_144537_, p_144543_.stream().map(Objects::toString).collect(Collectors.joining(", ")));
             }).ifRight((p_144532_) -> {
                map.put(p_144537_, p_144532_);
             });
          });
       });
-      return TagCollection.of(map);
+      return map;
    }
 
-   public TagCollection<T> loadAndBuild(ResourceManager p_144545_) {
-      return this.build(this.load(p_144545_));
+   public Map<ResourceLocation, Tag<T>> loadAndBuild(ResourceManager p_203901_) {
+      return this.build(this.load(p_203901_));
    }
 }

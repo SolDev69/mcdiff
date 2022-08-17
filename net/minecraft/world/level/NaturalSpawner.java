@@ -1,5 +1,6 @@
 package net.minecraft.world.level;
 
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -12,6 +13,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
@@ -37,16 +39,16 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.NetherFortressFeature;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
+import net.minecraft.world.level.levelgen.structure.BuiltinStructures;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.Vec3;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public final class NaturalSpawner {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int MIN_SPAWN_DISTANCE = 24;
    public static final int SPAWN_DISTANCE_CHUNK = 8;
    public static final int SPAWN_DISTANCE_BLOCK = 128;
@@ -102,7 +104,7 @@ public final class NaturalSpawner {
    }
 
    static Biome getRoughBiome(BlockPos p_47096_, ChunkAccess p_47097_) {
-      return p_47097_.getNoiseBiome(QuartPos.fromBlock(p_47096_.getX()), QuartPos.fromBlock(p_47096_.getY()), QuartPos.fromBlock(p_47096_.getZ()));
+      return p_47097_.getNoiseBiome(QuartPos.fromBlock(p_47096_.getX()), QuartPos.fromBlock(p_47096_.getY()), QuartPos.fromBlock(p_47096_.getZ())).value();
    }
 
    public static void spawnForChunk(ServerLevel p_47030_, LevelChunk p_47031_, NaturalSpawner.SpawnState p_47032_, boolean p_47033_, boolean p_47034_, boolean p_47035_) {
@@ -203,10 +205,10 @@ public final class NaturalSpawner {
    private static boolean isRightDistanceToPlayerAndSpawnPoint(ServerLevel p_47025_, ChunkAccess p_47026_, BlockPos.MutableBlockPos p_47027_, double p_47028_) {
       if (p_47028_ <= 576.0D) {
          return false;
-      } else if (p_47025_.getSharedSpawnPos().closerThan(new Vec3((double)p_47027_.getX() + 0.5D, (double)p_47027_.getY(), (double)p_47027_.getZ() + 0.5D), 24.0D)) {
+      } else if (p_47025_.getSharedSpawnPos().closerToCenterThan(new Vec3((double)p_47027_.getX() + 0.5D, (double)p_47027_.getY(), (double)p_47027_.getZ() + 0.5D), 24.0D)) {
          return false;
       } else {
-         return Objects.equals(new ChunkPos(p_47027_), p_47026_.getPos()) || p_47025_.isPositionEntityTicking(p_47027_);
+         return Objects.equals(new ChunkPos(p_47027_), p_47026_.getPos()) || p_47025_.isNaturalSpawningAllowed(p_47027_);
       }
    }
 
@@ -254,20 +256,25 @@ public final class NaturalSpawner {
    }
 
    private static Optional<MobSpawnSettings.SpawnerData> getRandomSpawnMobAt(ServerLevel p_151599_, StructureFeatureManager p_151600_, ChunkGenerator p_151601_, MobCategory p_151602_, Random p_151603_, BlockPos p_151604_) {
-      Biome biome = p_151599_.getBiome(p_151604_);
-      return p_151602_ == MobCategory.WATER_AMBIENT && biome.getBiomeCategory() == Biome.BiomeCategory.RIVER && p_151603_.nextFloat() < 0.98F ? Optional.empty() : mobsAt(p_151599_, p_151600_, p_151601_, p_151602_, p_151604_, biome).getRandom(p_151603_);
+      Holder<Biome> holder = p_151599_.getBiome(p_151604_);
+      return p_151602_ == MobCategory.WATER_AMBIENT && Biome.getBiomeCategory(holder) == Biome.BiomeCategory.RIVER && p_151603_.nextFloat() < 0.98F ? Optional.empty() : mobsAt(p_151599_, p_151600_, p_151601_, p_151602_, p_151604_, holder).getRandom(p_151603_);
    }
 
    private static boolean canSpawnMobAt(ServerLevel p_47004_, StructureFeatureManager p_47005_, ChunkGenerator p_47006_, MobCategory p_47007_, MobSpawnSettings.SpawnerData p_47008_, BlockPos p_47009_) {
-      return mobsAt(p_47004_, p_47005_, p_47006_, p_47007_, p_47009_, (Biome)null).unwrap().contains(p_47008_);
+      return mobsAt(p_47004_, p_47005_, p_47006_, p_47007_, p_47009_, (Holder<Biome>)null).unwrap().contains(p_47008_);
    }
 
-   private static WeightedRandomList<MobSpawnSettings.SpawnerData> mobsAt(ServerLevel p_151592_, StructureFeatureManager p_151593_, ChunkGenerator p_151594_, MobCategory p_151595_, BlockPos p_151596_, @Nullable Biome p_151597_) {
-      return isInNetherFortressBounds(p_151596_, p_151592_, p_151595_, p_151593_) ? NetherFortressFeature.FORTRESS_ENEMIES : p_151594_.getMobsAt(p_151597_ != null ? p_151597_ : p_151592_.getBiome(p_151596_), p_151593_, p_151595_, p_151596_);
+   private static WeightedRandomList<MobSpawnSettings.SpawnerData> mobsAt(ServerLevel p_204169_, StructureFeatureManager p_204170_, ChunkGenerator p_204171_, MobCategory p_204172_, BlockPos p_204173_, @Nullable Holder<Biome> p_204174_) {
+      return isInNetherFortressBounds(p_204173_, p_204169_, p_204172_, p_204170_) ? NetherFortressFeature.FORTRESS_ENEMIES : p_204171_.getMobsAt(p_204174_ != null ? p_204174_ : p_204169_.getBiome(p_204173_), p_204170_, p_204172_, p_204173_);
    }
 
    public static boolean isInNetherFortressBounds(BlockPos p_186530_, ServerLevel p_186531_, MobCategory p_186532_, StructureFeatureManager p_186533_) {
-      return p_186532_ == MobCategory.MONSTER && p_186531_.getBlockState(p_186530_.below()).is(Blocks.NETHER_BRICKS) && p_186533_.getStructureAt(p_186530_, StructureFeature.NETHER_BRIDGE).isValid();
+      if (p_186532_ == MobCategory.MONSTER && p_186531_.getBlockState(p_186530_.below()).is(Blocks.NETHER_BRICKS)) {
+         ConfiguredStructureFeature<?, ?> configuredstructurefeature = p_186533_.registryAccess().registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY).get(BuiltinStructures.FORTRESS);
+         return configuredstructurefeature == null ? false : p_186533_.getStructureAt(p_186530_, configuredstructurefeature).isValid();
+      } else {
+         return false;
+      }
    }
 
    private static BlockPos getRandomPosWithin(Level p_47063_, LevelChunk p_47064_) {
@@ -320,21 +327,21 @@ public final class NaturalSpawner {
       }
    }
 
-   public static void spawnMobsForChunkGeneration(ServerLevelAccessor p_151617_, Biome p_151618_, ChunkPos p_151619_, Random p_151620_) {
-      MobSpawnSettings mobspawnsettings = p_151618_.getMobSettings();
+   public static void spawnMobsForChunkGeneration(ServerLevelAccessor p_204176_, Holder<Biome> p_204177_, ChunkPos p_204178_, Random p_204179_) {
+      MobSpawnSettings mobspawnsettings = p_204177_.value().getMobSettings();
       WeightedRandomList<MobSpawnSettings.SpawnerData> weightedrandomlist = mobspawnsettings.getMobs(MobCategory.CREATURE);
       if (!weightedrandomlist.isEmpty()) {
-         int i = p_151619_.getMinBlockX();
-         int j = p_151619_.getMinBlockZ();
+         int i = p_204178_.getMinBlockX();
+         int j = p_204178_.getMinBlockZ();
 
-         while(p_151620_.nextFloat() < mobspawnsettings.getCreatureProbability()) {
-            Optional<MobSpawnSettings.SpawnerData> optional = weightedrandomlist.getRandom(p_151620_);
+         while(p_204179_.nextFloat() < mobspawnsettings.getCreatureProbability()) {
+            Optional<MobSpawnSettings.SpawnerData> optional = weightedrandomlist.getRandom(p_204179_);
             if (optional.isPresent()) {
                MobSpawnSettings.SpawnerData mobspawnsettings$spawnerdata = optional.get();
-               int k = mobspawnsettings$spawnerdata.minCount + p_151620_.nextInt(1 + mobspawnsettings$spawnerdata.maxCount - mobspawnsettings$spawnerdata.minCount);
+               int k = mobspawnsettings$spawnerdata.minCount + p_204179_.nextInt(1 + mobspawnsettings$spawnerdata.maxCount - mobspawnsettings$spawnerdata.minCount);
                SpawnGroupData spawngroupdata = null;
-               int l = i + p_151620_.nextInt(16);
-               int i1 = j + p_151620_.nextInt(16);
+               int l = i + p_204179_.nextInt(16);
+               int i1 = j + p_204179_.nextInt(16);
                int j1 = l;
                int k1 = i1;
 
@@ -342,38 +349,38 @@ public final class NaturalSpawner {
                   boolean flag = false;
 
                   for(int i2 = 0; !flag && i2 < 4; ++i2) {
-                     BlockPos blockpos = getTopNonCollidingPos(p_151617_, mobspawnsettings$spawnerdata.type, l, i1);
-                     if (mobspawnsettings$spawnerdata.type.canSummon() && isSpawnPositionOk(SpawnPlacements.getPlacementType(mobspawnsettings$spawnerdata.type), p_151617_, blockpos, mobspawnsettings$spawnerdata.type)) {
+                     BlockPos blockpos = getTopNonCollidingPos(p_204176_, mobspawnsettings$spawnerdata.type, l, i1);
+                     if (mobspawnsettings$spawnerdata.type.canSummon() && isSpawnPositionOk(SpawnPlacements.getPlacementType(mobspawnsettings$spawnerdata.type), p_204176_, blockpos, mobspawnsettings$spawnerdata.type)) {
                         float f = mobspawnsettings$spawnerdata.type.getWidth();
                         double d0 = Mth.clamp((double)l, (double)i + (double)f, (double)i + 16.0D - (double)f);
                         double d1 = Mth.clamp((double)i1, (double)j + (double)f, (double)j + 16.0D - (double)f);
-                        if (!p_151617_.noCollision(mobspawnsettings$spawnerdata.type.getAABB(d0, (double)blockpos.getY(), d1)) || !SpawnPlacements.checkSpawnRules(mobspawnsettings$spawnerdata.type, p_151617_, MobSpawnType.CHUNK_GENERATION, new BlockPos(d0, (double)blockpos.getY(), d1), p_151617_.getRandom())) {
+                        if (!p_204176_.noCollision(mobspawnsettings$spawnerdata.type.getAABB(d0, (double)blockpos.getY(), d1)) || !SpawnPlacements.checkSpawnRules(mobspawnsettings$spawnerdata.type, p_204176_, MobSpawnType.CHUNK_GENERATION, new BlockPos(d0, (double)blockpos.getY(), d1), p_204176_.getRandom())) {
                            continue;
                         }
 
                         Entity entity;
                         try {
-                           entity = mobspawnsettings$spawnerdata.type.create(p_151617_.getLevel());
+                           entity = mobspawnsettings$spawnerdata.type.create(p_204176_.getLevel());
                         } catch (Exception exception) {
                            LOGGER.warn("Failed to create mob", (Throwable)exception);
                            continue;
                         }
 
-                        entity.moveTo(d0, (double)blockpos.getY(), d1, p_151620_.nextFloat() * 360.0F, 0.0F);
+                        entity.moveTo(d0, (double)blockpos.getY(), d1, p_204179_.nextFloat() * 360.0F, 0.0F);
                         if (entity instanceof Mob) {
                            Mob mob = (Mob)entity;
-                           if (mob.checkSpawnRules(p_151617_, MobSpawnType.CHUNK_GENERATION) && mob.checkSpawnObstruction(p_151617_)) {
-                              spawngroupdata = mob.finalizeSpawn(p_151617_, p_151617_.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.CHUNK_GENERATION, spawngroupdata, (CompoundTag)null);
-                              p_151617_.addFreshEntityWithPassengers(mob);
+                           if (mob.checkSpawnRules(p_204176_, MobSpawnType.CHUNK_GENERATION) && mob.checkSpawnObstruction(p_204176_)) {
+                              spawngroupdata = mob.finalizeSpawn(p_204176_, p_204176_.getCurrentDifficultyAt(mob.blockPosition()), MobSpawnType.CHUNK_GENERATION, spawngroupdata, (CompoundTag)null);
+                              p_204176_.addFreshEntityWithPassengers(mob);
                               flag = true;
                            }
                         }
                      }
 
-                     l += p_151620_.nextInt(5) - p_151620_.nextInt(5);
+                     l += p_204179_.nextInt(5) - p_204179_.nextInt(5);
 
-                     for(i1 += p_151620_.nextInt(5) - p_151620_.nextInt(5); l < i || l >= i + 16 || i1 < j || i1 >= j + 16; i1 = k1 + p_151620_.nextInt(5) - p_151620_.nextInt(5)) {
-                        l = j1 + p_151620_.nextInt(5) - p_151620_.nextInt(5);
+                     for(i1 += p_204179_.nextInt(5) - p_204179_.nextInt(5); l < i || l >= i + 16 || i1 < j || i1 >= j + 16; i1 = k1 + p_204179_.nextInt(5) - p_204179_.nextInt(5)) {
+                        l = j1 + p_204179_.nextInt(5) - p_204179_.nextInt(5);
                      }
                   }
                }

@@ -1,6 +1,5 @@
 package net.minecraft.nbt;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInput;
 import java.io.DataInputStream;
@@ -18,6 +17,7 @@ import javax.annotation.Nullable;
 import net.minecraft.CrashReport;
 import net.minecraft.CrashReportCategory;
 import net.minecraft.ReportedException;
+import net.minecraft.util.FastBufferedInputStream;
 
 public class NbtIo {
    public static CompoundTag readCompressed(File p_128938_) throws IOException {
@@ -40,15 +40,43 @@ public class NbtIo {
       return compoundtag;
    }
 
+   private static DataInputStream createDecompressorStream(InputStream p_202494_) throws IOException {
+      return new DataInputStream(new FastBufferedInputStream(new GZIPInputStream(p_202494_)));
+   }
+
    public static CompoundTag readCompressed(InputStream p_128940_) throws IOException {
-      DataInputStream datainputstream = new DataInputStream(new BufferedInputStream(new GZIPInputStream(p_128940_)));
+      DataInputStream datainputstream = createDecompressorStream(p_128940_);
 
       CompoundTag compoundtag;
       try {
          compoundtag = read(datainputstream, NbtAccounter.UNLIMITED);
       } catch (Throwable throwable1) {
+         if (datainputstream != null) {
+            try {
+               datainputstream.close();
+            } catch (Throwable throwable) {
+               throwable1.addSuppressed(throwable);
+            }
+         }
+
+         throw throwable1;
+      }
+
+      if (datainputstream != null) {
+         datainputstream.close();
+      }
+
+      return compoundtag;
+   }
+
+   public static void parseCompressed(File p_202488_, StreamTagVisitor p_202489_) throws IOException {
+      InputStream inputstream = new FileInputStream(p_202488_);
+
+      try {
+         parseCompressed(inputstream, p_202489_);
+      } catch (Throwable throwable1) {
          try {
-            datainputstream.close();
+            inputstream.close();
          } catch (Throwable throwable) {
             throwable1.addSuppressed(throwable);
          }
@@ -56,8 +84,30 @@ public class NbtIo {
          throw throwable1;
       }
 
-      datainputstream.close();
-      return compoundtag;
+      inputstream.close();
+   }
+
+   public static void parseCompressed(InputStream p_202491_, StreamTagVisitor p_202492_) throws IOException {
+      DataInputStream datainputstream = createDecompressorStream(p_202491_);
+
+      try {
+         parse(datainputstream, p_202492_);
+      } catch (Throwable throwable1) {
+         if (datainputstream != null) {
+            try {
+               datainputstream.close();
+            } catch (Throwable throwable) {
+               throwable1.addSuppressed(throwable);
+            }
+         }
+
+         throw throwable1;
+      }
+
+      if (datainputstream != null) {
+         datainputstream.close();
+      }
+
    }
 
    public static void writeCompressed(CompoundTag p_128945_, File p_128946_) throws IOException {

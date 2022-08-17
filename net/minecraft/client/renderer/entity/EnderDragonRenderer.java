@@ -277,9 +277,9 @@ public class EnderDragonRenderer extends EntityRenderer<EnderDragon> {
             this.neck.y = f3;
             this.neck.z = f4;
             this.neck.x = f2;
-            f3 = (float)((double)f3 + Math.sin((double)this.neck.xRot) * 10.0D);
-            f4 = (float)((double)f4 - Math.cos((double)this.neck.yRot) * Math.cos((double)this.neck.xRot) * 10.0D);
-            f2 = (float)((double)f2 - Math.sin((double)this.neck.yRot) * Math.cos((double)this.neck.xRot) * 10.0D);
+            f3 += Mth.sin(this.neck.xRot) * 10.0F;
+            f4 -= Mth.cos(this.neck.yRot) * Mth.cos(this.neck.xRot) * 10.0F;
+            f2 -= Mth.sin(this.neck.yRot) * Mth.cos(this.neck.xRot) * 10.0F;
             this.neck.render(p_114281_, p_114282_, p_114283_, p_114284_, 1.0F, 1.0F, 1.0F, p_114288_);
          }
 
@@ -309,7 +309,7 @@ public class EnderDragonRenderer extends EntityRenderer<EnderDragon> {
          this.renderSide(p_114281_, p_114282_, p_114283_, p_114284_, f1, this.leftWing, this.leftFrontLeg, this.leftFrontLegTip, this.leftFrontFoot, this.leftRearLeg, this.leftRearLegTip, this.leftRearFoot, p_114288_);
          this.renderSide(p_114281_, p_114282_, p_114283_, p_114284_, f1, this.rightWing, this.rightFrontLeg, this.rightFrontLegTip, this.rightFrontFoot, this.rightRearLeg, this.rightRearLegTip, this.rightRearFoot, p_114288_);
          p_114281_.popPose();
-         float f11 = -((float)Math.sin((double)(f * ((float)Math.PI * 2F)))) * 0.0F;
+         float f11 = -Mth.sin(f * ((float)Math.PI * 2F)) * 0.0F;
          f8 = f * ((float)Math.PI * 2F);
          f3 = 10.0F;
          f4 = 60.0F;
@@ -318,16 +318,16 @@ public class EnderDragonRenderer extends EntityRenderer<EnderDragon> {
 
          for(int j = 0; j < 12; ++j) {
             adouble2 = this.entity.getLatencyPos(12 + j, this.a);
-            f11 = (float)((double)f11 + Math.sin((double)((float)j * 0.45F + f8)) * (double)0.05F);
+            f11 += Mth.sin((float)j * 0.45F + f8) * 0.05F;
             this.neck.yRot = (Mth.rotWrap(adouble2[0] - adouble[0]) * 1.5F + 180.0F) * ((float)Math.PI / 180F);
             this.neck.xRot = f11 + (float)(adouble2[1] - adouble[1]) * ((float)Math.PI / 180F) * 1.5F * 5.0F;
             this.neck.zRot = Mth.rotWrap(adouble2[0] - (double)f7) * ((float)Math.PI / 180F) * 1.5F;
             this.neck.y = f3;
             this.neck.z = f4;
             this.neck.x = f2;
-            f3 = (float)((double)f3 + Math.sin((double)this.neck.xRot) * 10.0D);
-            f4 = (float)((double)f4 - Math.cos((double)this.neck.yRot) * Math.cos((double)this.neck.xRot) * 10.0D);
-            f2 = (float)((double)f2 - Math.sin((double)this.neck.yRot) * Math.cos((double)this.neck.xRot) * 10.0D);
+            f3 += Mth.sin(this.neck.xRot) * 10.0F;
+            f4 -= Mth.cos(this.neck.yRot) * Mth.cos(this.neck.xRot) * 10.0F;
+            f2 -= Mth.sin(this.neck.yRot) * Mth.cos(this.neck.xRot) * 10.0F;
             this.neck.render(p_114281_, p_114282_, p_114283_, p_114284_, 1.0F, 1.0F, 1.0F, p_114288_);
          }
 

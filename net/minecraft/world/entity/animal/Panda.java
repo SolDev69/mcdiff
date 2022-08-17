@@ -513,7 +513,10 @@ public class Panda extends Animal {
    }
 
    public boolean hurt(DamageSource p_29097_, float p_29098_) {
-      this.sit(false);
+      if (!this.level.isClientSide) {
+         this.sit(false);
+      }
+
       return super.hurt(p_29097_, p_29098_);
    }
 
@@ -934,20 +937,8 @@ public class Panda extends Animal {
          this.panda = p_29322_;
       }
 
-      public boolean canUse() {
-         if (!this.panda.isOnFire()) {
-            return false;
-         } else {
-            BlockPos blockpos = this.lookForWater(this.mob.level, this.mob, 5);
-            if (blockpos != null) {
-               this.posX = (double)blockpos.getX();
-               this.posY = (double)blockpos.getY();
-               this.posZ = (double)blockpos.getZ();
-               return true;
-            } else {
-               return this.findRandomPosition();
-            }
-         }
+      protected boolean shouldPanic() {
+         return this.mob.isFreezing() || this.mob.isOnFire();
       }
 
       public boolean canContinueToUse() {
@@ -974,18 +965,10 @@ public class Panda extends Animal {
                return false;
             } else {
                float f = this.panda.getYRot() * ((float)Math.PI / 180F);
-               int i = 0;
-               int j = 0;
                float f1 = -Mth.sin(f);
                float f2 = Mth.cos(f);
-               if ((double)Math.abs(f1) > 0.5D) {
-                  i = (int)((float)i + f1 / Math.abs(f1));
-               }
-
-               if ((double)Math.abs(f2) > 0.5D) {
-                  j = (int)((float)j + f2 / Math.abs(f2));
-               }
-
+               int i = (double)Math.abs(f1) > 0.5D ? Mth.sign((double)f1) : 0;
+               int j = (double)Math.abs(f2) > 0.5D ? Mth.sign((double)f2) : 0;
                if (this.panda.level.getBlockState(this.panda.blockPosition().offset(i, -1, j)).isAir()) {
                   return true;
                } else if (this.panda.isPlayful() && this.panda.random.nextInt(reducedTickDelay(60)) == 1) {

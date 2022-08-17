@@ -1,6 +1,7 @@
 package com.mojang.blaze3d.platform;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import javax.annotation.Nullable;
@@ -10,9 +11,11 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWMonitorCallback;
 import org.lwjgl.glfw.GLFWMonitorCallbackI;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class ScreenManager {
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final Long2ObjectMap<Monitor> monitors = new Long2ObjectOpenHashMap<>();
    private final MonitorCreator monitorCreator;
 
@@ -34,8 +37,10 @@ public class ScreenManager {
       RenderSystem.assertOnRenderThread();
       if (p_85275_ == 262145) {
          this.monitors.put(p_85274_, this.monitorCreator.createMonitor(p_85274_));
+         LOGGER.debug("Monitor {} connected. Current monitors: {}", p_85274_, this.monitors);
       } else if (p_85275_ == 262146) {
          this.monitors.remove(p_85274_);
+         LOGGER.debug("Monitor {} disconnected. Current monitors: {}", p_85274_, this.monitors);
       }
 
    }
@@ -58,25 +63,31 @@ public class ScreenManager {
          int i1 = l + p_85277_.getScreenHeight();
          int j1 = -1;
          Monitor monitor = null;
+         long k1 = GLFW.glfwGetPrimaryMonitor();
+         LOGGER.debug("Selecting monitor - primary: {}, current monitors: {}", k1, this.monitors);
 
          for(Monitor monitor1 : this.monitors.values()) {
-            int k1 = monitor1.getX();
-            int l1 = k1 + monitor1.getCurrentMode().getWidth();
-            int i2 = monitor1.getY();
-            int j2 = i2 + monitor1.getCurrentMode().getHeight();
-            int k2 = clamp(j, k1, l1);
-            int l2 = clamp(k, k1, l1);
-            int i3 = clamp(l, i2, j2);
-            int j3 = clamp(i1, i2, j2);
-            int k3 = Math.max(0, l2 - k2);
-            int l3 = Math.max(0, j3 - i3);
-            int i4 = k3 * l3;
-            if (i4 > j1) {
+            int l1 = monitor1.getX();
+            int i2 = l1 + monitor1.getCurrentMode().getWidth();
+            int j2 = monitor1.getY();
+            int k2 = j2 + monitor1.getCurrentMode().getHeight();
+            int l2 = clamp(j, l1, i2);
+            int i3 = clamp(k, l1, i2);
+            int j3 = clamp(l, j2, k2);
+            int k3 = clamp(i1, j2, k2);
+            int l3 = Math.max(0, i3 - l2);
+            int i4 = Math.max(0, k3 - j3);
+            int j4 = l3 * i4;
+            if (j4 > j1) {
                monitor = monitor1;
-               j1 = i4;
+               j1 = j4;
+            } else if (j4 == j1 && k1 == monitor1.getMonitor()) {
+               LOGGER.debug("Primary monitor {} is preferred to monitor {}", monitor1, monitor);
+               monitor = monitor1;
             }
          }
 
+         LOGGER.debug("Selected monitor: {}", (Object)monitor);
          return monitor;
       }
    }

@@ -2,6 +2,7 @@ package net.minecraft.server.network;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.exceptions.AuthenticationUnavailableException;
+import com.mojang.logging.LogUtils;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -33,12 +34,11 @@ import net.minecraft.util.Crypt;
 import net.minecraft.util.CryptException;
 import net.minecraft.world.entity.player.Player;
 import org.apache.commons.lang3.Validate;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener {
    private static final AtomicInteger UNIQUE_THREAD_ID = new AtomicInteger(0);
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final int MAX_TICKS_BEFORE_LOGIN = 600;
    private static final Random RANDOM = new Random();
    private final byte[] nonce = new byte[4];
@@ -143,6 +143,7 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener 
    public void handleHello(ServerboundHelloPacket p_10047_) {
       Validate.validState(this.state == ServerLoginPacketListenerImpl.State.HELLO, "Unexpected hello packet");
       this.gameProfile = p_10047_.getGameProfile();
+      Validate.validState(isValidUsername(this.gameProfile.getName()), "Invalid characters in username");
       if (this.server.usesAuthentication() && !this.connection.isMemoryConnection()) {
          this.state = ServerLoginPacketListenerImpl.State.KEY;
          this.connection.send(new ClientboundHelloPacket("", this.server.getKeyPair().getPublic().getEncoded(), this.nonce));
@@ -150,6 +151,12 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener 
          this.state = ServerLoginPacketListenerImpl.State.READY_TO_ACCEPT;
       }
 
+   }
+
+   public static boolean isValidUsername(String p_203793_) {
+      return p_203793_.chars().filter((p_203791_) -> {
+         return p_203791_ <= 32 || p_203791_ >= 127;
+      }).findAny().isEmpty();
    }
 
    public void handleKey(ServerboundKeyPacket p_10049_) {

@@ -1,22 +1,22 @@
 package net.minecraft.data.worldgen.biome;
 
+import net.minecraft.core.Holder;
 import net.minecraft.data.BuiltinRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.biome.Biome;
 
 public abstract class Biomes {
-   /** @deprecated */
-   @Deprecated
-   public static final Biome THE_VOID = register(net.minecraft.world.level.biome.Biomes.THE_VOID, OverworldBiomes.theVoid());
-   /** @deprecated */
-   @Deprecated
-   public static final Biome PLAINS = register(net.minecraft.world.level.biome.Biomes.PLAINS, OverworldBiomes.plains(false, false, false));
+   private static void register(ResourceKey<Biome> p_206464_, Biome p_206465_) {
+      BuiltinRegistries.register(BuiltinRegistries.BIOME, p_206464_, p_206465_);
+   }
 
-   private static Biome register(ResourceKey<Biome> p_194820_, Biome p_194821_) {
-      return BuiltinRegistries.registerMapping(BuiltinRegistries.BIOME, p_194820_, p_194821_);
+   public static Holder<Biome> bootstrap() {
+      return BuiltinRegistries.BIOME.getHolderOrThrow(net.minecraft.world.level.biome.Biomes.PLAINS);
    }
 
    static {
+      register(net.minecraft.world.level.biome.Biomes.THE_VOID, OverworldBiomes.theVoid());
+      register(net.minecraft.world.level.biome.Biomes.PLAINS, OverworldBiomes.plains(false, false, false));
       register(net.minecraft.world.level.biome.Biomes.SUNFLOWER_PLAINS, OverworldBiomes.plains(true, false, false));
       register(net.minecraft.world.level.biome.Biomes.SNOWY_PLAINS, OverworldBiomes.plains(false, true, false));
       register(net.minecraft.world.level.biome.Biomes.ICE_SPIKES, OverworldBiomes.plains(false, true, true));

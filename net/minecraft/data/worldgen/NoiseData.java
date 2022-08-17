@@ -1,12 +1,13 @@
 package net.minecraft.data.worldgen;
 
+import net.minecraft.core.Holder;
 import net.minecraft.data.BuiltinRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.levelgen.Noises;
 import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 public class NoiseData {
-   public static NormalNoise.NoiseParameters bootstrap() {
+   public static Holder<NormalNoise.NoiseParameters> bootstrap() {
       registerBiomeNoises(0, Noises.TEMPERATURE, Noises.VEGETATION, Noises.CONTINENTALNESS, Noises.EROSION);
       registerBiomeNoises(-2, Noises.TEMPERATURE_LARGE, Noises.VEGETATION_LARGE, Noises.CONTINENTALNESS_LARGE, Noises.EROSION_LARGE);
       register(Noises.RIDGE, -7, 1.0D, 2.0D, 1.0D, 0.0D, 0.0D, 0.0D);
@@ -41,7 +42,7 @@ public class NoiseData {
       register(Noises.NOODLE_RIDGE_B, -7, 1.0D);
       register(Noises.JAGGED, -16, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D, 1.0D);
       register(Noises.SURFACE, -6, 1.0D, 1.0D, 1.0D);
-      register(Noises.SURFACE_SECONDARY, -6, 1.0D, 1.0D, 1.0D);
+      register(Noises.SURFACE_SECONDARY, -6, 1.0D, 1.0D, 0.0D, 1.0D);
       register(Noises.CLAY_BANDS_OFFSET, -8, 1.0D);
       register(Noises.BADLANDS_PILLAR, -2, 1.0D, 1.0D, 1.0D, 1.0D);
       register(Noises.BADLANDS_PILLAR_ROOF, -8, 1.0D);
@@ -61,7 +62,7 @@ public class NoiseData {
       register(Noises.NETHERRACK, -3, 1.0D, 0.0D, 0.0D, 0.35D);
       register(Noises.NETHER_WART, -3, 1.0D, 0.0D, 0.0D, 0.9D);
       register(Noises.NETHER_STATE_SELECTOR, -4, 1.0D);
-      return BuiltinRegistries.NOISE.iterator().next();
+      return BuiltinRegistries.NOISE.holders().iterator().next();
    }
 
    private static void registerBiomeNoises(int p_194745_, ResourceKey<NormalNoise.NoiseParameters> p_194746_, ResourceKey<NormalNoise.NoiseParameters> p_194747_, ResourceKey<NormalNoise.NoiseParameters> p_194748_, ResourceKey<NormalNoise.NoiseParameters> p_194749_) {

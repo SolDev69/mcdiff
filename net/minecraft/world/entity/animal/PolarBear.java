@@ -1,17 +1,15 @@
 package net.minecraft.world.entity.animal;
 
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
@@ -96,8 +94,8 @@ public class PolarBear extends Animal implements NeutralMob {
    }
 
    public static boolean checkPolarBearSpawnRules(EntityType<PolarBear> p_29550_, LevelAccessor p_29551_, MobSpawnType p_29552_, BlockPos p_29553_, Random p_29554_) {
-      Optional<ResourceKey<Biome>> optional = p_29551_.getBiomeName(p_29553_);
-      if (!Objects.equals(optional, Optional.of(Biomes.FROZEN_OCEAN)) && !Objects.equals(optional, Optional.of(Biomes.DEEP_FROZEN_OCEAN))) {
+      Holder<Biome> holder = p_29551_.getBiome(p_29553_);
+      if (!holder.is(Biomes.FROZEN_OCEAN) && !holder.is(Biomes.DEEP_FROZEN_OCEAN)) {
          return checkAnimalSpawnRules(p_29550_, p_29551_, p_29552_, p_29553_, p_29554_);
       } else {
          return isBrightEnoughToSpawn(p_29551_, p_29553_) && p_29551_.getBlockState(p_29553_.below()).is(BlockTags.POLAR_BEARS_SPAWNABLE_ON_IN_FROZEN_OCEAN);
@@ -323,8 +321,8 @@ public class PolarBear extends Animal implements NeutralMob {
          super(PolarBear.this, 2.0D);
       }
 
-      public boolean canUse() {
-         return !PolarBear.this.isBaby() && !PolarBear.this.isOnFire() ? false : super.canUse();
+      protected boolean shouldPanic() {
+         return this.mob.getLastHurtByMob() != null && this.mob.isBaby() || this.mob.isOnFire();
       }
    }
 }

@@ -18,6 +18,12 @@ public interface CubicSpline<C> extends ToFloatFunction<C> {
    @VisibleForDebug
    String parityString();
 
+   float min();
+
+   float max();
+
+   CubicSpline<C> mapAll(CubicSpline.CoordinateVisitor<C> p_211579_);
+
    static <C> Codec<CubicSpline<C>> codec(Codec<ToFloatFunction<C>> p_184263_) {
       MutableObject<Codec<CubicSpline<C>>> mutableobject = new MutableObject<>();
             record Point<C>(float location, CubicSpline<C> value, float derivative) {
@@ -129,6 +135,22 @@ public interface CubicSpline<C> extends ToFloatFunction<C> {
       public String parityString() {
          return String.format("k=%.3f", this.value);
       }
+
+      public float min() {
+         return this.value;
+      }
+
+      public float max() {
+         return this.value;
+      }
+
+      public CubicSpline<C> mapAll(CubicSpline.CoordinateVisitor<C> p_211581_) {
+         return this;
+      }
+   }
+
+   public interface CoordinateVisitor<C> {
+      ToFloatFunction<C> visit(ToFloatFunction<C> p_211583_);
    }
 
    @VisibleForDebug
@@ -181,6 +203,20 @@ public interface CubicSpline<C> extends ToFloatFunction<C> {
          }).mapToObj((p_184330_) -> {
             return String.format(Locale.ROOT, "%.3f", p_184330_);
          }).collect(Collectors.joining(", ")) + "]";
+      }
+
+      public float min() {
+         return (float)this.values().stream().mapToDouble(CubicSpline::min).min().orElseThrow();
+      }
+
+      public float max() {
+         return (float)this.values().stream().mapToDouble(CubicSpline::max).max().orElseThrow();
+      }
+
+      public CubicSpline<C> mapAll(CubicSpline.CoordinateVisitor<C> p_211585_) {
+         return new CubicSpline.Multipoint<>(p_211585_.visit(this.coordinate), this.locations, this.values().stream().map((p_211588_) -> {
+            return p_211588_.mapAll(p_211585_);
+         }).toList(), this.derivatives);
       }
    }
 }

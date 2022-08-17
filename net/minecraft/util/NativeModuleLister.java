@@ -2,6 +2,7 @@ package net.minecraft.util;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
+import com.mojang.logging.LogUtils;
 import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
@@ -20,11 +21,10 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
 import net.minecraft.CrashReportCategory;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class NativeModuleLister {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int LANG_MASK = 65535;
    private static final int DEFAULT_LANG = 1033;
    private static final int CODEPAGE_MASK = -65536;
@@ -52,7 +52,12 @@ public class NativeModuleLister {
          IntByReference intbyreference = new IntByReference();
          int i = Version.INSTANCE.GetFileVersionInfoSize(p_184674_, intbyreference);
          if (i == 0) {
-            throw new Win32Exception(Native.getLastError());
+            int i1 = Native.getLastError();
+            if (i1 != 1813 && i1 != 1812) {
+               throw new Win32Exception(i1);
+            } else {
+               return Optional.empty();
+            }
          } else {
             Pointer pointer = new Memory((long)i);
             if (!Version.INSTANCE.GetFileVersionInfo(p_184674_, 0, i, pointer)) {

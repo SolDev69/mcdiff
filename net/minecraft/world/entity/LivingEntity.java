@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
 import java.util.Collection;
@@ -52,6 +53,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
@@ -113,8 +115,10 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
+import org.slf4j.Logger;
 
 public abstract class LivingEntity extends Entity {
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final UUID SPEED_MODIFIER_SPRINTING_UUID = UUID.fromString("662A6B8D-DA3E-4C1C-8813-96EA6097278D");
    private static final UUID SPEED_MODIFIER_SOUL_SPEED_UUID = UUID.fromString("87f46a96-686f-4796-b035-22e16ee9e038");
    private static final UUID SPEED_MODIFIER_POWDER_SNOW_UUID = UUID.fromString("1eaf83ff-7207-4596-b37a-d7a07b3ec4ce");
@@ -1943,7 +1947,7 @@ public abstract class LivingEntity extends Entity {
       this.setDeltaMovement(this.getDeltaMovement().add(0.0D, (double)-0.04F, 0.0D));
    }
 
-   protected void jumpInLiquid(net.minecraft.tags.Tag<Fluid> p_21158_) {
+   protected void jumpInLiquid(TagKey<Fluid> p_204043_) {
       this.setDeltaMovement(this.getDeltaMovement().add(0.0D, (double)0.04F, 0.0D));
    }
 
@@ -1951,7 +1955,7 @@ public abstract class LivingEntity extends Entity {
       return 0.8F;
    }
 
-   public boolean canStandOnFluid(Fluid p_21070_) {
+   public boolean canStandOnFluid(FluidState p_204042_) {
       return false;
    }
 
@@ -1965,43 +1969,43 @@ public abstract class LivingEntity extends Entity {
          }
 
          FluidState fluidstate = this.level.getFluidState(this.blockPosition());
-         if (this.isInWater() && this.isAffectedByFluids() && !this.canStandOnFluid(fluidstate.getType())) {
-            double d8 = this.getY();
-            float f5 = this.isSprinting() ? 0.9F : this.getWaterSlowDown();
-            float f6 = 0.02F;
-            float f7 = (float)EnchantmentHelper.getDepthStrider(this);
-            if (f7 > 3.0F) {
-               f7 = 3.0F;
+         if (this.isInWater() && this.isAffectedByFluids() && !this.canStandOnFluid(fluidstate)) {
+            double d9 = this.getY();
+            float f4 = this.isSprinting() ? 0.9F : this.getWaterSlowDown();
+            float f5 = 0.02F;
+            float f6 = (float)EnchantmentHelper.getDepthStrider(this);
+            if (f6 > 3.0F) {
+               f6 = 3.0F;
             }
 
             if (!this.onGround) {
-               f7 *= 0.5F;
+               f6 *= 0.5F;
             }
 
-            if (f7 > 0.0F) {
-               f5 += (0.54600006F - f5) * f7 / 3.0F;
-               f6 += (this.getSpeed() - f6) * f7 / 3.0F;
+            if (f6 > 0.0F) {
+               f4 += (0.54600006F - f4) * f6 / 3.0F;
+               f5 += (this.getSpeed() - f5) * f6 / 3.0F;
             }
 
             if (this.hasEffect(MobEffects.DOLPHINS_GRACE)) {
-               f5 = 0.96F;
+               f4 = 0.96F;
             }
 
-            this.moveRelative(f6, p_21280_);
+            this.moveRelative(f5, p_21280_);
             this.move(MoverType.SELF, this.getDeltaMovement());
             Vec3 vec36 = this.getDeltaMovement();
             if (this.horizontalCollision && this.onClimbable()) {
                vec36 = new Vec3(vec36.x, 0.2D, vec36.z);
             }
 
-            this.setDeltaMovement(vec36.multiply((double)f5, (double)0.8F, (double)f5));
+            this.setDeltaMovement(vec36.multiply((double)f4, (double)0.8F, (double)f4));
             Vec3 vec32 = this.getFluidFallingAdjustedMovement(d0, flag, this.getDeltaMovement());
             this.setDeltaMovement(vec32);
-            if (this.horizontalCollision && this.isFree(vec32.x, vec32.y + (double)0.6F - this.getY() + d8, vec32.z)) {
+            if (this.horizontalCollision && this.isFree(vec32.x, vec32.y + (double)0.6F - this.getY() + d9, vec32.z)) {
                this.setDeltaMovement(vec32.x, (double)0.3F, vec32.z);
             }
-         } else if (this.isInLava() && this.isAffectedByFluids() && !this.canStandOnFluid(fluidstate.getType())) {
-            double d7 = this.getY();
+         } else if (this.isInLava() && this.isAffectedByFluids() && !this.canStandOnFluid(fluidstate)) {
+            double d8 = this.getY();
             this.moveRelative(0.02F, p_21280_);
             this.move(MoverType.SELF, this.getDeltaMovement());
             if (this.getFluidHeight(FluidTags.LAVA) <= this.getFluidJumpThreshold()) {
@@ -2017,7 +2021,7 @@ public abstract class LivingEntity extends Entity {
             }
 
             Vec3 vec34 = this.getDeltaMovement();
-            if (this.horizontalCollision && this.isFree(vec34.x, vec34.y + (double)0.6F - this.getY() + d7, vec34.z)) {
+            if (this.horizontalCollision && this.isFree(vec34.x, vec34.y + (double)0.6F - this.getY() + d8, vec34.z)) {
                this.setDeltaMovement(vec34.x, (double)0.3F, vec34.z);
             }
          } else if (this.isFallFlying()) {
@@ -2031,17 +2035,17 @@ public abstract class LivingEntity extends Entity {
             double d1 = Math.sqrt(vec31.x * vec31.x + vec31.z * vec31.z);
             double d3 = vec3.horizontalDistance();
             double d4 = vec31.length();
-            float f1 = Mth.cos(f);
-            f1 = (float)((double)f1 * (double)f1 * Math.min(1.0D, d4 / 0.4D));
-            vec3 = this.getDeltaMovement().add(0.0D, d0 * (-1.0D + (double)f1 * 0.75D), 0.0D);
+            double d5 = Math.cos((double)f);
+            d5 = d5 * d5 * Math.min(1.0D, d4 / 0.4D);
+            vec3 = this.getDeltaMovement().add(0.0D, d0 * (-1.0D + d5 * 0.75D), 0.0D);
             if (vec3.y < 0.0D && d1 > 0.0D) {
-               double d5 = vec3.y * -0.1D * (double)f1;
-               vec3 = vec3.add(vec31.x * d5 / d1, d5, vec31.z * d5 / d1);
+               double d6 = vec3.y * -0.1D * d5;
+               vec3 = vec3.add(vec31.x * d6 / d1, d6, vec31.z * d6 / d1);
             }
 
             if (f < 0.0F && d1 > 0.0D) {
-               double d9 = d3 * (double)(-Mth.sin(f)) * 0.04D;
-               vec3 = vec3.add(-vec31.x * d9 / d1, d9 * 3.2D, -vec31.z * d9 / d1);
+               double d10 = d3 * (double)(-Mth.sin(f)) * 0.04D;
+               vec3 = vec3.add(-vec31.x * d10 / d1, d10 * 3.2D, -vec31.z * d10 / d1);
             }
 
             if (d1 > 0.0D) {
@@ -2051,12 +2055,12 @@ public abstract class LivingEntity extends Entity {
             this.setDeltaMovement(vec3.multiply((double)0.99F, (double)0.98F, (double)0.99F));
             this.move(MoverType.SELF, this.getDeltaMovement());
             if (this.horizontalCollision && !this.level.isClientSide) {
-               double d10 = this.getDeltaMovement().horizontalDistance();
-               double d6 = d3 - d10;
-               float f2 = (float)(d6 * 10.0D - 3.0D);
-               if (f2 > 0.0F) {
-                  this.playSound(this.getFallDamageSound((int)f2), 1.0F, 1.0F);
-                  this.hurt(DamageSource.FLY_INTO_WALL, f2);
+               double d11 = this.getDeltaMovement().horizontalDistance();
+               double d7 = d3 - d11;
+               float f1 = (float)(d7 * 10.0D - 3.0D);
+               if (f1 > 0.0F) {
+                  this.playSound(this.getFallDamageSound((int)f1), 1.0F, 1.0F);
+                  this.hurt(DamageSource.FLY_INTO_WALL, f1);
                }
             }
 
@@ -2065,9 +2069,9 @@ public abstract class LivingEntity extends Entity {
             }
          } else {
             BlockPos blockpos = this.getBlockPosBelowThatAffectsMyMovement();
-            float f3 = this.level.getBlockState(blockpos).getBlock().getFriction();
-            float f4 = this.onGround ? f3 * 0.91F : 0.91F;
-            Vec3 vec35 = this.handleRelativeFrictionAndCalculateMovement(p_21280_, f3);
+            float f2 = this.level.getBlockState(blockpos).getBlock().getFriction();
+            float f3 = this.onGround ? f2 * 0.91F : 0.91F;
+            Vec3 vec35 = this.handleRelativeFrictionAndCalculateMovement(p_21280_, f2);
             double d2 = vec35.y;
             if (this.hasEffect(MobEffects.LEVITATION)) {
                d2 += (0.05D * (double)(this.getEffect(MobEffects.LEVITATION).getAmplifier() + 1) - vec35.y) * 0.2D;
@@ -2085,7 +2089,7 @@ public abstract class LivingEntity extends Entity {
             if (this.shouldDiscardFriction()) {
                this.setDeltaMovement(vec35.x, d2, vec35.z);
             } else {
-               this.setDeltaMovement(vec35.x * (double)f4, d2 * (double)0.98F, vec35.z * (double)f4);
+               this.setDeltaMovement(vec35.x * (double)f3, d2 * (double)0.98F, vec35.z * (double)f3);
             }
          }
       }
@@ -2431,7 +2435,7 @@ public abstract class LivingEntity extends Entity {
       }
 
       if (this.lerpHeadSteps > 0) {
-         this.yHeadRot = (float)((double)this.yHeadRot + Mth.wrapDegrees(this.lyHeadRot - (double)this.yHeadRot) / (double)this.lerpHeadSteps);
+         this.yHeadRot += (float)Mth.wrapDegrees(this.lyHeadRot - (double)this.yHeadRot) / (float)this.lerpHeadSteps;
          --this.lerpHeadSteps;
       }
 
@@ -2625,14 +2629,6 @@ public abstract class LivingEntity extends Entity {
    protected void doAutoAttackOnTouch(LivingEntity p_21277_) {
    }
 
-   public void startAutoSpinAttack(int p_21327_) {
-      this.autoSpinAttackTicks = p_21327_;
-      if (!this.level.isClientSide) {
-         this.setLivingEntityFlag(4, true);
-      }
-
-   }
-
    public boolean isAutoSpinAttack() {
       return (this.entityData.get(DATA_LIVING_ENTITY_FLAGS) & 4) != 0;
    }
@@ -2723,10 +2719,6 @@ public abstract class LivingEntity extends Entity {
 
    public boolean isPushable() {
       return this.isAlive() && !this.isSpectator() && !this.onClimbable();
-   }
-
-   protected void markHurt() {
-      this.hurtMarked = this.random.nextDouble() >= this.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE);
    }
 
    public float getYHeadRot() {

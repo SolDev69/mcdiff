@@ -103,15 +103,19 @@ public class FireworkRocketEntity extends Projectile implements ItemSupplier {
          }
 
          if (this.attachedToEntity != null) {
+            Vec3 vec3;
             if (this.attachedToEntity.isFallFlying()) {
-               Vec3 vec3 = this.attachedToEntity.getLookAngle();
+               Vec3 vec31 = this.attachedToEntity.getLookAngle();
                double d0 = 1.5D;
                double d1 = 0.1D;
-               Vec3 vec31 = this.attachedToEntity.getDeltaMovement();
-               this.attachedToEntity.setDeltaMovement(vec31.add(vec3.x * 0.1D + (vec3.x * 1.5D - vec31.x) * 0.5D, vec3.y * 0.1D + (vec3.y * 1.5D - vec31.y) * 0.5D, vec3.z * 0.1D + (vec3.z * 1.5D - vec31.z) * 0.5D));
+               Vec3 vec32 = this.attachedToEntity.getDeltaMovement();
+               this.attachedToEntity.setDeltaMovement(vec32.add(vec31.x * 0.1D + (vec31.x * 1.5D - vec32.x) * 0.5D, vec31.y * 0.1D + (vec31.y * 1.5D - vec32.y) * 0.5D, vec31.z * 0.1D + (vec31.z * 1.5D - vec32.z) * 0.5D));
+               vec3 = this.attachedToEntity.getHandHoldingItemAngle(Items.FIREWORK_ROCKET);
+            } else {
+               vec3 = Vec3.ZERO;
             }
 
-            this.setPos(this.attachedToEntity.getX(), this.attachedToEntity.getY(), this.attachedToEntity.getZ());
+            this.setPos(this.attachedToEntity.getX() + vec3.x, this.attachedToEntity.getY() + vec3.y, this.attachedToEntity.getZ() + vec3.z);
             this.setDeltaMovement(this.attachedToEntity.getDeltaMovement());
          }
       } else {
@@ -120,9 +124,9 @@ public class FireworkRocketEntity extends Projectile implements ItemSupplier {
             this.setDeltaMovement(this.getDeltaMovement().multiply(d2, 1.0D, d2).add(0.0D, 0.04D, 0.0D));
          }
 
-         Vec3 vec32 = this.getDeltaMovement();
-         this.move(MoverType.SELF, vec32);
-         this.setDeltaMovement(vec32);
+         Vec3 vec33 = this.getDeltaMovement();
+         this.move(MoverType.SELF, vec33);
+         this.setDeltaMovement(vec33);
       }
 
       HitResult hitresult = ProjectileUtil.getHitResult(this, this::canHitEntity);
@@ -138,7 +142,7 @@ public class FireworkRocketEntity extends Projectile implements ItemSupplier {
 
       ++this.life;
       if (this.level.isClientSide && this.life % 2 < 2) {
-         this.level.addParticle(ParticleTypes.FIREWORK, this.getX(), this.getY() - 0.3D, this.getZ(), this.random.nextGaussian() * 0.05D, -this.getDeltaMovement().y * 0.5D, this.random.nextGaussian() * 0.05D);
+         this.level.addParticle(ParticleTypes.FIREWORK, this.getX(), this.getY(), this.getZ(), this.random.nextGaussian() * 0.05D, -this.getDeltaMovement().y * 0.5D, this.random.nextGaussian() * 0.05D);
       }
 
       if (!this.level.isClientSide && this.life > this.lifetime) {

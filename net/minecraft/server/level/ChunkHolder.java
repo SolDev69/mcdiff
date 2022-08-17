@@ -1,8 +1,10 @@
 package net.minecraft.server.level;
 
 import com.mojang.datafixers.util.Either;
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.shorts.ShortOpenHashSet;
 import it.unimi.dsi.fastutil.shorts.ShortSet;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +41,7 @@ public class ChunkHolder {
    public static final Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> UNLOADED_CHUNK = Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED);
    public static final CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> UNLOADED_CHUNK_FUTURE = CompletableFuture.completedFuture(UNLOADED_CHUNK);
    public static final Either<LevelChunk, ChunkHolder.ChunkLoadingFailure> UNLOADED_LEVEL_CHUNK = Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED);
+   private static final Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> NOT_DONE_YET = Either.right(ChunkHolder.ChunkLoadingFailure.UNLOADED);
    private static final CompletableFuture<Either<LevelChunk, ChunkHolder.ChunkLoadingFailure>> UNLOADED_LEVEL_CHUNK_FUTURE = CompletableFuture.completedFuture(UNLOADED_LEVEL_CHUNK);
    private static final List<ChunkStatus> CHUNK_STATUSES = ChunkStatus.getStatusList();
    private static final ChunkHolder.FullChunkStatus[] FULL_CHUNK_STATUSES = ChunkHolder.FullChunkStatus.values();
@@ -108,6 +111,13 @@ public class ChunkHolder {
    }
 
    @Nullable
+   public LevelChunk getFullChunk() {
+      CompletableFuture<Either<LevelChunk, ChunkHolder.ChunkLoadingFailure>> completablefuture = this.getFullChunkFuture();
+      Either<LevelChunk, ChunkHolder.ChunkLoadingFailure> either = completablefuture.getNow((Either<LevelChunk, ChunkHolder.ChunkLoadingFailure>)null);
+      return either == null ? null : either.left().orElse((LevelChunk)null);
+   }
+
+   @Nullable
    public ChunkStatus getLastAvailableStatus() {
       for(int i = CHUNK_STATUSES.size() - 1; i >= 0; --i) {
          ChunkStatus chunkstatus = CHUNK_STATUSES.get(i);
@@ -154,19 +164,22 @@ public class ChunkHolder {
    }
 
    public void sectionLightChanged(LightLayer p_140037_, int p_140038_) {
-      LevelChunk levelchunk = this.getTickingChunk();
+      LevelChunk levelchunk = this.getFullChunk();
       if (levelchunk != null) {
          levelchunk.setUnsaved(true);
-         int i = this.lightEngine.getMinLightSection();
-         int j = this.lightEngine.getMaxLightSection();
-         if (p_140038_ >= i && p_140038_ <= j) {
-            int k = p_140038_ - i;
-            if (p_140037_ == LightLayer.SKY) {
-               this.skyChangedLightSectionFilter.set(k);
-            } else {
-               this.blockChangedLightSectionFilter.set(k);
-            }
+         LevelChunk levelchunk1 = this.getTickingChunk();
+         if (levelchunk1 != null) {
+            int i = this.lightEngine.getMinLightSection();
+            int j = this.lightEngine.getMaxLightSection();
+            if (p_140038_ >= i && p_140038_ <= j) {
+               int k = p_140038_ - i;
+               if (p_140037_ == LightLayer.SKY) {
+                  this.skyChangedLightSectionFilter.set(k);
+               } else {
+                  this.blockChangedLightSectionFilter.set(k);
+               }
 
+            }
          }
       }
    }
@@ -242,9 +255,13 @@ public class ChunkHolder {
       int i = p_140050_.getIndex();
       CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> completablefuture = this.futures.get(i);
       if (completablefuture != null) {
-         Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> either = completablefuture.getNow((Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>)null);
-         boolean flag = either != null && either.right().isPresent();
-         if (!flag) {
+         Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure> either = completablefuture.getNow(NOT_DONE_YET);
+         if (either == null) {
+            String s = "value in future for status: " + p_140050_ + " was incorrectly set to null at chunk: " + this.pos;
+            throw p_140051_.debugFuturesAndCreateReportedException(new IllegalStateException("null value previously set for chunk status"), s);
+         }
+
+         if (either == NOT_DONE_YET || either.right().isEmpty()) {
             return completablefuture;
          }
       }
@@ -421,13 +438,23 @@ public class ChunkHolder {
          CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> completablefuture = this.futures.get(i);
          if (completablefuture != null) {
             Optional<ChunkAccess> optional = completablefuture.getNow(UNLOADED_CHUNK).left();
-            if (optional.isPresent() && optional.get() instanceof ProtoChunk) {
+            if (!optional.isEmpty() && optional.get() instanceof ProtoChunk) {
                this.futures.set(i, CompletableFuture.completedFuture(Either.left(p_140053_)));
             }
          }
       }
 
       this.updateChunkToSave(CompletableFuture.completedFuture(Either.left(p_140053_.getWrapped())), "replaceProto");
+   }
+
+   public List<Pair<ChunkStatus, CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>>>> getAllFutures() {
+      List<Pair<ChunkStatus, CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>>>> list = new ArrayList<>();
+
+      for(int i = 0; i < CHUNK_STATUSES.size(); ++i) {
+         list.add(Pair.of(CHUNK_STATUSES.get(i), this.futures.get(i)));
+      }
+
+      return list;
    }
 
    public interface ChunkLoadingFailure {

@@ -4,6 +4,7 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
+import com.mojang.logging.LogUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -44,13 +45,12 @@ import net.minecraft.network.protocol.status.ServerboundStatusRequestPacket;
 import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class ServerStatusPinger {
    static final Splitter SPLITTER = Splitter.on('\u0000').limit(6);
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final Component CANT_CONNECT_MESSAGE = (new TranslatableComponent("multiplayer.status.cannot_connect")).withStyle(ChatFormatting.DARK_RED);
    private final List<Connection> connections = Collections.synchronizedList(Lists.newArrayList());
 
@@ -155,7 +155,7 @@ public class ServerStatusPinger {
             connection.send(new ClientIntentionPacket(serveraddress.getHost(), serveraddress.getPort(), ConnectionProtocol.STATUS));
             connection.send(new ServerboundStatusRequestPacket());
          } catch (Throwable throwable) {
-            LOGGER.error(throwable);
+            LOGGER.error("Failed to ping server {}", serveraddress, throwable);
          }
 
       }

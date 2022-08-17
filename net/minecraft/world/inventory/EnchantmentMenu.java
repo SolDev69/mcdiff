@@ -2,7 +2,9 @@ package net.minecraft.world.inventory;
 
 import java.util.List;
 import java.util.Random;
+import net.minecraft.Util;
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,6 +21,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.EnchantmentTableBlock;
 
 public class EnchantmentMenu extends AbstractContainerMenu {
    private final Container enchantSlots = new SimpleContainer(2) {
@@ -85,56 +88,30 @@ public class EnchantmentMenu extends AbstractContainerMenu {
             this.access.execute((p_39485_, p_39486_) -> {
                int j = 0;
 
-               for(int k = -1; k <= 1; ++k) {
-                  for(int l = -1; l <= 1; ++l) {
-                     if ((k != 0 || l != 0) && p_39485_.isEmptyBlock(p_39486_.offset(l, 0, k)) && p_39485_.isEmptyBlock(p_39486_.offset(l, 1, k))) {
-                        if (p_39485_.getBlockState(p_39486_.offset(l * 2, 0, k * 2)).is(Blocks.BOOKSHELF)) {
-                           ++j;
-                        }
-
-                        if (p_39485_.getBlockState(p_39486_.offset(l * 2, 1, k * 2)).is(Blocks.BOOKSHELF)) {
-                           ++j;
-                        }
-
-                        if (l != 0 && k != 0) {
-                           if (p_39485_.getBlockState(p_39486_.offset(l * 2, 0, k)).is(Blocks.BOOKSHELF)) {
-                              ++j;
-                           }
-
-                           if (p_39485_.getBlockState(p_39486_.offset(l * 2, 1, k)).is(Blocks.BOOKSHELF)) {
-                              ++j;
-                           }
-
-                           if (p_39485_.getBlockState(p_39486_.offset(l, 0, k * 2)).is(Blocks.BOOKSHELF)) {
-                              ++j;
-                           }
-
-                           if (p_39485_.getBlockState(p_39486_.offset(l, 1, k * 2)).is(Blocks.BOOKSHELF)) {
-                              ++j;
-                           }
-                        }
-                     }
+               for(BlockPos blockpos : EnchantmentTableBlock.BOOKSHELF_OFFSETS) {
+                  if (EnchantmentTableBlock.isValidBookShelf(p_39485_, p_39486_, blockpos)) {
+                     ++j;
                   }
                }
 
                this.random.setSeed((long)this.enchantmentSeed.get());
 
-               for(int i1 = 0; i1 < 3; ++i1) {
-                  this.costs[i1] = EnchantmentHelper.getEnchantmentCost(this.random, i1, j, itemstack);
-                  this.enchantClue[i1] = -1;
-                  this.levelClue[i1] = -1;
-                  if (this.costs[i1] < i1 + 1) {
-                     this.costs[i1] = 0;
+               for(int k = 0; k < 3; ++k) {
+                  this.costs[k] = EnchantmentHelper.getEnchantmentCost(this.random, k, j, itemstack);
+                  this.enchantClue[k] = -1;
+                  this.levelClue[k] = -1;
+                  if (this.costs[k] < k + 1) {
+                     this.costs[k] = 0;
                   }
                }
 
-               for(int j1 = 0; j1 < 3; ++j1) {
-                  if (this.costs[j1] > 0) {
-                     List<EnchantmentInstance> list = this.getEnchantmentList(itemstack, j1, this.costs[j1]);
+               for(int l = 0; l < 3; ++l) {
+                  if (this.costs[l] > 0) {
+                     List<EnchantmentInstance> list = this.getEnchantmentList(itemstack, l, this.costs[l]);
                      if (list != null && !list.isEmpty()) {
                         EnchantmentInstance enchantmentinstance = list.get(this.random.nextInt(list.size()));
-                        this.enchantClue[j1] = Registry.ENCHANTMENT.getId(enchantmentinstance.enchantment);
-                        this.levelClue[j1] = enchantmentinstance.level;
+                        this.enchantClue[l] = Registry.ENCHANTMENT.getId(enchantmentinstance.enchantment);
+                        this.levelClue[l] = enchantmentinstance.level;
                      }
                   }
                }
@@ -153,59 +130,64 @@ public class EnchantmentMenu extends AbstractContainerMenu {
    }
 
    public boolean clickMenuButton(Player p_39465_, int p_39466_) {
-      ItemStack itemstack = this.enchantSlots.getItem(0);
-      ItemStack itemstack1 = this.enchantSlots.getItem(1);
-      int i = p_39466_ + 1;
-      if ((itemstack1.isEmpty() || itemstack1.getCount() < i) && !p_39465_.getAbilities().instabuild) {
-         return false;
-      } else if (this.costs[p_39466_] <= 0 || itemstack.isEmpty() || (p_39465_.experienceLevel < i || p_39465_.experienceLevel < this.costs[p_39466_]) && !p_39465_.getAbilities().instabuild) {
-         return false;
-      } else {
-         this.access.execute((p_39481_, p_39482_) -> {
-            ItemStack itemstack2 = itemstack;
-            List<EnchantmentInstance> list = this.getEnchantmentList(itemstack, p_39466_, this.costs[p_39466_]);
-            if (!list.isEmpty()) {
-               p_39465_.onEnchantmentPerformed(itemstack, i);
-               boolean flag = itemstack.is(Items.BOOK);
-               if (flag) {
-                  itemstack2 = new ItemStack(Items.ENCHANTED_BOOK);
-                  CompoundTag compoundtag = itemstack.getTag();
-                  if (compoundtag != null) {
-                     itemstack2.setTag(compoundtag.copy());
-                  }
-
-                  this.enchantSlots.setItem(0, itemstack2);
-               }
-
-               for(int j = 0; j < list.size(); ++j) {
-                  EnchantmentInstance enchantmentinstance = list.get(j);
+      if (p_39466_ >= 0 && p_39466_ < this.costs.length) {
+         ItemStack itemstack = this.enchantSlots.getItem(0);
+         ItemStack itemstack1 = this.enchantSlots.getItem(1);
+         int i = p_39466_ + 1;
+         if ((itemstack1.isEmpty() || itemstack1.getCount() < i) && !p_39465_.getAbilities().instabuild) {
+            return false;
+         } else if (this.costs[p_39466_] <= 0 || itemstack.isEmpty() || (p_39465_.experienceLevel < i || p_39465_.experienceLevel < this.costs[p_39466_]) && !p_39465_.getAbilities().instabuild) {
+            return false;
+         } else {
+            this.access.execute((p_39481_, p_39482_) -> {
+               ItemStack itemstack2 = itemstack;
+               List<EnchantmentInstance> list = this.getEnchantmentList(itemstack, p_39466_, this.costs[p_39466_]);
+               if (!list.isEmpty()) {
+                  p_39465_.onEnchantmentPerformed(itemstack, i);
+                  boolean flag = itemstack.is(Items.BOOK);
                   if (flag) {
-                     EnchantedBookItem.addEnchantment(itemstack2, enchantmentinstance);
-                  } else {
-                     itemstack2.enchant(enchantmentinstance.enchantment, enchantmentinstance.level);
+                     itemstack2 = new ItemStack(Items.ENCHANTED_BOOK);
+                     CompoundTag compoundtag = itemstack.getTag();
+                     if (compoundtag != null) {
+                        itemstack2.setTag(compoundtag.copy());
+                     }
+
+                     this.enchantSlots.setItem(0, itemstack2);
                   }
-               }
 
-               if (!p_39465_.getAbilities().instabuild) {
-                  itemstack1.shrink(i);
-                  if (itemstack1.isEmpty()) {
-                     this.enchantSlots.setItem(1, ItemStack.EMPTY);
+                  for(int j = 0; j < list.size(); ++j) {
+                     EnchantmentInstance enchantmentinstance = list.get(j);
+                     if (flag) {
+                        EnchantedBookItem.addEnchantment(itemstack2, enchantmentinstance);
+                     } else {
+                        itemstack2.enchant(enchantmentinstance.enchantment, enchantmentinstance.level);
+                     }
                   }
+
+                  if (!p_39465_.getAbilities().instabuild) {
+                     itemstack1.shrink(i);
+                     if (itemstack1.isEmpty()) {
+                        this.enchantSlots.setItem(1, ItemStack.EMPTY);
+                     }
+                  }
+
+                  p_39465_.awardStat(Stats.ENCHANT_ITEM);
+                  if (p_39465_ instanceof ServerPlayer) {
+                     CriteriaTriggers.ENCHANTED_ITEM.trigger((ServerPlayer)p_39465_, itemstack2, i);
+                  }
+
+                  this.enchantSlots.setChanged();
+                  this.enchantmentSeed.set(p_39465_.getEnchantmentSeed());
+                  this.slotsChanged(this.enchantSlots);
+                  p_39481_.playSound((Player)null, p_39482_, SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.BLOCKS, 1.0F, p_39481_.random.nextFloat() * 0.1F + 0.9F);
                }
 
-               p_39465_.awardStat(Stats.ENCHANT_ITEM);
-               if (p_39465_ instanceof ServerPlayer) {
-                  CriteriaTriggers.ENCHANTED_ITEM.trigger((ServerPlayer)p_39465_, itemstack2, i);
-               }
-
-               this.enchantSlots.setChanged();
-               this.enchantmentSeed.set(p_39465_.getEnchantmentSeed());
-               this.slotsChanged(this.enchantSlots);
-               p_39481_.playSound((Player)null, p_39482_, SoundEvents.ENCHANTMENT_TABLE_USE, SoundSource.BLOCKS, 1.0F, p_39481_.random.nextFloat() * 0.1F + 0.9F);
-            }
-
-         });
-         return true;
+            });
+            return true;
+         }
+      } else {
+         Util.logAndPauseIfInIde(p_39465_.getName() + " pressed invalid button id: " + p_39466_);
+         return false;
       }
    }
 

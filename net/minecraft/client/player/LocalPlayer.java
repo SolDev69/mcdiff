@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 import net.minecraft.client.ClientRecipeBook;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.DeathScreen;
+import net.minecraft.client.gui.screens.ReceivingLevelScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.BookEditScreen;
@@ -159,12 +160,6 @@ public class LocalPlayer extends AbstractClientPlayer {
             this.minecraft.getSoundManager().play(new RidingMinecartSoundInstance(this, (AbstractMinecart)p_108667_, false));
          }
 
-         if (p_108667_ instanceof Boat) {
-            this.yRotO = p_108667_.getYRot();
-            this.setYRot(p_108667_.getYRot());
-            this.setYHeadRot(p_108667_.getYRot());
-         }
-
          return true;
       }
    }
@@ -235,7 +230,7 @@ public class LocalPlayer extends AbstractClientPlayer {
          double d2 = (double)(this.getYRot() - this.yRotLast);
          double d3 = (double)(this.getXRot() - this.xRotLast);
          ++this.positionReminder;
-         boolean flag1 = d4 * d4 + d0 * d0 + d1 * d1 > 9.0E-4D || this.positionReminder >= 20;
+         boolean flag1 = Mth.lengthSquared(d4, d0, d1) > Mth.square(2.0E-4D) || this.positionReminder >= 20;
          boolean flag2 = d2 != 0.0D || d3 != 0.0D;
          if (this.isPassenger()) {
             Vec3 vec3 = this.getDeltaMovement();
@@ -581,8 +576,8 @@ public class LocalPlayer extends AbstractClientPlayer {
          this.jumping = this.input.jumping;
          this.yBobO = this.yBob;
          this.xBobO = this.xBob;
-         this.xBob = (float)((double)this.xBob + (double)(this.getXRot() - this.xBob) * 0.5D);
-         this.yBob = (float)((double)this.yBob + (double)(this.getYRot() - this.yBob) * 0.5D);
+         this.xBob += (this.getXRot() - this.xBob) * 0.5F;
+         this.yBob += (this.getYRot() - this.yBob) * 0.5F;
       }
 
    }
@@ -773,7 +768,7 @@ public class LocalPlayer extends AbstractClientPlayer {
    private void handleNetherPortalClient() {
       this.oPortalTime = this.portalTime;
       if (this.isInsidePortal) {
-         if (this.minecraft.screen != null && !this.minecraft.screen.isPauseScreen() && !(this.minecraft.screen instanceof DeathScreen)) {
+         if (this.minecraft.screen != null && !this.minecraft.screen.isPauseScreen() && !(this.minecraft.screen instanceof DeathScreen) && !(this.minecraft.screen instanceof ReceivingLevelScreen)) {
             if (this.minecraft.screen instanceof AbstractContainerScreen) {
                this.closeContainer();
             }

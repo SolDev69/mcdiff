@@ -20,10 +20,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.Tag;
-import net.minecraft.tags.TagContainer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -45,7 +42,7 @@ public class BlockPredicateArgument implements ArgumentType<BlockPredicateArgume
       if (blockstateparser.getState() != null) {
          final BlockPredicateArgument.BlockPredicate blockpredicateargument$blockpredicate = new BlockPredicateArgument.BlockPredicate(blockstateparser.getState(), blockstateparser.getProperties().keySet(), blockstateparser.getNbt());
          return new BlockPredicateArgument.Result() {
-            public Predicate<BlockInWorld> create(TagContainer p_194386_) {
+            public Predicate<BlockInWorld> create(Registry<Block> p_205581_) {
                return blockpredicateargument$blockpredicate;
             }
 
@@ -54,13 +51,14 @@ public class BlockPredicateArgument implements ArgumentType<BlockPredicateArgume
             }
          };
       } else {
-         final ResourceLocation resourcelocation = blockstateparser.getTag();
+         final TagKey<Block> tagkey = blockstateparser.getTag();
          return new BlockPredicateArgument.Result() {
-            public Predicate<BlockInWorld> create(TagContainer p_194396_) throws CommandSyntaxException {
-               Tag<Block> tag = p_194396_.getTagOrThrow(Registry.BLOCK_REGISTRY, resourcelocation, (p_194398_) -> {
-                  return BlockPredicateArgument.ERROR_UNKNOWN_TAG.create(p_194398_.toString());
-               });
-               return new BlockPredicateArgument.TagPredicate(tag, blockstateparser.getVagueProperties(), blockstateparser.getNbt());
+            public Predicate<BlockInWorld> create(Registry<Block> p_205588_) throws CommandSyntaxException {
+               if (!p_205588_.isKnownTagName(tagkey)) {
+                  throw BlockPredicateArgument.ERROR_UNKNOWN_TAG.create(tagkey);
+               } else {
+                  return new BlockPredicateArgument.TagPredicate(tagkey, blockstateparser.getVagueProperties(), blockstateparser.getNbt());
+               }
             }
 
             public boolean requiresNbt() {
@@ -71,7 +69,7 @@ public class BlockPredicateArgument implements ArgumentType<BlockPredicateArgume
    }
 
    public static Predicate<BlockInWorld> getBlockPredicate(CommandContext<CommandSourceStack> p_115574_, String p_115575_) throws CommandSyntaxException {
-      return p_115574_.getArgument(p_115575_, BlockPredicateArgument.Result.class).create(p_115574_.getSource().getServer().getTags());
+      return p_115574_.getArgument(p_115575_, BlockPredicateArgument.Result.class).create(p_115574_.getSource().getServer().registryAccess().registryOrThrow(Registry.BLOCK_REGISTRY));
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> p_115587_, SuggestionsBuilder p_115588_) {
@@ -84,7 +82,7 @@ public class BlockPredicateArgument implements ArgumentType<BlockPredicateArgume
       } catch (CommandSyntaxException commandsyntaxexception) {
       }
 
-      return blockstateparser.fillSuggestions(p_115588_, BlockTags.getAllTags());
+      return blockstateparser.fillSuggestions(p_115588_, Registry.BLOCK);
    }
 
    public Collection<String> getExamples() {
@@ -129,21 +127,21 @@ public class BlockPredicateArgument implements ArgumentType<BlockPredicateArgume
    }
 
    public interface Result {
-      Predicate<BlockInWorld> create(TagContainer p_115603_) throws CommandSyntaxException;
+      Predicate<BlockInWorld> create(Registry<Block> p_205589_) throws CommandSyntaxException;
 
       boolean requiresNbt();
    }
 
    static class TagPredicate implements Predicate<BlockInWorld> {
-      private final Tag<Block> tag;
+      private final TagKey<Block> tag;
       @Nullable
       private final CompoundTag nbt;
       private final Map<String, String> vagueProperties;
 
-      TagPredicate(Tag<Block> p_115608_, Map<String, String> p_115609_, @Nullable CompoundTag p_115610_) {
-         this.tag = p_115608_;
-         this.vagueProperties = p_115609_;
-         this.nbt = p_115610_;
+      TagPredicate(TagKey<Block> p_205591_, Map<String, String> p_205592_, @Nullable CompoundTag p_205593_) {
+         this.tag = p_205591_;
+         this.vagueProperties = p_205592_;
+         this.nbt = p_205593_;
       }
 
       public boolean test(BlockInWorld p_115617_) {

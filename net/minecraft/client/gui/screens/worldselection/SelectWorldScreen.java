@@ -1,6 +1,7 @@
 package net.minecraft.client.gui.screens.worldselection;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.logging.LogUtils;
 import java.util.List;
 import javax.annotation.Nullable;
 import net.minecraft.client.gui.components.Button;
@@ -11,12 +12,11 @@ import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class SelectWorldScreen extends Screen {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    protected final Screen lastScreen;
    @Nullable
    private List<FormattedCharSequence> toolTip;
@@ -57,7 +57,7 @@ public class SelectWorldScreen extends Screen {
          this.list.getSelectedOpt().ifPresent(WorldSelectionList.WorldListEntry::joinWorld);
       }));
       this.addRenderableWidget(new Button(this.width / 2 + 4, this.height - 52, 150, 20, new TranslatableComponent("selectWorld.create"), (p_101376_) -> {
-         this.minecraft.setScreen(CreateWorldScreen.create(this));
+         this.minecraft.setScreen(CreateWorldScreen.createFresh(this));
       }));
       this.renameButton = this.addRenderableWidget(new Button(this.width / 2 - 154, this.height - 28, 72, 20, new TranslatableComponent("selectWorld.edit"), (p_101373_) -> {
          this.list.getSelectedOpt().ifPresent(WorldSelectionList.WorldListEntry::editWorld);

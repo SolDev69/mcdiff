@@ -6,6 +6,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonIOException;
 import com.google.gson.stream.JsonWriter;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
@@ -23,12 +24,12 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.BackupConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.resources.RegistryWriteOps;
+import net.minecraft.resources.RegistryOps;
+import net.minecraft.server.WorldStem;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.storage.LevelResource;
@@ -37,12 +38,11 @@ import net.minecraft.world.level.storage.LevelSummary;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.io.FileUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class EditWorldScreen extends Screen {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Gson WORLD_GEN_SETTINGS_GSON = (new GsonBuilder()).setPrettyPrinting().serializeNulls().disableHtmlEscaping().create();
    private static final Component NAME_LABEL = new TranslatableComponent("selectWorld.enterName");
    private Button renameButton;
@@ -97,15 +97,13 @@ public class EditWorldScreen extends Screen {
          }, new TranslatableComponent("optimizeWorld.confirm.title"), new TranslatableComponent("optimizeWorld.confirm.description"), true));
       }));
       this.addRenderableWidget(new Button(this.width / 2 - 100, this.height / 4 + 120 + 5, 200, 20, new TranslatableComponent("selectWorld.edit.export_worldgen_settings"), (p_101284_) -> {
-         RegistryAccess.RegistryHolder registryaccess$registryholder = RegistryAccess.builtin();
-
          DataResult<String> dataresult;
          try {
-            Minecraft.ServerStem minecraft$serverstem = this.minecraft.makeServerStem(registryaccess$registryholder, Minecraft::loadDataPacks, Minecraft::loadWorldData, false, this.levelAccess);
+            WorldStem worldstem = this.minecraft.makeWorldStem(this.levelAccess, false);
 
             try {
-               DynamicOps<JsonElement> dynamicops = RegistryWriteOps.create(JsonOps.INSTANCE, registryaccess$registryholder);
-               DataResult<JsonElement> dataresult1 = WorldGenSettings.CODEC.encodeStart(dynamicops, minecraft$serverstem.worldData().worldGenSettings());
+               DynamicOps<JsonElement> dynamicops = RegistryOps.create(JsonOps.INSTANCE, worldstem.registryAccess());
+               DataResult<JsonElement> dataresult1 = WorldGenSettings.CODEC.encodeStart(dynamicops, worldstem.worldData().worldGenSettings());
                dataresult = dataresult1.flatMap((p_170231_) -> {
                   Path path = this.levelAccess.getLevelPath(LevelResource.ROOT).resolve("worldgen_settings_export.json");
 
@@ -136,9 +134,9 @@ public class EditWorldScreen extends Screen {
                   return DataResult.success(path.toString());
                });
             } catch (Throwable throwable1) {
-               if (minecraft$serverstem != null) {
+               if (worldstem != null) {
                   try {
-                     minecraft$serverstem.close();
+                     worldstem.close();
                   } catch (Throwable throwable) {
                      throwable1.addSuppressed(throwable);
                   }
@@ -147,8 +145,8 @@ public class EditWorldScreen extends Screen {
                throw throwable1;
             }
 
-            if (minecraft$serverstem != null) {
-               minecraft$serverstem.close();
+            if (worldstem != null) {
+               worldstem.close();
             }
          } catch (Exception exception) {
             LOGGER.warn("Could not parse level data", (Throwable)exception);

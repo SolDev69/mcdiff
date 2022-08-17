@@ -1,5 +1,6 @@
 package com.mojang.realmsclient.util.task;
 
+import com.mojang.logging.LogUtils;
 import com.mojang.realmsclient.RealmsMainScreen;
 import com.mojang.realmsclient.client.RealmsClient;
 import com.mojang.realmsclient.dto.RealmsServer;
@@ -23,9 +24,11 @@ import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class GetServerDetailsTask extends LongRunningTask {
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final RealmsServer server;
    private final Screen lastScreen;
    private final RealmsMainScreen mainScreen;
@@ -103,9 +106,9 @@ public class GetServerDetailsTask extends LongRunningTask {
             if (p_167645_) {
                this.scheduleResourcePackDownload(p_167640_).thenRun(() -> {
                   setScreen(p_167641_.apply(p_167640_));
-               }).exceptionally((p_167647_) -> {
+               }).exceptionally((p_202341_) -> {
                   Minecraft.getInstance().getClientPackSource().clearServerPack();
-                  LOGGER.error(p_167647_);
+                  LOGGER.error("Failed to download resource pack from {}", p_167640_, p_202341_);
                   setScreen(new RealmsGenericErrorScreen(new TextComponent("Failed to download resource pack!"), this.lastScreen));
                   return null;
                });

@@ -28,8 +28,8 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.NoiseEffect;
-import net.minecraft.world.level.levelgen.feature.StructurePieceType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 
 public class StrongholdPieces {
@@ -38,6 +38,7 @@ public class StrongholdPieces {
    private static final int MAX_DEPTH = 50;
    private static final int LOWEST_Y_POSITION = 10;
    private static final boolean CHECK_AIR = true;
+   public static final int MAGIC_START_Y = 64;
    private static final StrongholdPieces.PieceWeight[] STRONGHOLD_PIECE_WEIGHTS = new StrongholdPieces.PieceWeight[]{new StrongholdPieces.PieceWeight(StrongholdPieces.Straight.class, 40, 0), new StrongholdPieces.PieceWeight(StrongholdPieces.PrisonHall.class, 5, 5), new StrongholdPieces.PieceWeight(StrongholdPieces.LeftTurn.class, 20, 0), new StrongholdPieces.PieceWeight(StrongholdPieces.RightTurn.class, 20, 0), new StrongholdPieces.PieceWeight(StrongholdPieces.RoomCrossing.class, 10, 6), new StrongholdPieces.PieceWeight(StrongholdPieces.StraightStairsDown.class, 5, 5), new StrongholdPieces.PieceWeight(StrongholdPieces.StairsDown.class, 5, 5), new StrongholdPieces.PieceWeight(StrongholdPieces.FiveCrossing.class, 5, 4), new StrongholdPieces.PieceWeight(StrongholdPieces.ChestCorridor.class, 5, 4), new StrongholdPieces.PieceWeight(StrongholdPieces.Library.class, 10, 2) {
       public boolean doPlace(int p_72903_) {
          return super.doPlace(p_72903_) && p_72903_ > 4;
@@ -955,10 +956,10 @@ public class StrongholdPieces {
       private static final int DEPTH = 5;
       private final boolean isSource;
 
-      public StairsDown(StructurePieceType p_163427_, int p_163428_, int p_163429_, int p_163430_, Direction p_163431_) {
-         super(p_163427_, p_163428_, makeBoundingBox(p_163429_, 64, p_163430_, p_163431_, 5, 11, 5));
+      public StairsDown(StructurePieceType p_209932_, int p_209933_, int p_209934_, int p_209935_, Direction p_209936_) {
+         super(p_209932_, p_209933_, makeBoundingBox(p_209934_, 64, p_209935_, p_209936_, 5, 11, 5));
          this.isSource = true;
-         this.setOrientation(p_163431_);
+         this.setOrientation(p_209936_);
          this.entryDoor = StrongholdPieces.StrongholdPiece.SmallDoorType.OPENING;
       }
 
@@ -969,9 +970,9 @@ public class StrongholdPieces {
          this.entryDoor = this.randomSmallDoor(p_73196_);
       }
 
-      public StairsDown(StructurePieceType p_73206_, CompoundTag p_73207_) {
-         super(p_73206_, p_73207_);
-         this.isSource = p_73207_.getBoolean("Source");
+      public StairsDown(StructurePieceType p_209938_, CompoundTag p_209939_) {
+         super(p_209938_, p_209939_);
+         this.isSource = p_209939_.getBoolean("Source");
       }
 
       public StairsDown(CompoundTag p_192597_) {
@@ -1151,13 +1152,13 @@ public class StrongholdPieces {
    abstract static class StrongholdPiece extends StructurePiece {
       protected StrongholdPieces.StrongholdPiece.SmallDoorType entryDoor = StrongholdPieces.StrongholdPiece.SmallDoorType.OPENING;
 
-      protected StrongholdPiece(StructurePieceType p_163494_, int p_163495_, BoundingBox p_163496_) {
-         super(p_163494_, p_163495_, p_163496_);
+      protected StrongholdPiece(StructurePieceType p_209941_, int p_209942_, BoundingBox p_209943_) {
+         super(p_209941_, p_209942_, p_209943_);
       }
 
-      public StrongholdPiece(StructurePieceType p_73308_, CompoundTag p_73309_) {
-         super(p_73308_, p_73309_);
-         this.entryDoor = StrongholdPieces.StrongholdPiece.SmallDoorType.valueOf(p_73309_.getString("EntryDoor"));
+      public StrongholdPiece(StructurePieceType p_209945_, CompoundTag p_209946_) {
+         super(p_209945_, p_209946_);
+         this.entryDoor = StrongholdPieces.StrongholdPiece.SmallDoorType.valueOf(p_209946_.getString("EntryDoor"));
       }
 
       public NoiseEffect getNoiseEffect() {
@@ -1301,12 +1302,12 @@ public class StrongholdPieces {
       protected static final int HEIGHT = 5;
       protected static final int DEPTH = 5;
 
-      protected Turn(StructurePieceType p_163524_, int p_163525_, BoundingBox p_163526_) {
-         super(p_163524_, p_163525_, p_163526_);
+      protected Turn(StructurePieceType p_209948_, int p_209949_, BoundingBox p_209950_) {
+         super(p_209948_, p_209949_, p_209950_);
       }
 
-      public Turn(StructurePieceType p_73358_, CompoundTag p_73359_) {
-         super(p_73358_, p_73359_);
+      public Turn(StructurePieceType p_209952_, CompoundTag p_209953_) {
+         super(p_209952_, p_209953_);
       }
    }
 }

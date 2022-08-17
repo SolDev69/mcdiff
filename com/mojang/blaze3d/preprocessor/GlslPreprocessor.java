@@ -1,5 +1,6 @@
 package com.mojang.blaze3d.preprocessor;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Locale;
@@ -11,7 +12,6 @@ import net.minecraft.util.StringUtil;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.util.Strings;
 
 @OnlyIn(Dist.CLIENT)
 public abstract class GlslPreprocessor {
@@ -47,7 +47,7 @@ public abstract class GlslPreprocessor {
                String s2 = p_166470_.substring(j, matcher.start(1));
                String s3 = p_166472_ + s1;
                String s4 = this.applyImport(flag, s3);
-               if (!Strings.isEmpty(s4)) {
+               if (!Strings.isNullOrEmpty(s4)) {
                   if (!StringUtil.endsWithNewLine(s4)) {
                      s4 = s4 + System.lineSeparator();
                   }

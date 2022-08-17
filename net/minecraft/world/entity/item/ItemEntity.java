@@ -70,7 +70,7 @@ public class ItemEntity extends Entity {
    }
 
    public boolean occludesVibrations() {
-      return ItemTags.OCCLUDES_VIBRATION_SIGNALS.contains(this.getItem().getItem());
+      return this.getItem().is(ItemTags.OCCLUDES_VIBRATION_SIGNALS);
    }
 
    protected Entity.MovementEmission getMovementEmission() {
@@ -243,6 +243,8 @@ public class ItemEntity extends Entity {
          return false;
       } else if (!this.getItem().getItem().canBeHurtBy(p_32013_)) {
          return false;
+      } else if (this.level.isClientSide) {
+         return true;
       } else {
          this.markHurt();
          this.health = (int)((float)this.health - p_32014_);

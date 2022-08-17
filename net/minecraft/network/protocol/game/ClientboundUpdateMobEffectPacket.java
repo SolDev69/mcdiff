@@ -10,14 +10,14 @@ public class ClientboundUpdateMobEffectPacket implements Packet<ClientGamePacket
    private static final int FLAG_VISIBLE = 2;
    private static final int FLAG_SHOW_ICON = 4;
    private final int entityId;
-   private final byte effectId;
+   private final int effectId;
    private final byte effectAmplifier;
    private final int effectDurationTicks;
    private final byte flags;
 
    public ClientboundUpdateMobEffectPacket(int p_133611_, MobEffectInstance p_133612_) {
       this.entityId = p_133611_;
-      this.effectId = (byte)(MobEffect.getId(p_133612_.getEffect()) & 255);
+      this.effectId = MobEffect.getId(p_133612_.getEffect());
       this.effectAmplifier = (byte)(p_133612_.getAmplifier() & 255);
       if (p_133612_.getDuration() > 32767) {
          this.effectDurationTicks = 32767;
@@ -43,7 +43,7 @@ public class ClientboundUpdateMobEffectPacket implements Packet<ClientGamePacket
 
    public ClientboundUpdateMobEffectPacket(FriendlyByteBuf p_179466_) {
       this.entityId = p_179466_.readVarInt();
-      this.effectId = p_179466_.readByte();
+      this.effectId = p_179466_.readVarInt();
       this.effectAmplifier = p_179466_.readByte();
       this.effectDurationTicks = p_179466_.readVarInt();
       this.flags = p_179466_.readByte();
@@ -51,7 +51,7 @@ public class ClientboundUpdateMobEffectPacket implements Packet<ClientGamePacket
 
    public void write(FriendlyByteBuf p_133621_) {
       p_133621_.writeVarInt(this.entityId);
-      p_133621_.writeByte(this.effectId);
+      p_133621_.writeVarInt(this.effectId);
       p_133621_.writeByte(this.effectAmplifier);
       p_133621_.writeVarInt(this.effectDurationTicks);
       p_133621_.writeByte(this.flags);
@@ -69,7 +69,7 @@ public class ClientboundUpdateMobEffectPacket implements Packet<ClientGamePacket
       return this.entityId;
    }
 
-   public byte getEffectId() {
+   public int getEffectId() {
       return this.effectId;
    }
 

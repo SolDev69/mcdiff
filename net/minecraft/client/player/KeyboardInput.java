@@ -7,10 +7,18 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 @OnlyIn(Dist.CLIENT)
 public class KeyboardInput extends Input {
    private final Options options;
-   private static final double MOVING_SLOW_FACTOR = 0.3D;
+   private static final float MOVING_SLOW_FACTOR = 0.3F;
 
    public KeyboardInput(Options p_108580_) {
       this.options = p_108580_;
+   }
+
+   private static float calculateImpulse(boolean p_205578_, boolean p_205579_) {
+      if (p_205578_ == p_205579_) {
+         return 0.0F;
+      } else {
+         return p_205578_ ? 1.0F : -1.0F;
+      }
    }
 
    public void tick(boolean p_108582_) {
@@ -18,13 +26,13 @@ public class KeyboardInput extends Input {
       this.down = this.options.keyDown.isDown();
       this.left = this.options.keyLeft.isDown();
       this.right = this.options.keyRight.isDown();
-      this.forwardImpulse = this.up == this.down ? 0.0F : (this.up ? 1.0F : -1.0F);
-      this.leftImpulse = this.left == this.right ? 0.0F : (this.left ? 1.0F : -1.0F);
+      this.forwardImpulse = calculateImpulse(this.up, this.down);
+      this.leftImpulse = calculateImpulse(this.left, this.right);
       this.jumping = this.options.keyJump.isDown();
       this.shiftKeyDown = this.options.keyShift.isDown();
       if (p_108582_) {
-         this.leftImpulse = (float)((double)this.leftImpulse * 0.3D);
-         this.forwardImpulse = (float)((double)this.forwardImpulse * 0.3D);
+         this.leftImpulse *= 0.3F;
+         this.forwardImpulse *= 0.3F;
       }
 
    }

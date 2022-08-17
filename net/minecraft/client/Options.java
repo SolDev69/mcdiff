@@ -11,6 +11,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2FloatMap;
 import it.unimi.dsi.fastutil.objects.Object2FloatOpenHashMap;
 import java.io.BufferedReader;
@@ -47,12 +48,11 @@ import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class Options {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final Gson GSON = new Gson();
    private static final TypeToken<List<String>> RESOURCE_PACK_TYPE = new TypeToken<List<String>>() {
    };
@@ -132,6 +132,7 @@ public class Options {
    public boolean toggleCrouch;
    public boolean toggleSprint;
    public boolean skipMultiplayerWarning;
+   public boolean skipRealms32bitWarning;
    public boolean hideMatchedNames = true;
    public boolean showAutosaveIndicator = true;
    public final KeyMapping keyUp = new KeyMapping("key.forward", 87, "key.categories.movement");
@@ -292,6 +293,7 @@ public class Options {
       this.rawMouseInput = p_168428_.process("rawMouseInput", this.rawMouseInput);
       this.glDebugVerbosity = p_168428_.process("glDebugVerbosity", this.glDebugVerbosity);
       this.skipMultiplayerWarning = p_168428_.process("skipMultiplayerWarning", this.skipMultiplayerWarning);
+      this.skipRealms32bitWarning = p_168428_.process("skipRealms32bitWarning", this.skipRealms32bitWarning);
       this.hideMatchedNames = p_168428_.process("hideMatchedNames", this.hideMatchedNames);
       this.joinedFirstServer = p_168428_.process("joinedFirstServer", this.joinedFirstServer);
       this.hideBundleTutorial = p_168428_.process("hideBundleTutorial", this.hideBundleTutorial);

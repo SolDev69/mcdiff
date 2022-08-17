@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonIOException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Decoder;
 import com.mojang.serialization.DynamicOps;
@@ -27,8 +28,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public interface RegistryResourceAccess {
    <E> Collection<ResourceKey<E>> listResources(ResourceKey<? extends Registry<E>> p_195887_);
@@ -116,16 +116,16 @@ public interface RegistryResourceAccess {
    }
 
    public static final class InMemoryStorage implements RegistryResourceAccess {
-      private static final Logger LOGGER = LogManager.getLogger();
+      private static final Logger LOGGER = LogUtils.getLogger();
       private final Map<ResourceKey<?>, RegistryResourceAccess.InMemoryStorage.Entry> entries = Maps.newIdentityHashMap();
 
-      public <E> void add(RegistryAccess.RegistryHolder p_195922_, ResourceKey<E> p_195923_, Encoder<E> p_195924_, int p_195925_, E p_195926_, Lifecycle p_195927_) {
-         DataResult<JsonElement> dataresult = p_195924_.encodeStart(RegistryWriteOps.create(JsonOps.INSTANCE, p_195922_), p_195926_);
+      public <E> void add(RegistryAccess p_206837_, ResourceKey<E> p_206838_, Encoder<E> p_206839_, int p_206840_, E p_206841_, Lifecycle p_206842_) {
+         DataResult<JsonElement> dataresult = p_206839_.encodeStart(RegistryOps.create(JsonOps.INSTANCE, p_206837_), p_206841_);
          Optional<PartialResult<JsonElement>> optional = dataresult.error();
          if (optional.isPresent()) {
             LOGGER.error("Error adding element: {}", (Object)optional.get().message());
          } else {
-            this.entries.put(p_195923_, new RegistryResourceAccess.InMemoryStorage.Entry(dataresult.result().get(), p_195925_, p_195927_));
+            this.entries.put(p_206838_, new RegistryResourceAccess.InMemoryStorage.Entry(dataresult.result().get(), p_206840_, p_206842_));
          }
 
       }

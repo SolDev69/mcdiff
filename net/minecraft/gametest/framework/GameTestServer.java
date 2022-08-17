@@ -4,6 +4,8 @@ import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Lifecycle;
 import java.net.Proxy;
 import java.util.Collection;
@@ -13,11 +15,12 @@ import javax.annotation.Nullable;
 import net.minecraft.CrashReport;
 import net.minecraft.SystemReport;
 import net.minecraft.Util;
+import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ServerResources;
+import net.minecraft.server.WorldStem;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.progress.LoggerChunkProgressListener;
 import net.minecraft.server.packs.repository.PackRepository;
@@ -35,13 +38,14 @@ import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.FlatLevelSource;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.PrimaryLevelData;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.world.level.storage.WorldData;
+import org.slf4j.Logger;
 
 public class GameTestServer extends MinecraftServer {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int PROGRESS_REPORT_INTERVAL = 20;
    private final List<GameTestBatch> testBatches;
    private final BlockPos spawnPos;
@@ -53,21 +57,41 @@ public class GameTestServer extends MinecraftServer {
    @Nullable
    private MultipleTestTracker testTracker;
 
-   public GameTestServer(Thread p_177594_, LevelStorageSource.LevelStorageAccess p_177595_, PackRepository p_177596_, ServerResources p_177597_, Collection<GameTestBatch> p_177598_, BlockPos p_177599_, RegistryAccess.RegistryHolder p_177600_) {
-      this(p_177594_, p_177595_, p_177596_, p_177597_, p_177598_, p_177599_, p_177600_, p_177600_.registryOrThrow(Registry.BIOME_REGISTRY), p_177600_.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY));
-   }
-
-   private GameTestServer(Thread p_177602_, LevelStorageSource.LevelStorageAccess p_177603_, PackRepository p_177604_, ServerResources p_177605_, Collection<GameTestBatch> p_177606_, BlockPos p_177607_, RegistryAccess.RegistryHolder p_177608_, Registry<Biome> p_177609_, Registry<DimensionType> p_177610_) {
-      super(p_177602_, p_177608_, p_177603_, new PrimaryLevelData(TEST_SETTINGS, new WorldGenSettings(0L, false, false, WorldGenSettings.withOverworld(p_177610_, DimensionType.defaultDimensions(p_177608_, 0L), new FlatLevelSource(FlatLevelGeneratorSettings.getDefault(p_177609_)))), Lifecycle.stable()), p_177604_, Proxy.NO_PROXY, DataFixers.getDataFixer(), p_177605_, (MinecraftSessionService)null, (GameProfileRepository)null, (GameProfileCache)null, LoggerChunkProgressListener::new);
-      this.testBatches = Lists.newArrayList(p_177606_);
-      this.spawnPos = p_177607_;
-      if (p_177606_.isEmpty()) {
+   public static GameTestServer create(Thread p_206607_, LevelStorageSource.LevelStorageAccess p_206608_, PackRepository p_206609_, Collection<GameTestBatch> p_206610_, BlockPos p_206611_) {
+      if (p_206610_.isEmpty()) {
          throw new IllegalArgumentException("No test batches were given!");
+      } else {
+         WorldStem.InitConfig worldstem$initconfig = new WorldStem.InitConfig(p_206609_, Commands.CommandSelection.DEDICATED, 4, false);
+
+         try {
+            WorldStem worldstem = WorldStem.load(worldstem$initconfig, () -> {
+               return DataPackConfig.DEFAULT;
+            }, (p_206604_, p_206605_) -> {
+               RegistryAccess.Frozen registryaccess$frozen = RegistryAccess.BUILTIN.get();
+               Registry<Biome> registry = registryaccess$frozen.registryOrThrow(Registry.BIOME_REGISTRY);
+               Registry<StructureSet> registry1 = registryaccess$frozen.registryOrThrow(Registry.STRUCTURE_SET_REGISTRY);
+               Registry<DimensionType> registry2 = registryaccess$frozen.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
+               WorldData worlddata = new PrimaryLevelData(TEST_SETTINGS, new WorldGenSettings(0L, false, false, WorldGenSettings.withOverworld(registry2, DimensionType.defaultDimensions(registryaccess$frozen, 0L), new FlatLevelSource(registry1, FlatLevelGeneratorSettings.getDefault(registry, registry1)))), Lifecycle.stable());
+               return Pair.of(worlddata, registryaccess$frozen);
+            }, Util.backgroundExecutor(), Runnable::run).get();
+            worldstem.updateGlobals();
+            return new GameTestServer(p_206607_, p_206608_, p_206609_, worldstem, p_206610_, p_206611_);
+         } catch (Exception exception) {
+            LOGGER.warn("Failed to load vanilla datapack, bit oops", (Throwable)exception);
+            System.exit(-1);
+            throw new IllegalStateException();
+         }
       }
    }
 
+   private GameTestServer(Thread p_206597_, LevelStorageSource.LevelStorageAccess p_206598_, PackRepository p_206599_, WorldStem p_206600_, Collection<GameTestBatch> p_206601_, BlockPos p_206602_) {
+      super(p_206597_, p_206598_, p_206599_, p_206600_, Proxy.NO_PROXY, DataFixers.getDataFixer(), (MinecraftSessionService)null, (GameProfileRepository)null, (GameProfileCache)null, LoggerChunkProgressListener::new);
+      this.testBatches = Lists.newArrayList(p_206601_);
+      this.spawnPos = p_206602_;
+   }
+
    public boolean initServer() {
-      this.setPlayerList(new PlayerList(this, this.registryHolder, this.playerDataStorage, 1) {
+      this.setPlayerList(new PlayerList(this, this.registryAccess(), this.playerDataStorage, 1) {
       });
       this.loadLevel();
       ServerLevel serverlevel = this.overworld();
@@ -95,8 +119,8 @@ public class GameTestServer extends MinecraftServer {
          LOGGER.info("========= {} GAME TESTS COMPLETE ======================", (int)this.testTracker.getTotalCount());
          if (this.testTracker.hasFailedRequired()) {
             LOGGER.info("{} required tests failed :(", (int)this.testTracker.getFailedRequiredCount());
-            this.testTracker.getFailedRequired().forEach((p_177627_) -> {
-               LOGGER.info("   - {}", (Object)p_177627_.getTestName());
+            this.testTracker.getFailedRequired().forEach((p_206615_) -> {
+               LOGGER.info("   - {}", (Object)p_206615_.getTestName());
             });
          } else {
             LOGGER.info("All {} required tests passed :)", (int)this.testTracker.getTotalCount());
@@ -104,8 +128,8 @@ public class GameTestServer extends MinecraftServer {
 
          if (this.testTracker.hasFailedOptional()) {
             LOGGER.info("{} optional tests failed", (int)this.testTracker.getFailedOptionalCount());
-            this.testTracker.getFailedOptional().forEach((p_177621_) -> {
-               LOGGER.info("   - {}", (Object)p_177621_.getTestName());
+            this.testTracker.getFailedOptional().forEach((p_206613_) -> {
+               LOGGER.info("   - {}", (Object)p_206613_.getTestName());
             });
          }
 

@@ -1,13 +1,13 @@
 package net.minecraft.world.level.levelgen;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.NoiseColumn;
@@ -22,14 +22,17 @@ import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
 
 public class FlatLevelSource extends ChunkGenerator {
-   public static final Codec<FlatLevelSource> CODEC = FlatLevelGeneratorSettings.CODEC.fieldOf("settings").xmap(FlatLevelSource::new, FlatLevelSource::settings).codec();
+   public static final Codec<FlatLevelSource> CODEC = RecordCodecBuilder.create((p_204551_) -> {
+      return commonCodec(p_204551_).and(FlatLevelGeneratorSettings.CODEC.fieldOf("settings").forGetter(FlatLevelSource::settings)).apply(p_204551_, p_204551_.stable(FlatLevelSource::new));
+   });
    private final FlatLevelGeneratorSettings settings;
 
-   public FlatLevelSource(FlatLevelGeneratorSettings p_64168_) {
-      super(new FixedBiomeSource(p_64168_.getBiomeFromSettings()), new FixedBiomeSource(p_64168_.getBiome()), p_64168_.structureSettings(), 0L);
-      this.settings = p_64168_;
+   public FlatLevelSource(Registry<StructureSet> p_209099_, FlatLevelGeneratorSettings p_209100_) {
+      super(p_209099_, p_209100_.structureOverrides(), new FixedBiomeSource(p_209100_.getBiomeFromSettings()), new FixedBiomeSource(p_209100_.getBiome()), 0L);
+      this.settings = p_209100_;
    }
 
    protected Codec<? extends ChunkGenerator> codec() {
@@ -51,8 +54,8 @@ public class FlatLevelSource extends ChunkGenerator {
       return p_158279_.getMinBuildHeight() + Math.min(p_158279_.getHeight(), this.settings.getLayers().size());
    }
 
-   protected boolean validBiome(Registry<Biome> p_188558_, Predicate<ResourceKey<Biome>> p_188559_, Biome p_188560_) {
-      return p_188558_.getResourceKey(this.settings.getBiome()).filter(p_188559_).isPresent();
+   protected Holder<Biome> adjustBiome(Holder<Biome> p_204553_) {
+      return this.settings.getBiome();
    }
 
    public CompletableFuture<ChunkAccess> fillFromNoise(Executor p_188562_, Blender p_188563_, StructureFeatureManager p_188564_, ChunkAccess p_188565_) {
@@ -93,17 +96,18 @@ public class FlatLevelSource extends ChunkGenerator {
    }
 
    public NoiseColumn getBaseColumn(int p_158270_, int p_158271_, LevelHeightAccessor p_158272_) {
-      return new NoiseColumn(p_158272_.getMinBuildHeight(), this.settings.getLayers().stream().limit((long)p_158272_.getHeight()).map((p_64189_) -> {
-         return p_64189_ == null ? Blocks.AIR.defaultBlockState() : p_64189_;
-      }).toArray((p_64171_) -> {
-         return new BlockState[p_64171_];
+      return new NoiseColumn(p_158272_.getMinBuildHeight(), this.settings.getLayers().stream().limit((long)p_158272_.getHeight()).map((p_204549_) -> {
+         return p_204549_ == null ? Blocks.AIR.defaultBlockState() : p_204549_;
+      }).toArray((p_204543_) -> {
+         return new BlockState[p_204543_];
       }));
    }
 
+   public void addDebugScreenInfo(List<String> p_209102_, BlockPos p_209103_) {
+   }
+
    public Climate.Sampler climateSampler() {
-      return (p_188541_, p_188542_, p_188543_) -> {
-         return Climate.target(0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F);
-      };
+      return Climate.empty();
    }
 
    public void applyCarvers(WorldGenRegion p_188547_, long p_188548_, BiomeManager p_188549_, StructureFeatureManager p_188550_, ChunkAccess p_188551_, GenerationStep.Carving p_188552_) {

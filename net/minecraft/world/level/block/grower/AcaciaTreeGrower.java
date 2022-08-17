@@ -1,11 +1,12 @@
 package net.minecraft.world.level.block.grower;
 
 import java.util.Random;
+import net.minecraft.core.Holder;
 import net.minecraft.data.worldgen.features.TreeFeatures;
 import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 
 public class AcaciaTreeGrower extends AbstractTreeGrower {
-   protected ConfiguredFeature<?, ?> getConfiguredFeature(Random p_60018_, boolean p_60019_) {
+   protected Holder<? extends ConfiguredFeature<?, ?>> getConfiguredFeature(Random p_204310_, boolean p_204311_) {
       return TreeFeatures.ACACIA;
    }
 }

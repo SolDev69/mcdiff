@@ -19,6 +19,7 @@ import net.minecraft.Util;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Registry;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -181,7 +182,7 @@ public abstract class Player extends LivingEntity {
          return false;
       } else {
          ItemStack itemstack = this.getMainHandItem();
-         return itemstack.isEmpty() || !itemstack.hasAdventureModeBreakTagForBlock(p_36188_.getTagManager(), new BlockInWorld(p_36188_, p_36189_, false));
+         return itemstack.isEmpty() || !itemstack.hasAdventureModeBreakTagForBlock(p_36188_.registryAccess().registryOrThrow(Registry.BLOCK_REGISTRY), new BlockInWorld(p_36188_, p_36189_, false));
       }
    }
 
@@ -481,7 +482,7 @@ public abstract class Player extends LivingEntity {
       super.aiStep();
       this.flyingSpeed = 0.02F;
       if (this.isSprinting()) {
-         this.flyingSpeed = (float)((double)this.flyingSpeed + 0.005999999865889549D);
+         this.flyingSpeed += 0.006F;
       }
 
       this.setSpeed((float)this.getAttributeValue(Attributes.MOVEMENT_SPEED));
@@ -556,6 +557,15 @@ public abstract class Player extends LivingEntity {
    public void increaseScore(int p_36402_) {
       int i = this.getScore();
       this.entityData.set(DATA_SCORE_ID, i + p_36402_);
+   }
+
+   public void startAutoSpinAttack(int p_204080_) {
+      this.autoSpinAttackTicks = p_204080_;
+      if (!this.level.isClientSide) {
+         this.removeEntitiesOnShoulder();
+         this.setLivingEntityFlag(4, true);
+      }
+
    }
 
    public void die(DamageSource p_36152_) {
@@ -785,7 +795,10 @@ public abstract class Player extends LivingEntity {
          if (this.isDeadOrDying()) {
             return false;
          } else {
-            this.removeEntitiesOnShoulder();
+            if (!this.level.isClientSide) {
+               this.removeEntitiesOnShoulder();
+            }
+
             if (p_36154_.scalesWithDifficulty()) {
                if (this.level.getDifficulty() == Difficulty.PEACEFUL) {
                   p_36155_ = 0.0F;
@@ -1599,7 +1612,7 @@ public abstract class Player extends LivingEntity {
       } else {
          BlockPos blockpos = p_36205_.relative(p_36206_.getOpposite());
          BlockInWorld blockinworld = new BlockInWorld(this.level, blockpos, false);
-         return p_36207_.hasAdventureModePlaceTagForBlock(this.level.getTagManager(), blockinworld);
+         return p_36207_.hasAdventureModePlaceTagForBlock(this.level.registryAccess().registryOrThrow(Registry.BLOCK_REGISTRY), blockinworld);
       }
    }
 

@@ -362,7 +362,7 @@ public abstract class PathNavigation {
       } else if (this.path != null && !this.path.isDone() && this.path.getNodeCount() != 0) {
          Node node = this.path.getEndNode();
          Vec3 vec3 = new Vec3(((double)node.x + this.mob.getX()) / 2.0D, ((double)node.y + this.mob.getY()) / 2.0D, ((double)node.z + this.mob.getZ()) / 2.0D);
-         return p_200904_.closerThan(vec3, (double)(this.path.getNodeCount() - this.path.getNextNodeIndex()));
+         return p_200904_.closerToCenterThan(vec3, (double)(this.path.getNodeCount() - this.path.getNextNodeIndex()));
       } else {
          return false;
       }

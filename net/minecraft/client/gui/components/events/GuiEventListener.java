@@ -5,6 +5,8 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public interface GuiEventListener {
+   long DOUBLE_CLICK_THRESHOLD_MS = 250L;
+
    default void mouseMoved(double p_94758_, double p_94759_) {
    }
 

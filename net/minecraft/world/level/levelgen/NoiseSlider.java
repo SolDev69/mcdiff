@@ -5,7 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.Mth;
 
-public class NoiseSlider {
+public record NoiseSlider(double target, int size, int offset) {
    public static final Codec<NoiseSlider> CODEC = RecordCodecBuilder.create((p_189236_) -> {
       return p_189236_.group(Codec.DOUBLE.fieldOf("target").forGetter((p_189242_) -> {
          return p_189242_.target;
@@ -15,22 +15,13 @@ public class NoiseSlider {
          return p_189238_.offset;
       })).apply(p_189236_, NoiseSlider::new);
    });
-   private final double target;
-   private final int size;
-   private final int offset;
 
-   public NoiseSlider(double p_189229_, int p_189230_, int p_189231_) {
-      this.target = p_189229_;
-      this.size = p_189230_;
-      this.offset = p_189231_;
-   }
-
-   public double applySlide(double p_189233_, int p_189234_) {
+   public double applySlide(double p_209639_, double p_209640_) {
       if (this.size <= 0) {
-         return p_189233_;
+         return p_209639_;
       } else {
-         double d0 = (double)(p_189234_ - this.offset) / (double)this.size;
-         return Mth.clampedLerp(this.target, p_189233_, d0);
+         double d0 = (p_209640_ - (double)this.offset) / (double)this.size;
+         return Mth.clampedLerp(this.target, p_209639_, d0);
       }
    }
 }

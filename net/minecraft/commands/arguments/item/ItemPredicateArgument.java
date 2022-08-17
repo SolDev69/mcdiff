@@ -17,9 +17,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -41,12 +39,13 @@ public class ItemPredicateArgument implements ArgumentType<ItemPredicateArgument
             return itempredicateargument$itempredicate;
          };
       } else {
-         ResourceLocation resourcelocation = itemparser.getTag();
-         return (p_175098_) -> {
-            Tag<Item> tag = p_175098_.getSource().getServer().getTags().getTagOrThrow(Registry.ITEM_REGISTRY, resourcelocation, (p_175094_) -> {
-               return ERROR_UNKNOWN_TAG.create(p_175094_.toString());
-            });
-            return new ItemPredicateArgument.TagPredicate(tag, itemparser.getNbt());
+         TagKey<Item> tagkey = itemparser.getTag();
+         return (p_205684_) -> {
+            if (!Registry.ITEM.isKnownTagName(tagkey)) {
+               throw ERROR_UNKNOWN_TAG.create(tagkey);
+            } else {
+               return new ItemPredicateArgument.TagPredicate(tagkey, itemparser.getNbt());
+            }
          };
       }
    }
@@ -65,7 +64,7 @@ public class ItemPredicateArgument implements ArgumentType<ItemPredicateArgument
       } catch (CommandSyntaxException commandsyntaxexception) {
       }
 
-      return itemparser.fillSuggestions(p_121055_, ItemTags.getAllTags());
+      return itemparser.fillSuggestions(p_121055_, Registry.ITEM);
    }
 
    public Collection<String> getExamples() {
@@ -92,13 +91,13 @@ public class ItemPredicateArgument implements ArgumentType<ItemPredicateArgument
    }
 
    static class TagPredicate implements Predicate<ItemStack> {
-      private final Tag<Item> tag;
+      private final TagKey<Item> tag;
       @Nullable
       private final CompoundTag nbt;
 
-      public TagPredicate(Tag<Item> p_121072_, @Nullable CompoundTag p_121073_) {
-         this.tag = p_121072_;
-         this.nbt = p_121073_;
+      public TagPredicate(TagKey<Item> p_205686_, @Nullable CompoundTag p_205687_) {
+         this.tag = p_205686_;
+         this.nbt = p_205687_;
       }
 
       public boolean test(ItemStack p_121075_) {

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.nbt.CompoundTag;
@@ -17,7 +18,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
 import net.minecraft.world.level.storage.DimensionDataStorage;
 
 public class LegacyStructureDataHandler {
@@ -40,6 +40,7 @@ public class LegacyStructureDataHandler {
       p_71325_.put("TeJP", "Jungle_Pyramid");
       p_71325_.put("TeSH", "Swamp_Hut");
    });
+   private static final Set<String> OLD_STRUCTURE_REGISTRY_KEYS = Set.of("pillager_outpost", "mineshaft", "mansion", "jungle_pyramid", "desert_pyramid", "igloo", "ruined_portal", "shipwreck", "swamp_hut", "stronghold", "monument", "ocean_ruin", "fortress", "endcity", "buried_treasure", "village", "nether_fossil", "bastion_remnant");
    private final boolean hasLegacyData;
    private final Map<String, Long2ObjectMap<CompoundTag>> dataMap = Maps.newHashMap();
    private final Map<String, StructureFeatureIndexSavedData> indexMap = Maps.newHashMap();
@@ -81,8 +82,8 @@ public class LegacyStructureDataHandler {
       CompoundTag compoundtag2 = compoundtag1.getCompound("References");
 
       for(String s : this.currentKeys) {
-         StructureFeature<?> structurefeature = StructureFeature.STRUCTURES_REGISTRY.get(s.toLowerCase(Locale.ROOT));
-         if (!compoundtag2.contains(s, 12) && structurefeature != null) {
+         boolean flag = OLD_STRUCTURE_REGISTRY_KEYS.contains(s.toLowerCase(Locale.ROOT));
+         if (!compoundtag2.contains(s, 12) && flag) {
             int i = 8;
             LongList longlist = new LongArrayList();
 

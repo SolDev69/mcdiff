@@ -9,10 +9,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.Registry;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.storage.loot.ItemModifierManager;
@@ -31,11 +29,8 @@ public class ResourceLocationArgument implements ArgumentType<ResourceLocation> 
    private static final DynamicCommandExceptionType ERROR_UNKNOWN_PREDICATE = new DynamicCommandExceptionType((p_106998_) -> {
       return new TranslatableComponent("predicate.unknown", p_106998_);
    });
-   private static final DynamicCommandExceptionType ERROR_UNKNOWN_ATTRIBUTE = new DynamicCommandExceptionType((p_106991_) -> {
-      return new TranslatableComponent("attribute.unknown", p_106991_);
-   });
-   private static final DynamicCommandExceptionType ERROR_UNKNOWN_ITEM_MODIFIER = new DynamicCommandExceptionType((p_171026_) -> {
-      return new TranslatableComponent("item_modifier.unknown", p_171026_);
+   private static final DynamicCommandExceptionType ERROR_UNKNOWN_ITEM_MODIFIER = new DynamicCommandExceptionType((p_106991_) -> {
+      return new TranslatableComponent("item_modifier.unknown", p_106991_);
    });
 
    public static ResourceLocationArgument id() {
@@ -43,7 +38,7 @@ public class ResourceLocationArgument implements ArgumentType<ResourceLocation> 
    }
 
    public static Advancement getAdvancement(CommandContext<CommandSourceStack> p_106988_, String p_106989_) throws CommandSyntaxException {
-      ResourceLocation resourcelocation = p_106988_.getArgument(p_106989_, ResourceLocation.class);
+      ResourceLocation resourcelocation = getId(p_106988_, p_106989_);
       Advancement advancement = p_106988_.getSource().getServer().getAdvancements().getAdvancement(resourcelocation);
       if (advancement == null) {
          throw ERROR_UNKNOWN_ADVANCEMENT.create(resourcelocation);
@@ -54,14 +49,14 @@ public class ResourceLocationArgument implements ArgumentType<ResourceLocation> 
 
    public static Recipe<?> getRecipe(CommandContext<CommandSourceStack> p_106995_, String p_106996_) throws CommandSyntaxException {
       RecipeManager recipemanager = p_106995_.getSource().getServer().getRecipeManager();
-      ResourceLocation resourcelocation = p_106995_.getArgument(p_106996_, ResourceLocation.class);
+      ResourceLocation resourcelocation = getId(p_106995_, p_106996_);
       return recipemanager.byKey(resourcelocation).orElseThrow(() -> {
          return ERROR_UNKNOWN_RECIPE.create(resourcelocation);
       });
    }
 
    public static LootItemCondition getPredicate(CommandContext<CommandSourceStack> p_107002_, String p_107003_) throws CommandSyntaxException {
-      ResourceLocation resourcelocation = p_107002_.getArgument(p_107003_, ResourceLocation.class);
+      ResourceLocation resourcelocation = getId(p_107002_, p_107003_);
       PredicateManager predicatemanager = p_107002_.getSource().getServer().getPredicateManager();
       LootItemCondition lootitemcondition = predicatemanager.get(resourcelocation);
       if (lootitemcondition == null) {
@@ -72,7 +67,7 @@ public class ResourceLocationArgument implements ArgumentType<ResourceLocation> 
    }
 
    public static LootItemFunction getItemModifier(CommandContext<CommandSourceStack> p_171032_, String p_171033_) throws CommandSyntaxException {
-      ResourceLocation resourcelocation = p_171032_.getArgument(p_171033_, ResourceLocation.class);
+      ResourceLocation resourcelocation = getId(p_171032_, p_171033_);
       ItemModifierManager itemmodifiermanager = p_171032_.getSource().getServer().getItemModifierManager();
       LootItemFunction lootitemfunction = itemmodifiermanager.get(resourcelocation);
       if (lootitemfunction == null) {
@@ -80,13 +75,6 @@ public class ResourceLocationArgument implements ArgumentType<ResourceLocation> 
       } else {
          return lootitemfunction;
       }
-   }
-
-   public static Attribute getAttribute(CommandContext<CommandSourceStack> p_107007_, String p_107008_) throws CommandSyntaxException {
-      ResourceLocation resourcelocation = p_107007_.getArgument(p_107008_, ResourceLocation.class);
-      return Registry.ATTRIBUTE.getOptional(resourcelocation).orElseThrow(() -> {
-         return ERROR_UNKNOWN_ATTRIBUTE.create(resourcelocation);
-      });
    }
 
    public static ResourceLocation getId(CommandContext<CommandSourceStack> p_107012_, String p_107013_) {

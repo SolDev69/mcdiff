@@ -3,6 +3,7 @@ package net.minecraft.world.level.levelgen.carver;
 import java.util.Optional;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.biome.Biome;
@@ -26,7 +27,7 @@ public class CarvingContext extends WorldGenerationContext {
 
    /** @deprecated */
    @Deprecated
-   public Optional<BlockState> topMaterial(Function<BlockPos, Biome> p_190647_, ChunkAccess p_190648_, BlockPos p_190649_, boolean p_190650_) {
+   public Optional<BlockState> topMaterial(Function<BlockPos, Holder<Biome>> p_190647_, ChunkAccess p_190648_, BlockPos p_190649_, boolean p_190650_) {
       return this.generator.topMaterial(this, p_190647_, p_190648_, this.noiseChunk, p_190649_, p_190650_);
    }
 

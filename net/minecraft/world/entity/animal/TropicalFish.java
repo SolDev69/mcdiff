@@ -1,8 +1,6 @@
 package net.minecraft.world.entity.animal;
 
 import java.util.Locale;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
@@ -27,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.biome.Biomes;
+import net.minecraft.world.level.block.Blocks;
 
 public class TropicalFish extends AbstractSchoolingFish {
    public static final String BUCKET_VARIANT_TAG = "BucketVariantTag";
@@ -195,7 +194,7 @@ public class TropicalFish extends AbstractSchoolingFish {
    }
 
    public static boolean checkTropicalFishSpawnRules(EntityType<TropicalFish> p_186232_, LevelAccessor p_186233_, MobSpawnType p_186234_, BlockPos p_186235_, Random p_186236_) {
-      return p_186233_.getFluidState(p_186235_.below()).is(FluidTags.WATER) && (Objects.equals(p_186233_.getBiomeName(p_186235_), Optional.of(Biomes.LUSH_CAVES)) || WaterAnimal.checkSurfaceWaterAnimalSpawnRules(p_186232_, p_186233_, p_186234_, p_186235_, p_186236_));
+      return p_186233_.getFluidState(p_186235_.below()).is(FluidTags.WATER) && p_186233_.getBlockState(p_186235_.above()).is(Blocks.WATER) && (p_186233_.getBiome(p_186235_).is(Biomes.LUSH_CAVES) || WaterAnimal.checkSurfaceWaterAnimalSpawnRules(p_186232_, p_186233_, p_186234_, p_186235_, p_186236_));
    }
 
    static enum Pattern {

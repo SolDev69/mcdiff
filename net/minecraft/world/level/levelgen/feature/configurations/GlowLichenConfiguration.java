@@ -6,7 +6,9 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.Collections;
 import java.util.List;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryCodecs;
 import net.minecraft.world.level.block.Block;
 
 public class GlowLichenConfiguration implements FeatureConfiguration {
@@ -21,8 +23,8 @@ public class GlowLichenConfiguration implements FeatureConfiguration {
          return p_160897_.canPlaceOnWall;
       }), Codec.floatRange(0.0F, 1.0F).fieldOf("chance_of_spreading").orElse(0.5F).forGetter((p_160895_) -> {
          return p_160895_.chanceOfSpreading;
-      }), Registry.BLOCK.byNameCodec().listOf().fieldOf("can_be_placed_on").forGetter((p_160893_) -> {
-         return p_160893_.canBePlacedOn;
+      }), RegistryCodecs.homogeneousList(Registry.BLOCK_REGISTRY).fieldOf("can_be_placed_on").forGetter((p_204798_) -> {
+         return p_204798_.canBePlacedOn;
       })).apply(p_160891_, GlowLichenConfiguration::new);
    });
    public final int searchRange;
@@ -30,26 +32,26 @@ public class GlowLichenConfiguration implements FeatureConfiguration {
    public final boolean canPlaceOnCeiling;
    public final boolean canPlaceOnWall;
    public final float chanceOfSpreading;
-   public final List<Block> canBePlacedOn;
+   public final HolderSet<Block> canBePlacedOn;
    public final List<Direction> validDirections;
 
-   public GlowLichenConfiguration(int p_160879_, boolean p_160880_, boolean p_160881_, boolean p_160882_, float p_160883_, List<Block> p_160884_) {
-      this.searchRange = p_160879_;
-      this.canPlaceOnFloor = p_160880_;
-      this.canPlaceOnCeiling = p_160881_;
-      this.canPlaceOnWall = p_160882_;
-      this.chanceOfSpreading = p_160883_;
-      this.canBePlacedOn = p_160884_;
+   public GlowLichenConfiguration(int p_204791_, boolean p_204792_, boolean p_204793_, boolean p_204794_, float p_204795_, HolderSet<Block> p_204796_) {
+      this.searchRange = p_204791_;
+      this.canPlaceOnFloor = p_204792_;
+      this.canPlaceOnCeiling = p_204793_;
+      this.canPlaceOnWall = p_204794_;
+      this.chanceOfSpreading = p_204795_;
+      this.canBePlacedOn = p_204796_;
       List<Direction> list = Lists.newArrayList();
-      if (p_160881_) {
+      if (p_204793_) {
          list.add(Direction.UP);
       }
 
-      if (p_160880_) {
+      if (p_204792_) {
          list.add(Direction.DOWN);
       }
 
-      if (p_160882_) {
+      if (p_204794_) {
          Direction.Plane.HORIZONTAL.forEach(list::add);
       }
 

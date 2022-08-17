@@ -567,14 +567,14 @@ public class Mth {
    }
 
    public static double[] cumulativeSum(double... p_144913_) {
-      float f = 0.0F;
+      double d0 = 0.0D;
 
-      for(double d0 : p_144913_) {
-         f = (float)((double)f + d0);
+      for(double d1 : p_144913_) {
+         d0 += d1;
       }
 
       for(int i = 0; i < p_144913_.length; ++i) {
-         p_144913_[i] /= (double)f;
+         p_144913_[i] /= d0;
       }
 
       for(int j = 0; j < p_144913_.length; ++j) {
@@ -777,12 +777,20 @@ public class Mth {
       return p_144937_ + (float)p_144936_.nextGaussian() * p_144938_;
    }
 
+   public static double lengthSquared(double p_211590_, double p_211591_) {
+      return p_211590_ * p_211590_ + p_211591_ * p_211591_;
+   }
+
    public static double length(double p_184646_, double p_184647_) {
-      return Math.sqrt(p_184646_ * p_184646_ + p_184647_ * p_184647_);
+      return Math.sqrt(lengthSquared(p_184646_, p_184647_));
+   }
+
+   public static double lengthSquared(double p_211593_, double p_211594_, double p_211595_) {
+      return p_211593_ * p_211593_ + p_211594_ * p_211594_ + p_211595_ * p_211595_;
    }
 
    public static double length(double p_184649_, double p_184650_, double p_184651_) {
-      return Math.sqrt(p_184649_ * p_184649_ + p_184650_ * p_184650_ + p_184651_ * p_184651_);
+      return Math.sqrt(lengthSquared(p_184649_, p_184650_, p_184651_));
    }
 
    public static int quantize(double p_184629_, int p_184630_) {

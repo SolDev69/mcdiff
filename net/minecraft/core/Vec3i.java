@@ -195,31 +195,33 @@ public class Vec3i implements Comparable<Vec3i> {
    }
 
    public boolean closerThan(Vec3i p_123315_, double p_123316_) {
-      return this.distSqr((double)p_123315_.getX(), (double)p_123315_.getY(), (double)p_123315_.getZ(), false) < p_123316_ * p_123316_;
+      return this.distSqr(p_123315_) < Mth.square(p_123316_);
    }
 
-   public boolean closerThan(Position p_123307_, double p_123308_) {
-      return this.distSqr(p_123307_.x(), p_123307_.y(), p_123307_.z(), true) < p_123308_ * p_123308_;
+   public boolean closerToCenterThan(Position p_203196_, double p_203197_) {
+      return this.distToCenterSqr(p_203196_) < Mth.square(p_203197_);
    }
 
    public double distSqr(Vec3i p_123332_) {
-      return this.distSqr((double)p_123332_.getX(), (double)p_123332_.getY(), (double)p_123332_.getZ(), true);
+      return this.distToLowCornerSqr((double)p_123332_.getX(), (double)p_123332_.getY(), (double)p_123332_.getZ());
    }
 
-   public double distSqr(Position p_123310_, boolean p_123311_) {
-      return this.distSqr(p_123310_.x(), p_123310_.y(), p_123310_.z(), p_123311_);
+   public double distToCenterSqr(Position p_203194_) {
+      return this.distToCenterSqr(p_203194_.x(), p_203194_.y(), p_203194_.z());
    }
 
-   public double distSqr(Vec3i p_175583_, boolean p_175584_) {
-      return this.distSqr((double)p_175583_.x, (double)p_175583_.y, (double)p_175583_.z, p_175584_);
+   public double distToCenterSqr(double p_203199_, double p_203200_, double p_203201_) {
+      double d0 = (double)this.getX() + 0.5D - p_203199_;
+      double d1 = (double)this.getY() + 0.5D - p_203200_;
+      double d2 = (double)this.getZ() + 0.5D - p_203201_;
+      return d0 * d0 + d1 * d1 + d2 * d2;
    }
 
-   public double distSqr(double p_123300_, double p_123301_, double p_123302_, boolean p_123303_) {
-      double d0 = p_123303_ ? 0.5D : 0.0D;
-      double d1 = (double)this.getX() + d0 - p_123300_;
-      double d2 = (double)this.getY() + d0 - p_123301_;
-      double d3 = (double)this.getZ() + d0 - p_123302_;
-      return d1 * d1 + d2 * d2 + d3 * d3;
+   public double distToLowCornerSqr(double p_203203_, double p_203204_, double p_203205_) {
+      double d0 = (double)this.getX() - p_203203_;
+      double d1 = (double)this.getY() - p_203204_;
+      double d2 = (double)this.getZ() - p_203205_;
+      return d0 * d0 + d1 * d1 + d2 * d2;
    }
 
    public int distManhattan(Vec3i p_123334_) {

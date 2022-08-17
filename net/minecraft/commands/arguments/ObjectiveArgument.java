@@ -54,11 +54,13 @@ public class ObjectiveArgument implements ArgumentType<String> {
    }
 
    public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> p_101974_, SuggestionsBuilder p_101975_) {
-      if (p_101974_.getSource() instanceof CommandSourceStack) {
-         return SharedSuggestionProvider.suggest(((CommandSourceStack)p_101974_.getSource()).getServer().getScoreboard().getObjectiveNames(), p_101975_);
-      } else if (p_101974_.getSource() instanceof SharedSuggestionProvider) {
-         SharedSuggestionProvider sharedsuggestionprovider = (SharedSuggestionProvider)p_101974_.getSource();
-         return sharedsuggestionprovider.customSuggestion((CommandContext<SharedSuggestionProvider>)p_101974_, p_101975_);
+      S s = p_101974_.getSource();
+      if (s instanceof CommandSourceStack) {
+         CommandSourceStack commandsourcestack = (CommandSourceStack)s;
+         return SharedSuggestionProvider.suggest(commandsourcestack.getServer().getScoreboard().getObjectiveNames(), p_101975_);
+      } else if (s instanceof SharedSuggestionProvider) {
+         SharedSuggestionProvider sharedsuggestionprovider = (SharedSuggestionProvider)s;
+         return sharedsuggestionprovider.customSuggestion(p_101974_);
       } else {
          return Suggestions.empty();
       }

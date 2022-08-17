@@ -1,13 +1,17 @@
 package net.minecraft.world.level.levelgen.synth;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.mojang.serialization.Codec;
 import java.util.stream.IntStream;
 import net.minecraft.util.Mth;
-import net.minecraft.world.level.levelgen.NoiseChunk;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.NoiseSamplingSettings;
 import net.minecraft.world.level.levelgen.RandomSource;
+import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 
-public class BlendedNoise implements NoiseChunk.NoiseFiller {
+public class BlendedNoise implements DensityFunction.SimpleFunction {
+   public static final BlendedNoise UNSEEDED = new BlendedNoise(new XoroshiroRandomSource(0L), new NoiseSamplingSettings(1.0D, 1.0D, 80.0D, 160.0D), 4, 8);
+   public static final Codec<BlendedNoise> CODEC = Codec.unit(UNSEEDED);
    private final PerlinNoise minLimitNoise;
    private final PerlinNoise maxLimitNoise;
    private final PerlinNoise mainNoise;
@@ -17,6 +21,7 @@ public class BlendedNoise implements NoiseChunk.NoiseFiller {
    private final double yMainScale;
    private final int cellWidth;
    private final int cellHeight;
+   private final double maxValue;
 
    private BlendedNoise(PerlinNoise p_192811_, PerlinNoise p_192812_, PerlinNoise p_192813_, NoiseSamplingSettings p_192814_, int p_192815_, int p_192816_) {
       this.minLimitNoise = p_192811_;
@@ -28,16 +33,17 @@ public class BlendedNoise implements NoiseChunk.NoiseFiller {
       this.yMainScale = this.yScale / p_192814_.yFactor();
       this.cellWidth = p_192815_;
       this.cellHeight = p_192816_;
+      this.maxValue = p_192811_.maxBrokenValue(this.yScale);
    }
 
    public BlendedNoise(RandomSource p_192806_, NoiseSamplingSettings p_192807_, int p_192808_, int p_192809_) {
       this(PerlinNoise.createLegacyForBlendedNoise(p_192806_, IntStream.rangeClosed(-15, 0)), PerlinNoise.createLegacyForBlendedNoise(p_192806_, IntStream.rangeClosed(-15, 0)), PerlinNoise.createLegacyForBlendedNoise(p_192806_, IntStream.rangeClosed(-7, 0)), p_192807_, p_192808_, p_192809_);
    }
 
-   public double calculateNoise(int p_192820_, int p_192821_, int p_192822_) {
-      int i = Math.floorDiv(p_192820_, this.cellWidth);
-      int j = Math.floorDiv(p_192821_, this.cellHeight);
-      int k = Math.floorDiv(p_192822_, this.cellWidth);
+   public double compute(DensityFunction.FunctionContext p_210621_) {
+      int i = Math.floorDiv(p_210621_.blockX(), this.cellWidth);
+      int j = Math.floorDiv(p_210621_.blockY(), this.cellHeight);
+      int k = Math.floorDiv(p_210621_.blockZ(), this.cellWidth);
       double d0 = 0.0D;
       double d1 = 0.0D;
       double d2 = 0.0D;
@@ -83,6 +89,14 @@ public class BlendedNoise implements NoiseChunk.NoiseFiller {
       return Mth.clampedLerp(d0 / 512.0D, d1 / 512.0D, d8) / 128.0D;
    }
 
+   public double minValue() {
+      return -this.maxValue();
+   }
+
+   public double maxValue() {
+      return this.maxValue;
+   }
+
    @VisibleForTesting
    public void parityConfigString(StringBuilder p_192818_) {
       p_192818_.append("BlendedNoise{minLimitNoise=");
@@ -92,5 +106,9 @@ public class BlendedNoise implements NoiseChunk.NoiseFiller {
       p_192818_.append(", mainNoise=");
       this.mainNoise.parityConfigString(p_192818_);
       p_192818_.append(String.format(", xzScale=%.3f, yScale=%.3f, xzMainScale=%.3f, yMainScale=%.3f, cellWidth=%d, cellHeight=%d", this.xzScale, this.yScale, this.xzMainScale, this.yMainScale, this.cellWidth, this.cellHeight)).append('}');
+   }
+
+   public Codec<? extends DensityFunction> codec() {
+      return CODEC;
    }
 }

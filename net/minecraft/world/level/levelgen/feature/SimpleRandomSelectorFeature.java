@@ -20,7 +20,7 @@ public class SimpleRandomSelectorFeature extends Feature<SimpleRandomFeatureConf
       BlockPos blockpos = p_160343_.origin();
       ChunkGenerator chunkgenerator = p_160343_.chunkGenerator();
       int i = random.nextInt(simplerandomfeatureconfiguration.features.size());
-      PlacedFeature placedfeature = simplerandomfeatureconfiguration.features.get(i).get();
+      PlacedFeature placedfeature = simplerandomfeatureconfiguration.features.get(i).value();
       return placedfeature.place(worldgenlevel, chunkgenerator, random, blockpos);
    }
 }

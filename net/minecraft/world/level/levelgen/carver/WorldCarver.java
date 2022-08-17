@@ -8,6 +8,7 @@ import java.util.function.Function;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ChunkPos;
@@ -19,6 +20,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.chunk.CarvingMask;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.Aquifer;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
@@ -56,7 +58,7 @@ public abstract class WorldCarver<C extends CarverConfiguration> {
       return 4;
    }
 
-   protected boolean carveEllipsoid(CarvingContext p_190754_, C p_190755_, ChunkAccess p_190756_, Function<BlockPos, Biome> p_190757_, Aquifer p_190758_, double p_190759_, double p_190760_, double p_190761_, double p_190762_, double p_190763_, CarvingMask p_190764_, WorldCarver.CarveSkipChecker p_190765_) {
+   protected boolean carveEllipsoid(CarvingContext p_190754_, C p_190755_, ChunkAccess p_190756_, Function<BlockPos, Holder<Biome>> p_190757_, Aquifer p_190758_, double p_190759_, double p_190760_, double p_190761_, double p_190762_, double p_190763_, CarvingMask p_190764_, WorldCarver.CarveSkipChecker p_190765_) {
       ChunkPos chunkpos = p_190756_.getPos();
       double d0 = (double)chunkpos.getMiddleBlockX();
       double d1 = (double)chunkpos.getMiddleBlockZ();
@@ -103,7 +105,7 @@ public abstract class WorldCarver<C extends CarverConfiguration> {
       }
    }
 
-   protected boolean carveBlock(CarvingContext p_190744_, C p_190745_, ChunkAccess p_190746_, Function<BlockPos, Biome> p_190747_, CarvingMask p_190748_, BlockPos.MutableBlockPos p_190749_, BlockPos.MutableBlockPos p_190750_, Aquifer p_190751_, MutableBoolean p_190752_) {
+   protected boolean carveBlock(CarvingContext p_190744_, C p_190745_, ChunkAccess p_190746_, Function<BlockPos, Holder<Biome>> p_190747_, CarvingMask p_190748_, BlockPos.MutableBlockPos p_190749_, BlockPos.MutableBlockPos p_190750_, Aquifer p_190751_, MutableBoolean p_190752_) {
       BlockState blockstate = p_190746_.getBlockState(p_190749_);
       if (blockstate.is(Blocks.GRASS_BLOCK) || blockstate.is(Blocks.MYCELIUM)) {
          p_190752_.setTrue();
@@ -144,7 +146,7 @@ public abstract class WorldCarver<C extends CarverConfiguration> {
       if (p_159421_.getY() <= p_159420_.lavaLevel.resolveY(p_159419_)) {
          return LAVA.createLegacyBlock();
       } else {
-         BlockState blockstate = p_159422_.computeSubstance(p_159421_.getX(), p_159421_.getY(), p_159421_.getZ(), 0.0D, 0.0D);
+         BlockState blockstate = p_159422_.computeSubstance(new DensityFunction.SinglePointContext(p_159421_.getX(), p_159421_.getY(), p_159421_.getZ()), 0.0D);
          if (blockstate == null) {
             return isDebugEnabled(p_159420_) ? p_159420_.debugSettings.getBarrierState() : null;
          } else {
@@ -164,7 +166,7 @@ public abstract class WorldCarver<C extends CarverConfiguration> {
       }
    }
 
-   public abstract boolean carve(CarvingContext p_190766_, C p_190767_, ChunkAccess p_190768_, Function<BlockPos, Biome> p_190769_, Random p_190770_, Aquifer p_190771_, ChunkPos p_190772_, CarvingMask p_190773_);
+   public abstract boolean carve(CarvingContext p_190766_, C p_190767_, ChunkAccess p_190768_, Function<BlockPos, Holder<Biome>> p_190769_, Random p_190770_, Aquifer p_190771_, ChunkPos p_190772_, CarvingMask p_190773_);
 
    public abstract boolean isStartChunk(C p_159384_, Random p_159385_);
 

@@ -1,5 +1,6 @@
 package net.minecraft;
 
+import com.google.common.base.Ticker;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -8,10 +9,9 @@ import com.mojang.datafixers.DataFixUtils;
 import com.mojang.datafixers.DSL.TypeReference;
 import com.mojang.datafixers.types.Type;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import it.unimi.dsi.fastutil.Hash.Strategy;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
@@ -62,15 +62,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.datafix.DataFixers;
 import net.minecraft.world.level.block.state.properties.Property;
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LoggerContext;
-import org.apache.logging.log4j.core.config.Configuration;
-import org.apache.logging.log4j.core.lookup.StrLookup;
-import org.apache.logging.log4j.core.lookup.StrSubstitutor;
+import org.slf4j.Logger;
 
 public class Util {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final int DEFAULT_MAX_THREADS = 255;
    private static final String MAX_THREADS_SYSTEM_PROPERTY = "max.bg.threads";
    private static final AtomicInteger WORKER_COUNT = new AtomicInteger(1);
@@ -78,17 +73,19 @@ public class Util {
    private static final ExecutorService BACKGROUND_EXECUTOR = makeExecutor("Main");
    private static final ExecutorService IO_POOL = makeIoExecutor();
    public static LongSupplier timeSource = System::nanoTime;
+   public static final Ticker TICKER = new Ticker() {
+      public long read() {
+         return Util.timeSource.getAsLong();
+      }
+   };
    public static final UUID NIL_UUID = new UUID(0L, 0L);
-   public static final FileSystemProvider ZIP_FILE_SYSTEM_PROVIDER = FileSystemProvider.installedProviders().stream().filter((p_143794_) -> {
-      return p_143794_.getScheme().equalsIgnoreCase("jar");
+   public static final FileSystemProvider ZIP_FILE_SYSTEM_PROVIDER = FileSystemProvider.installedProviders().stream().filter((p_201865_) -> {
+      return p_201865_.getScheme().equalsIgnoreCase("jar");
    }).findFirst().orElseThrow(() -> {
       return new IllegalStateException("No jar file system provider found");
    });
-   private static Consumer<String> thePauser = (p_183990_) -> {
+   private static Consumer<String> thePauser = (p_201905_) -> {
    };
-
-   public static void preInitLog4j() {
-   }
 
    public static <K, V> Collector<Entry<? extends K, ? extends V>, ?, Map<K, V>> toMap() {
       return Collectors.toMap(Entry::getKey, Entry::getValue);
@@ -120,16 +117,16 @@ public class Util {
       if (i <= 0) {
          executorservice = MoreExecutors.newDirectExecutorService();
       } else {
-         executorservice = new ForkJoinPool(i, (p_183945_) -> {
-            ForkJoinWorkerThread forkjoinworkerthread = new ForkJoinWorkerThread(p_183945_) {
-               protected void onTermination(Throwable p_137590_) {
-                  if (p_137590_ != null) {
-                     Util.LOGGER.warn("{} died", this.getName(), p_137590_);
+         executorservice = new ForkJoinPool(i, (p_201863_) -> {
+            ForkJoinWorkerThread forkjoinworkerthread = new ForkJoinWorkerThread(p_201863_) {
+               protected void onTermination(Throwable p_211561_) {
+                  if (p_211561_ != null) {
+                     Util.LOGGER.warn("{} died", this.getName(), p_211561_);
                   } else {
                      Util.LOGGER.debug("{} shutdown", (Object)this.getName());
                   }
 
-                  super.onTermination(p_137590_);
+                  super.onTermination(p_211561_);
                }
             };
             forkjoinworkerthread.setName("Worker-" + p_137478_ + "-" + WORKER_COUNT.getAndIncrement());
@@ -192,8 +189,8 @@ public class Util {
    }
 
    private static ExecutorService makeIoExecutor() {
-      return Executors.newCachedThreadPool((p_183942_) -> {
-         Thread thread = new Thread(p_183942_);
+      return Executors.newCachedThreadPool((p_201860_) -> {
+         Thread thread = new Thread(p_201860_);
          thread.setName("IO-Worker-" + WORKER_COUNT.getAndIncrement());
          thread.setUncaughtExceptionHandler(Util::onThreadException);
          return thread;
@@ -296,8 +293,8 @@ public class Util {
 
    public static Stream<String> getVmArguments() {
       RuntimeMXBean runtimemxbean = ManagementFactory.getRuntimeMXBean();
-      return runtimemxbean.getInputArguments().stream().filter((p_183987_) -> {
-         return p_183987_.startsWith("-X");
+      return runtimemxbean.getInputArguments().stream().filter((p_201903_) -> {
+         return p_201903_.startsWith("-X");
       });
    }
 
@@ -356,47 +353,38 @@ public class Util {
       return (Strategy<K>) Util.IdentityStrategy.INSTANCE;
    }
 
-   public static <V> CompletableFuture<List<V>> sequence(List<? extends CompletableFuture<? extends V>> p_137568_) {
-      return p_137568_.stream().reduce(CompletableFuture.completedFuture(Lists.newArrayList()), (p_143819_, p_143820_) -> {
-         return p_143820_.thenCombine(p_143819_, (p_183939_, p_183940_) -> {
-            List<V> list = Lists.newArrayListWithCapacity(p_183940_.size() + 1);
-            list.addAll(p_183940_);
-            list.add(p_183939_);
-            return list;
+   public static <V> CompletableFuture<List<V>> sequence(List<? extends CompletableFuture<V>> p_137568_) {
+      if (p_137568_.isEmpty()) {
+         return CompletableFuture.completedFuture(List.of());
+      } else if (p_137568_.size() == 1) {
+         return p_137568_.get(0).thenApply(List::of);
+      } else {
+         CompletableFuture<Void> completablefuture = CompletableFuture.allOf(p_137568_.toArray(new CompletableFuture[0]));
+         return completablefuture.thenApply((p_203746_) -> {
+            return p_137568_.stream().map(CompletableFuture::join).toList();
          });
-      }, (p_183967_, p_183968_) -> {
-         return p_183967_.thenCombine(p_183968_, (p_183953_, p_183954_) -> {
-            List<V> list = Lists.newArrayListWithCapacity(p_183953_.size() + p_183954_.size());
-            list.addAll(p_183953_);
-            list.addAll(p_183954_);
-            return list;
-         });
-      });
+      }
    }
 
    public static <V> CompletableFuture<List<V>> sequenceFailFast(List<? extends CompletableFuture<? extends V>> p_143841_) {
       List<V> list = Lists.newArrayListWithCapacity(p_143841_.size());
       CompletableFuture<?>[] completablefuture = new CompletableFuture[p_143841_.size()];
       CompletableFuture<Void> completablefuture1 = new CompletableFuture<>();
-      p_143841_.forEach((p_183959_) -> {
+      p_143841_.forEach((p_203730_) -> {
          int i = list.size();
          list.add((V)null);
-         completablefuture[i] = p_183959_.whenComplete((p_183964_, p_183965_) -> {
-            if (p_183965_ != null) {
-               completablefuture1.completeExceptionally(p_183965_);
+         completablefuture[i] = p_203730_.whenComplete((p_203735_, p_203736_) -> {
+            if (p_203736_ != null) {
+               completablefuture1.completeExceptionally(p_203736_);
             } else {
-               list.set(i, p_183964_);
+               list.set(i, p_203735_);
             }
 
          });
       });
-      return CompletableFuture.allOf(completablefuture).applyToEither(completablefuture1, (p_183951_) -> {
+      return CompletableFuture.allOf(completablefuture).applyToEither(completablefuture1, (p_203725_) -> {
          return list;
       });
-   }
-
-   public static <T> Stream<T> toStream(Optional<? extends T> p_137520_) {
-      return DataFixUtils.orElseGet(p_137520_.map(Stream::of), Stream::empty);
    }
 
    public static <T> Optional<T> ifElse(Optional<T> p_137522_, Consumer<T> p_137523_, Runnable p_137524_) {
@@ -470,6 +458,10 @@ public class Util {
 
    public static <T> T getRandom(List<T> p_143805_, Random p_143806_) {
       return p_143805_.get(p_143806_.nextInt(p_143805_.size()));
+   }
+
+   public static <T> Optional<T> getRandomSafe(List<T> p_203748_, Random p_203749_) {
+      return p_203748_.isEmpty() ? Optional.empty() : Optional.of(getRandom(p_203748_, p_203749_));
    }
 
    private static BooleanSupplier createRenamer(final Path p_137503_, final Path p_137504_) {
@@ -561,11 +553,19 @@ public class Util {
    }
 
    public static void safeReplaceFile(Path p_137506_, Path p_137507_, Path p_137508_) {
+      safeReplaceOrMoveFile(p_137506_, p_137507_, p_137508_, false);
+   }
+
+   public static void safeReplaceOrMoveFile(File p_212225_, File p_212226_, File p_212227_, boolean p_212228_) {
+      safeReplaceOrMoveFile(p_212225_.toPath(), p_212226_.toPath(), p_212227_.toPath(), p_212228_);
+   }
+
+   public static void safeReplaceOrMoveFile(Path p_212230_, Path p_212231_, Path p_212232_, boolean p_212233_) {
       int i = 10;
-      if (!Files.exists(p_137506_) || runWithRetries(10, "create backup " + p_137508_, createDeleter(p_137508_), createRenamer(p_137506_, p_137508_), createFileCreatedCheck(p_137508_))) {
-         if (runWithRetries(10, "remove old " + p_137506_, createDeleter(p_137506_), createFileDeletedCheck(p_137506_))) {
-            if (!runWithRetries(10, "replace " + p_137506_ + " with " + p_137507_, createRenamer(p_137507_, p_137506_), createFileCreatedCheck(p_137506_))) {
-               runWithRetries(10, "restore " + p_137506_ + " from " + p_137508_, createRenamer(p_137508_, p_137506_), createFileCreatedCheck(p_137506_));
+      if (!Files.exists(p_212230_) || runWithRetries(10, "create backup " + p_212232_, createDeleter(p_212232_), createRenamer(p_212230_, p_212232_), createFileCreatedCheck(p_212232_))) {
+         if (runWithRetries(10, "remove old " + p_212230_, createDeleter(p_212230_), createFileDeletedCheck(p_212230_))) {
+            if (!runWithRetries(10, "replace " + p_212230_ + " with " + p_212231_, createRenamer(p_212231_, p_212230_), createFileCreatedCheck(p_212230_)) && !p_212233_) {
+               runWithRetries(10, "restore " + p_212230_ + " from " + p_212232_, createRenamer(p_212232_, p_212230_), createFileCreatedCheck(p_212230_));
             }
 
          }
@@ -593,8 +593,8 @@ public class Util {
    }
 
    public static Consumer<String> prefix(String p_137490_, Consumer<String> p_137491_) {
-      return (p_183974_) -> {
-         p_137491_.accept(p_137490_ + p_183974_);
+      return (p_203740_) -> {
+         p_137491_.accept(p_137490_ + p_203740_);
       };
    }
 
@@ -642,8 +642,8 @@ public class Util {
    }
 
    public static String sanitizeName(String p_137484_, CharPredicate p_137485_) {
-      return p_137484_.toLowerCase(Locale.ROOT).chars().mapToObj((p_183977_) -> {
-         return p_137485_.test((char)p_183977_) ? Character.toString((char)p_183977_) : "_";
+      return p_137484_.toLowerCase(Locale.ROOT).chars().mapToObj((p_203743_) -> {
+         return p_137485_.test((char)p_203743_) ? Character.toString((char)p_203743_) : "_";
       }).collect(Collectors.joining());
    }
 
@@ -651,8 +651,8 @@ public class Util {
       return new Function<T, R>() {
          private final Map<T, R> cache = Maps.newHashMap();
 
-         public R apply(T p_143849_) {
-            return this.cache.computeIfAbsent(p_143849_, p_143828_);
+         public R apply(T p_211578_) {
+            return this.cache.computeIfAbsent(p_211578_, p_143828_);
          }
 
          public String toString() {
@@ -665,9 +665,9 @@ public class Util {
       return new BiFunction<T, U, R>() {
          private final Map<Pair<T, U>, R> cache = Maps.newHashMap();
 
-         public R apply(T p_143859_, U p_143860_) {
-            return this.cache.computeIfAbsent(Pair.of(p_143859_, p_143860_), (p_143857_) -> {
-               return p_143822_.apply(p_143857_.getFirst(), p_143857_.getSecond());
+         public R apply(T p_211555_, U p_211556_) {
+            return this.cache.computeIfAbsent(Pair.of(p_211555_, p_211556_), (p_211553_) -> {
+               return p_143822_.apply(p_211553_.getFirst(), p_211553_.getSecond());
             });
          }
 
@@ -675,23 +675,6 @@ public class Util {
             return "memoize/2[function=" + p_143822_ + ", size=" + this.cache.size() + "]";
          }
       };
-   }
-
-   static {
-      System.setProperty("log4j2.formatMsgNoLookups", "true");
-      LoggerContext loggercontext = LoggerContext.getContext(false);
-      PropertyChangeListener propertychangelistener = (p_201393_) -> {
-         Configuration configuration = loggercontext.getConfiguration();
-         if (configuration != null) {
-            StrSubstitutor strsubstitutor = configuration.getStrSubstitutor();
-            if (strsubstitutor != null) {
-               strsubstitutor.setVariableResolver((StrLookup)null);
-            }
-         }
-
-      };
-      propertychangelistener.propertyChange((PropertyChangeEvent)null);
-      loggercontext.addPropertyChangeListener(propertychangelistener);
    }
 
    static enum IdentityStrategy implements Strategy<Object> {

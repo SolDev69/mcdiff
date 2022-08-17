@@ -1,5 +1,6 @@
 package net.minecraft.world.level.levelgen.feature;
 
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import java.util.Random;
 import java.util.function.Predicate;
@@ -18,11 +19,10 @@ import net.minecraft.world.level.levelgen.feature.configurations.NoneFeatureConf
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
 import net.minecraft.world.level.material.Material;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class MonsterRoomFeature extends Feature<NoneFeatureConfiguration> {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final EntityType<?>[] MOBS = new EntityType[]{EntityType.SKELETON, EntityType.ZOMBIE, EntityType.ZOMBIE, EntityType.SPIDER};
    private static final BlockState AIR = Blocks.CAVE_AIR.defaultBlockState();
 
@@ -31,7 +31,7 @@ public class MonsterRoomFeature extends Feature<NoneFeatureConfiguration> {
    }
 
    public boolean place(FeaturePlaceContext<NoneFeatureConfiguration> p_160066_) {
-      Predicate<BlockState> predicate = Feature.isReplaceable(BlockTags.FEATURES_CANNOT_REPLACE.getName());
+      Predicate<BlockState> predicate = Feature.isReplaceable(BlockTags.FEATURES_CANNOT_REPLACE);
       BlockPos blockpos = p_160066_.origin();
       Random random = p_160066_.random();
       WorldGenLevel worldgenlevel = p_160066_.level();

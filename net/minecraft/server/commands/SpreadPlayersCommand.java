@@ -7,6 +7,7 @@ import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
 import com.mojang.brigadier.exceptions.Dynamic4CommandExceptionType;
 import java.util.Collection;
 import java.util.Locale;
@@ -38,28 +39,37 @@ public class SpreadPlayersCommand {
    private static final Dynamic4CommandExceptionType ERROR_FAILED_TO_SPREAD_ENTITIES = new Dynamic4CommandExceptionType((p_138723_, p_138724_, p_138725_, p_138726_) -> {
       return new TranslatableComponent("commands.spreadplayers.failed.entities", p_138723_, p_138724_, p_138725_, p_138726_);
    });
+   private static final Dynamic2CommandExceptionType ERROR_INVALID_MAX_HEIGHT = new Dynamic2CommandExceptionType((p_201854_, p_201855_) -> {
+      return new TranslatableComponent("commands.spreadplayers.failed.invalid.height", p_201854_, p_201855_);
+   });
 
    public static void register(CommandDispatcher<CommandSourceStack> p_138697_) {
-      p_138697_.register(Commands.literal("spreadplayers").requires((p_138701_) -> {
-         return p_138701_.hasPermission(2);
-      }).then(Commands.argument("center", Vec2Argument.vec2()).then(Commands.argument("spreadDistance", FloatArgumentType.floatArg(0.0F)).then(Commands.argument("maxRange", FloatArgumentType.floatArg(1.0F)).then(Commands.argument("respectTeams", BoolArgumentType.bool()).then(Commands.argument("targets", EntityArgument.entities()).executes((p_138743_) -> {
-         return spreadPlayers(p_138743_.getSource(), Vec2Argument.getVec2(p_138743_, "center"), FloatArgumentType.getFloat(p_138743_, "spreadDistance"), FloatArgumentType.getFloat(p_138743_, "maxRange"), p_138743_.getSource().getLevel().getMaxBuildHeight(), BoolArgumentType.getBool(p_138743_, "respectTeams"), EntityArgument.getEntities(p_138743_, "targets"));
-      }))).then(Commands.literal("under").then(Commands.argument("maxHeight", IntegerArgumentType.integer(0)).then(Commands.argument("respectTeams", BoolArgumentType.bool()).then(Commands.argument("targets", EntityArgument.entities()).executes((p_138699_) -> {
-         return spreadPlayers(p_138699_.getSource(), Vec2Argument.getVec2(p_138699_, "center"), FloatArgumentType.getFloat(p_138699_, "spreadDistance"), FloatArgumentType.getFloat(p_138699_, "maxRange"), IntegerArgumentType.getInteger(p_138699_, "maxHeight"), BoolArgumentType.getBool(p_138699_, "respectTeams"), EntityArgument.getEntities(p_138699_, "targets"));
+      p_138697_.register(Commands.literal("spreadplayers").requires((p_201852_) -> {
+         return p_201852_.hasPermission(2);
+      }).then(Commands.argument("center", Vec2Argument.vec2()).then(Commands.argument("spreadDistance", FloatArgumentType.floatArg(0.0F)).then(Commands.argument("maxRange", FloatArgumentType.floatArg(1.0F)).then(Commands.argument("respectTeams", BoolArgumentType.bool()).then(Commands.argument("targets", EntityArgument.entities()).executes((p_138699_) -> {
+         return spreadPlayers(p_138699_.getSource(), Vec2Argument.getVec2(p_138699_, "center"), FloatArgumentType.getFloat(p_138699_, "spreadDistance"), FloatArgumentType.getFloat(p_138699_, "maxRange"), p_138699_.getSource().getLevel().getMaxBuildHeight(), BoolArgumentType.getBool(p_138699_, "respectTeams"), EntityArgument.getEntities(p_138699_, "targets"));
+      }))).then(Commands.literal("under").then(Commands.argument("maxHeight", IntegerArgumentType.integer()).then(Commands.argument("respectTeams", BoolArgumentType.bool()).then(Commands.argument("targets", EntityArgument.entities()).executes((p_201850_) -> {
+         return spreadPlayers(p_201850_.getSource(), Vec2Argument.getVec2(p_201850_, "center"), FloatArgumentType.getFloat(p_201850_, "spreadDistance"), FloatArgumentType.getFloat(p_201850_, "maxRange"), IntegerArgumentType.getInteger(p_201850_, "maxHeight"), BoolArgumentType.getBool(p_201850_, "respectTeams"), EntityArgument.getEntities(p_201850_, "targets"));
       })))))))));
    }
 
    private static int spreadPlayers(CommandSourceStack p_138703_, Vec2 p_138704_, float p_138705_, float p_138706_, int p_138707_, boolean p_138708_, Collection<? extends Entity> p_138709_) throws CommandSyntaxException {
-      Random random = new Random();
-      double d0 = (double)(p_138704_.x - p_138706_);
-      double d1 = (double)(p_138704_.y - p_138706_);
-      double d2 = (double)(p_138704_.x + p_138706_);
-      double d3 = (double)(p_138704_.y + p_138706_);
-      SpreadPlayersCommand.Position[] aspreadplayerscommand$position = createInitialPositions(random, p_138708_ ? getNumberOfTeams(p_138709_) : p_138709_.size(), d0, d1, d2, d3);
-      spreadPositions(p_138704_, (double)p_138705_, p_138703_.getLevel(), random, d0, d1, d2, d3, p_138707_, aspreadplayerscommand$position, p_138708_);
-      double d4 = setPlayerPositions(p_138709_, p_138703_.getLevel(), aspreadplayerscommand$position, p_138707_, p_138708_);
-      p_138703_.sendSuccess(new TranslatableComponent("commands.spreadplayers.success." + (p_138708_ ? "teams" : "entities"), aspreadplayerscommand$position.length, p_138704_.x, p_138704_.y, String.format(Locale.ROOT, "%.2f", d4)), true);
-      return aspreadplayerscommand$position.length;
+      ServerLevel serverlevel = p_138703_.getLevel();
+      int i = serverlevel.getMinBuildHeight();
+      if (p_138707_ < i) {
+         throw ERROR_INVALID_MAX_HEIGHT.create(p_138707_, i);
+      } else {
+         Random random = new Random();
+         double d0 = (double)(p_138704_.x - p_138706_);
+         double d1 = (double)(p_138704_.y - p_138706_);
+         double d2 = (double)(p_138704_.x + p_138706_);
+         double d3 = (double)(p_138704_.y + p_138706_);
+         SpreadPlayersCommand.Position[] aspreadplayerscommand$position = createInitialPositions(random, p_138708_ ? getNumberOfTeams(p_138709_) : p_138709_.size(), d0, d1, d2, d3);
+         spreadPositions(p_138704_, (double)p_138705_, serverlevel, random, d0, d1, d2, d3, p_138707_, aspreadplayerscommand$position, p_138708_);
+         double d4 = setPlayerPositions(p_138709_, serverlevel, aspreadplayerscommand$position, p_138707_, p_138708_);
+         p_138703_.sendSuccess(new TranslatableComponent("commands.spreadplayers.success." + (p_138708_ ? "teams" : "entities"), aspreadplayerscommand$position.length, p_138704_.x, p_138704_.y, String.format(Locale.ROOT, "%.2f", d4)), true);
+         return aspreadplayerscommand$position.length;
+      }
    }
 
    private static int getNumberOfTeams(Collection<? extends Entity> p_138728_) {

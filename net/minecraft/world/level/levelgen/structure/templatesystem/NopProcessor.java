@@ -6,7 +6,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LevelReader;
 
 public class NopProcessor extends StructureProcessor {
-   public static final Codec<NopProcessor> CODEC;
+   public static final Codec<NopProcessor> CODEC = Codec.unit(() -> {
+      return NopProcessor.INSTANCE;
+   });
    public static final NopProcessor INSTANCE = new NopProcessor();
 
    private NopProcessor() {
@@ -19,11 +21,5 @@ public class NopProcessor extends StructureProcessor {
 
    protected StructureProcessorType<?> getType() {
       return StructureProcessorType.NOP;
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
-      });
    }
 }

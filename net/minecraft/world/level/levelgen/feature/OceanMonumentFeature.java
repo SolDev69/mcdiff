@@ -3,11 +3,9 @@ package net.minecraft.world.level.levelgen.feature;
 import com.mojang.serialization.Codec;
 import java.util.Objects;
 import net.minecraft.core.Direction;
-import net.minecraft.util.random.WeightedRandomList;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.core.Holder;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.biome.MobSpawnSettings;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.level.levelgen.RandomSupport;
@@ -22,22 +20,16 @@ import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
 
 public class OceanMonumentFeature extends StructureFeature<NoneFeatureConfiguration> {
-   public static final WeightedRandomList<MobSpawnSettings.SpawnerData> MONUMENT_ENEMIES = WeightedRandomList.create(new MobSpawnSettings.SpawnerData(EntityType.GUARDIAN, 1, 2, 4));
-
    public OceanMonumentFeature(Codec<NoneFeatureConfiguration> p_66472_) {
       super(p_66472_, PieceGeneratorSupplier.simple(OceanMonumentFeature::checkLocation, OceanMonumentFeature::generatePieces));
-   }
-
-   protected boolean linearSeparation() {
-      return false;
    }
 
    private static boolean checkLocation(PieceGeneratorSupplier.Context<NoneFeatureConfiguration> p_197132_) {
       int i = p_197132_.chunkPos().getBlockX(9);
       int j = p_197132_.chunkPos().getBlockZ(9);
 
-      for(Biome biome : p_197132_.biomeSource().getBiomesWithin(i, p_197132_.chunkGenerator().getSeaLevel(), j, 29, p_197132_.chunkGenerator().climateSampler())) {
-         if (biome.getBiomeCategory() != Biome.BiomeCategory.OCEAN && biome.getBiomeCategory() != Biome.BiomeCategory.RIVER) {
+      for(Holder<Biome> holder : p_197132_.biomeSource().getBiomesWithin(i, p_197132_.chunkGenerator().getSeaLevel(), j, 29, p_197132_.chunkGenerator().climateSampler())) {
+         if (Biome.getBiomeCategory(holder) != Biome.BiomeCategory.OCEAN && Biome.getBiomeCategory(holder) != Biome.BiomeCategory.RIVER) {
             return false;
          }
       }

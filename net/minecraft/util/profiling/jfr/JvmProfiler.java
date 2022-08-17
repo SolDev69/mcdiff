@@ -1,5 +1,6 @@
 package net.minecraft.util.profiling.jfr;
 
+import com.mojang.logging.LogUtils;
 import java.net.SocketAddress;
 import java.nio.file.Path;
 import javax.annotation.Nullable;
@@ -7,8 +8,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.profiling.jfr.callback.ProfiledDuration;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public interface JvmProfiler {
    JvmProfiler INSTANCE = (JvmProfiler)(Runtime.class.getModule().getLayer().findModule("jdk.jfr").isPresent() ? JfrProfiler.getInstance() : new JvmProfiler.NoOpProfiler());
@@ -34,7 +34,7 @@ public interface JvmProfiler {
    ProfiledDuration onChunkGenerate(ChunkPos p_185348_, ResourceKey<Level> p_185349_, String p_185350_);
 
    public static class NoOpProfiler implements JvmProfiler {
-      static final Logger LOGGER = LogManager.getLogger();
+      private static final Logger LOGGER = LogUtils.getLogger();
       static final ProfiledDuration noOpCommit = () -> {
       };
 

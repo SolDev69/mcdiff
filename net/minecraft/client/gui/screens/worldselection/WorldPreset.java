@@ -5,10 +5,10 @@ import com.google.common.collect.Lists;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 import net.minecraft.client.gui.screens.CreateBuffetWorldScreen;
 import net.minecraft.client.gui.screens.CreateFlatWorldScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
@@ -26,6 +26,8 @@ import net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.levelgen.flat.FlatLevelGeneratorSettings;
+import net.minecraft.world.level.levelgen.structure.StructureSet;
+import net.minecraft.world.level.levelgen.synth.NormalNoise;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
@@ -38,7 +40,9 @@ public abstract class WorldPreset {
    };
    private static final WorldPreset FLAT = new WorldPreset("flat") {
       protected ChunkGenerator generator(RegistryAccess p_194099_, long p_194100_) {
-         return new FlatLevelSource(FlatLevelGeneratorSettings.getDefault(p_194099_.registryOrThrow(Registry.BIOME_REGISTRY)));
+         Registry<Biome> registry = p_194099_.registryOrThrow(Registry.BIOME_REGISTRY);
+         Registry<StructureSet> registry1 = p_194099_.registryOrThrow(Registry.STRUCTURE_SET_REGISTRY);
+         return new FlatLevelSource(registry1, FlatLevelGeneratorSettings.getDefault(registry, registry1));
       }
    };
    public static final WorldPreset LARGE_BIOMES = new WorldPreset("large_biomes") {
@@ -58,44 +62,49 @@ public abstract class WorldPreset {
    };
    private static final WorldPreset DEBUG = new WorldPreset("debug_all_block_states") {
       protected ChunkGenerator generator(RegistryAccess p_194111_, long p_194112_) {
-         return new DebugLevelSource(p_194111_.registryOrThrow(Registry.BIOME_REGISTRY));
+         return new DebugLevelSource(p_194111_.registryOrThrow(Registry.STRUCTURE_SET_REGISTRY), p_194111_.registryOrThrow(Registry.BIOME_REGISTRY));
       }
    };
    protected static final List<WorldPreset> PRESETS = Lists.newArrayList(NORMAL, FLAT, LARGE_BIOMES, AMPLIFIED, SINGLE_BIOME_SURFACE, DEBUG);
-   protected static final Map<Optional<WorldPreset>, WorldPreset.PresetEditor> EDITORS = ImmutableMap.of(Optional.of(FLAT), (p_194093_, p_194094_) -> {
-      ChunkGenerator chunkgenerator = p_194094_.overworld();
-      return new CreateFlatWorldScreen(p_194093_, (p_194080_) -> {
-         p_194093_.worldGenSettingsComponent.updateSettings(new WorldGenSettings(p_194094_.seed(), p_194094_.generateFeatures(), p_194094_.generateBonusChest(), WorldGenSettings.withOverworld(p_194093_.worldGenSettingsComponent.registryHolder().registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY), p_194094_.dimensions(), new FlatLevelSource(p_194080_))));
-      }, chunkgenerator instanceof FlatLevelSource ? ((FlatLevelSource)chunkgenerator).settings() : FlatLevelGeneratorSettings.getDefault(p_194093_.worldGenSettingsComponent.registryHolder().registryOrThrow(Registry.BIOME_REGISTRY)));
-   }, Optional.of(SINGLE_BIOME_SURFACE), (p_194071_, p_194072_) -> {
-      return new CreateBuffetWorldScreen(p_194071_, p_194071_.worldGenSettingsComponent.registryHolder(), (p_194076_) -> {
-         p_194071_.worldGenSettingsComponent.updateSettings(fromBuffetSettings(p_194071_.worldGenSettingsComponent.registryHolder(), p_194072_, SINGLE_BIOME_SURFACE, p_194076_));
-      }, parseBuffetSettings(p_194071_.worldGenSettingsComponent.registryHolder(), p_194072_));
+   protected static final Map<Optional<WorldPreset>, WorldPreset.PresetEditor> EDITORS = ImmutableMap.of(Optional.of(FLAT), (p_205498_, p_205499_) -> {
+      ChunkGenerator chunkgenerator = p_205499_.overworld();
+      RegistryAccess registryaccess = p_205498_.worldGenSettingsComponent.registryHolder();
+      Registry<Biome> registry = registryaccess.registryOrThrow(Registry.BIOME_REGISTRY);
+      Registry<StructureSet> registry1 = registryaccess.registryOrThrow(Registry.STRUCTURE_SET_REGISTRY);
+      Registry<DimensionType> registry2 = registryaccess.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
+      return new CreateFlatWorldScreen(p_205498_, (p_210935_) -> {
+         p_205498_.worldGenSettingsComponent.updateSettings(new WorldGenSettings(p_205499_.seed(), p_205499_.generateFeatures(), p_205499_.generateBonusChest(), WorldGenSettings.withOverworld(registry2, p_205499_.dimensions(), new FlatLevelSource(registry1, p_210935_))));
+      }, chunkgenerator instanceof FlatLevelSource ? ((FlatLevelSource)chunkgenerator).settings() : FlatLevelGeneratorSettings.getDefault(registry, registry1));
+   }, Optional.of(SINGLE_BIOME_SURFACE), (p_205475_, p_205476_) -> {
+      return new CreateBuffetWorldScreen(p_205475_, p_205475_.worldGenSettingsComponent.registryHolder(), (p_205484_) -> {
+         p_205475_.worldGenSettingsComponent.updateSettings(fromBuffetSettings(p_205475_.worldGenSettingsComponent.registryHolder(), p_205476_, p_205484_));
+      }, parseBuffetSettings(p_205475_.worldGenSettingsComponent.registryHolder(), p_205476_));
    });
    private final Component description;
 
    static NoiseBasedChunkGenerator fixedBiomeGenerator(RegistryAccess p_194086_, long p_194087_, ResourceKey<NoiseGeneratorSettings> p_194088_) {
-      return new NoiseBasedChunkGenerator(p_194086_.registryOrThrow(Registry.NOISE_REGISTRY), new FixedBiomeSource(p_194086_.registryOrThrow(Registry.BIOME_REGISTRY).getOrThrow(Biomes.PLAINS)), p_194087_, () -> {
-         return p_194086_.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY).getOrThrow(p_194088_);
-      });
+      Registry<Biome> registry = p_194086_.registryOrThrow(Registry.BIOME_REGISTRY);
+      Registry<StructureSet> registry1 = p_194086_.registryOrThrow(Registry.STRUCTURE_SET_REGISTRY);
+      Registry<NormalNoise.NoiseParameters> registry2 = p_194086_.registryOrThrow(Registry.NOISE_REGISTRY);
+      Registry<NoiseGeneratorSettings> registry3 = p_194086_.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY);
+      return new NoiseBasedChunkGenerator(registry1, registry2, new FixedBiomeSource(registry.getOrCreateHolder(Biomes.PLAINS)), p_194087_, registry3.getOrCreateHolder(p_194088_));
    }
 
    WorldPreset(String p_101519_) {
       this.description = new TranslatableComponent("generator." + p_101519_);
    }
 
-   private static WorldGenSettings fromBuffetSettings(RegistryAccess p_101550_, WorldGenSettings p_101551_, WorldPreset p_101552_, Biome p_101553_) {
-      BiomeSource biomesource = new FixedBiomeSource(p_101553_);
-      Registry<DimensionType> registry = p_101550_.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
-      Registry<NoiseGeneratorSettings> registry1 = p_101550_.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY);
-      Supplier<NoiseGeneratorSettings> supplier = () -> {
-         return registry1.getOrThrow(NoiseGeneratorSettings.OVERWORLD);
-      };
-      return new WorldGenSettings(p_101551_.seed(), p_101551_.generateFeatures(), p_101551_.generateBonusChest(), WorldGenSettings.withOverworld(registry, p_101551_.dimensions(), new NoiseBasedChunkGenerator(p_101550_.registryOrThrow(Registry.NOISE_REGISTRY), biomesource, p_101551_.seed(), supplier)));
+   private static WorldGenSettings fromBuffetSettings(RegistryAccess p_205494_, WorldGenSettings p_205495_, Holder<Biome> p_205496_) {
+      BiomeSource biomesource = new FixedBiomeSource(p_205496_);
+      Registry<DimensionType> registry = p_205494_.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY);
+      Registry<StructureSet> registry1 = p_205494_.registryOrThrow(Registry.STRUCTURE_SET_REGISTRY);
+      Registry<NoiseGeneratorSettings> registry2 = p_205494_.registryOrThrow(Registry.NOISE_GENERATOR_SETTINGS_REGISTRY);
+      Holder<NoiseGeneratorSettings> holder = registry2.getOrCreateHolder(NoiseGeneratorSettings.OVERWORLD);
+      return new WorldGenSettings(p_205495_.seed(), p_205495_.generateFeatures(), p_205495_.generateBonusChest(), WorldGenSettings.withOverworld(registry, p_205495_.dimensions(), new NoiseBasedChunkGenerator(registry1, p_205494_.registryOrThrow(Registry.NOISE_REGISTRY), biomesource, p_205495_.seed(), holder)));
    }
 
-   private static Biome parseBuffetSettings(RegistryAccess p_101547_, WorldGenSettings p_101548_) {
-      return p_101548_.overworld().getBiomeSource().possibleBiomes().stream().findFirst().orElse(p_101547_.registryOrThrow(Registry.BIOME_REGISTRY).getOrThrow(Biomes.PLAINS));
+   private static Holder<Biome> parseBuffetSettings(RegistryAccess p_205491_, WorldGenSettings p_205492_) {
+      return p_205492_.overworld().getBiomeSource().possibleBiomes().stream().findFirst().orElse(p_205491_.registryOrThrow(Registry.BIOME_REGISTRY).getOrCreateHolder(Biomes.PLAINS));
    }
 
    public static Optional<WorldPreset> of(WorldGenSettings p_101525_) {
@@ -111,8 +120,8 @@ public abstract class WorldPreset {
       return this.description;
    }
 
-   public WorldGenSettings create(RegistryAccess.RegistryHolder p_101542_, long p_101543_, boolean p_101544_, boolean p_101545_) {
-      return new WorldGenSettings(p_101543_, p_101544_, p_101545_, WorldGenSettings.withOverworld(p_101542_.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY), DimensionType.defaultDimensions(p_101542_, p_101543_), this.generator(p_101542_, p_101543_)));
+   public WorldGenSettings create(RegistryAccess p_205486_, long p_205487_, boolean p_205488_, boolean p_205489_) {
+      return new WorldGenSettings(p_205487_, p_205488_, p_205489_, WorldGenSettings.withOverworld(p_205486_.registryOrThrow(Registry.DIMENSION_TYPE_REGISTRY), DimensionType.defaultDimensions(p_205486_, p_205487_), this.generator(p_205486_, p_205487_)));
    }
 
    protected abstract ChunkGenerator generator(RegistryAccess p_194083_, long p_194084_);

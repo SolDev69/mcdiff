@@ -1,13 +1,12 @@
 package net.minecraft.world.item;
 
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Random;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.InteractionResult;
@@ -82,7 +81,7 @@ public class BoneMealItem extends Item {
          } else {
             Random random = p_40633_.getRandom();
 
-            label76:
+            label78:
             for(int i = 0; i < 128; ++i) {
                BlockPos blockpos = p_40634_;
                BlockState blockstate = Blocks.SEAGRASS.defaultBlockState();
@@ -90,20 +89,33 @@ public class BoneMealItem extends Item {
                for(int j = 0; j < i / 16; ++j) {
                   blockpos = blockpos.offset(random.nextInt(3) - 1, (random.nextInt(3) - 1) * random.nextInt(3) / 2, random.nextInt(3) - 1);
                   if (p_40633_.getBlockState(blockpos).isCollisionShapeFullBlock(p_40633_, blockpos)) {
-                     continue label76;
+                     continue label78;
                   }
                }
 
-               Optional<ResourceKey<Biome>> optional = p_40633_.getBiomeName(blockpos);
-               if (Objects.equals(optional, Optional.of(Biomes.WARM_OCEAN))) {
+               Holder<Biome> holder = p_40633_.getBiome(blockpos);
+               if (holder.is(Biomes.WARM_OCEAN)) {
                   if (i == 0 && p_40635_ != null && p_40635_.getAxis().isHorizontal()) {
-                     blockstate = BlockTags.WALL_CORALS.getRandomElement(p_40633_.random).defaultBlockState().setValue(BaseCoralWallFanBlock.FACING, p_40635_);
+                     blockstate = Registry.BLOCK.getTag(BlockTags.WALL_CORALS).flatMap((p_204098_) -> {
+                        return p_204098_.getRandomElement(p_40633_.random);
+                     }).map((p_204100_) -> {
+                        return p_204100_.value().defaultBlockState();
+                     }).orElse(blockstate);
+                     if (blockstate.hasProperty(BaseCoralWallFanBlock.FACING)) {
+                        blockstate = blockstate.setValue(BaseCoralWallFanBlock.FACING, p_40635_);
+                     }
                   } else if (random.nextInt(4) == 0) {
-                     blockstate = BlockTags.UNDERWATER_BONEMEALS.getRandomElement(random).defaultBlockState();
+                     blockstate = Registry.BLOCK.getTag(BlockTags.UNDERWATER_BONEMEALS).flatMap((p_204091_) -> {
+                        return p_204091_.getRandomElement(p_40633_.random);
+                     }).map((p_204095_) -> {
+                        return p_204095_.value().defaultBlockState();
+                     }).orElse(blockstate);
                   }
                }
 
-               if (blockstate.is(BlockTags.WALL_CORALS)) {
+               if (blockstate.is(BlockTags.WALL_CORALS, (p_204093_) -> {
+                  return p_204093_.hasProperty(BaseCoralWallFanBlock.FACING);
+               })) {
                   for(int k = 0; !blockstate.canSurvive(p_40633_, blockpos) && k < 4; ++k) {
                      blockstate = blockstate.setValue(BaseCoralWallFanBlock.FACING, Direction.Plane.HORIZONTAL.getRandomDirection(random));
                   }

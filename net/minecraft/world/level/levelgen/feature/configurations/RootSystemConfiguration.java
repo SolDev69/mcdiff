@@ -2,22 +2,24 @@ package net.minecraft.world.level.levelgen.feature.configurations;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.function.Supplier;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.levelgen.blockpredicates.BlockPredicate;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 public class RootSystemConfiguration implements FeatureConfiguration {
    public static final Codec<RootSystemConfiguration> CODEC = RecordCodecBuilder.create((p_198371_) -> {
-      return p_198371_.group(PlacedFeature.CODEC.fieldOf("feature").forGetter((p_161153_) -> {
-         return p_161153_.treeFeature;
+      return p_198371_.group(PlacedFeature.CODEC.fieldOf("feature").forGetter((p_204840_) -> {
+         return p_204840_.treeFeature;
       }), Codec.intRange(1, 64).fieldOf("required_vertical_space_for_tree").forGetter((p_161151_) -> {
          return p_161151_.requiredVerticalSpaceForTree;
       }), Codec.intRange(1, 64).fieldOf("root_radius").forGetter((p_161149_) -> {
          return p_161149_.rootRadius;
-      }), ResourceLocation.CODEC.fieldOf("root_replaceable").forGetter((p_161147_) -> {
-         return p_161147_.rootReplaceable;
+      }), TagKey.hashedCodec(Registry.BLOCK_REGISTRY).fieldOf("root_replaceable").forGetter((p_204838_) -> {
+         return p_204838_.rootReplaceable;
       }), BlockStateProvider.CODEC.fieldOf("root_state_provider").forGetter((p_161145_) -> {
          return p_161145_.rootStateProvider;
       }), Codec.intRange(1, 256).fieldOf("root_placement_attempts").forGetter((p_161143_) -> {
@@ -38,10 +40,10 @@ public class RootSystemConfiguration implements FeatureConfiguration {
          return p_198373_.allowedTreePosition;
       })).apply(p_198371_, RootSystemConfiguration::new);
    });
-   public final Supplier<PlacedFeature> treeFeature;
+   public final Holder<PlacedFeature> treeFeature;
    public final int requiredVerticalSpaceForTree;
    public final int rootRadius;
-   public final ResourceLocation rootReplaceable;
+   public final TagKey<Block> rootReplaceable;
    public final BlockStateProvider rootStateProvider;
    public final int rootPlacementAttempts;
    public final int rootColumnMaxHeight;
@@ -52,19 +54,19 @@ public class RootSystemConfiguration implements FeatureConfiguration {
    public final int allowedVerticalWaterForTree;
    public final BlockPredicate allowedTreePosition;
 
-   public RootSystemConfiguration(Supplier<PlacedFeature> p_198357_, int p_198358_, int p_198359_, ResourceLocation p_198360_, BlockStateProvider p_198361_, int p_198362_, int p_198363_, int p_198364_, int p_198365_, BlockStateProvider p_198366_, int p_198367_, int p_198368_, BlockPredicate p_198369_) {
-      this.treeFeature = p_198357_;
-      this.requiredVerticalSpaceForTree = p_198358_;
-      this.rootRadius = p_198359_;
-      this.rootReplaceable = p_198360_;
-      this.rootStateProvider = p_198361_;
-      this.rootPlacementAttempts = p_198362_;
-      this.rootColumnMaxHeight = p_198363_;
-      this.hangingRootRadius = p_198364_;
-      this.hangingRootsVerticalSpan = p_198365_;
-      this.hangingRootStateProvider = p_198366_;
-      this.hangingRootPlacementAttempts = p_198367_;
-      this.allowedVerticalWaterForTree = p_198368_;
-      this.allowedTreePosition = p_198369_;
+   public RootSystemConfiguration(Holder<PlacedFeature> p_204824_, int p_204825_, int p_204826_, TagKey<Block> p_204827_, BlockStateProvider p_204828_, int p_204829_, int p_204830_, int p_204831_, int p_204832_, BlockStateProvider p_204833_, int p_204834_, int p_204835_, BlockPredicate p_204836_) {
+      this.treeFeature = p_204824_;
+      this.requiredVerticalSpaceForTree = p_204825_;
+      this.rootRadius = p_204826_;
+      this.rootReplaceable = p_204827_;
+      this.rootStateProvider = p_204828_;
+      this.rootPlacementAttempts = p_204829_;
+      this.rootColumnMaxHeight = p_204830_;
+      this.hangingRootRadius = p_204831_;
+      this.hangingRootsVerticalSpan = p_204832_;
+      this.hangingRootStateProvider = p_204833_;
+      this.hangingRootPlacementAttempts = p_204834_;
+      this.allowedVerticalWaterForTree = p_204835_;
+      this.allowedTreePosition = p_204836_;
    }
 }

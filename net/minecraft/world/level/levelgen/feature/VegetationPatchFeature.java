@@ -7,10 +7,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.Tag;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
@@ -26,7 +23,9 @@ public class VegetationPatchFeature extends Feature<VegetationPatchConfiguration
       VegetationPatchConfiguration vegetationpatchconfiguration = p_160612_.config();
       Random random = p_160612_.random();
       BlockPos blockpos = p_160612_.origin();
-      Predicate<BlockState> predicate = getReplaceableTag(vegetationpatchconfiguration);
+      Predicate<BlockState> predicate = (p_204782_) -> {
+         return p_204782_.is(vegetationpatchconfiguration.replaceable);
+      };
       int i = vegetationpatchconfiguration.xzRadius.sample(random) + 1;
       int j = vegetationpatchconfiguration.xzRadius.sample(random) + 1;
       Set<BlockPos> set = this.placeGroundPatch(worldgenlevel, vegetationpatchconfiguration, random, blockpos, predicate, i, j);
@@ -56,8 +55,8 @@ public class VegetationPatchFeature extends Feature<VegetationPatchConfiguration
                   blockpos$mutableblockpos.move(direction);
                }
 
-               for(int i1 = 0; p_160597_.isStateAtPosition(blockpos$mutableblockpos, (p_160626_) -> {
-                  return !p_160626_.isAir();
+               for(int i1 = 0; p_160597_.isStateAtPosition(blockpos$mutableblockpos, (p_204784_) -> {
+                  return !p_204784_.isAir();
                }) && i1 < p_160598_.verticalRange; ++i1) {
                   blockpos$mutableblockpos.move(direction1);
                }
@@ -89,7 +88,7 @@ public class VegetationPatchFeature extends Feature<VegetationPatchConfiguration
    }
 
    protected boolean placeVegetation(WorldGenLevel p_160592_, VegetationPatchConfiguration p_160593_, ChunkGenerator p_160594_, Random p_160595_, BlockPos p_160596_) {
-      return p_160593_.vegetationFeature.get().place(p_160592_, p_160594_, p_160595_, p_160596_.relative(p_160593_.surface.getDirection().getOpposite()));
+      return p_160593_.vegetationFeature.value().place(p_160592_, p_160594_, p_160595_, p_160596_.relative(p_160593_.surface.getDirection().getOpposite()));
    }
 
    protected boolean placeGround(WorldGenLevel p_160605_, VegetationPatchConfiguration p_160606_, Predicate<BlockState> p_160607_, Random p_160608_, BlockPos.MutableBlockPos p_160609_, int p_160610_) {
@@ -107,14 +106,5 @@ public class VegetationPatchFeature extends Feature<VegetationPatchConfiguration
       }
 
       return true;
-   }
-
-   private static Predicate<BlockState> getReplaceableTag(VegetationPatchConfiguration p_160622_) {
-      Tag<Block> tag = BlockTags.getAllTags().getTag(p_160622_.replaceable);
-      return tag == null ? (p_160624_) -> {
-         return true;
-      } : (p_160591_) -> {
-         return p_160591_.is(tag);
-      };
    }
 }

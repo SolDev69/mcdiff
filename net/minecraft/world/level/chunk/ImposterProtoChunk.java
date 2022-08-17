@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.Entity;
@@ -19,7 +20,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.blending.BlendingData;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
@@ -106,8 +107,8 @@ public class ImposterProtoChunk extends ProtoChunk {
       return this.wrapped.getHeight(this.fixType(p_62702_), p_62703_, p_62704_);
    }
 
-   public Biome getNoiseBiome(int p_187936_, int p_187937_, int p_187938_) {
-      return this.wrapped.getNoiseBiome(p_187936_, p_187937_, p_187938_);
+   public Holder<Biome> getNoiseBiome(int p_204430_, int p_204431_, int p_204432_) {
+      return this.wrapped.getNoiseBiome(p_204430_, p_204431_, p_204432_);
    }
 
    public ChunkPos getPos() {
@@ -115,32 +116,32 @@ public class ImposterProtoChunk extends ProtoChunk {
    }
 
    @Nullable
-   public StructureStart<?> getStartForFeature(StructureFeature<?> p_62709_) {
-      return this.wrapped.getStartForFeature(p_62709_);
+   public StructureStart getStartForFeature(ConfiguredStructureFeature<?, ?> p_208106_) {
+      return this.wrapped.getStartForFeature(p_208106_);
    }
 
-   public void setStartForFeature(StructureFeature<?> p_62714_, StructureStart<?> p_62715_) {
+   public void setStartForFeature(ConfiguredStructureFeature<?, ?> p_208111_, StructureStart p_208112_) {
    }
 
-   public Map<StructureFeature<?>, StructureStart<?>> getAllStarts() {
+   public Map<ConfiguredStructureFeature<?, ?>, StructureStart> getAllStarts() {
       return this.wrapped.getAllStarts();
    }
 
-   public void setAllStarts(Map<StructureFeature<?>, StructureStart<?>> p_62726_) {
+   public void setAllStarts(Map<ConfiguredStructureFeature<?, ?>, StructureStart> p_62726_) {
    }
 
-   public LongSet getReferencesForFeature(StructureFeature<?> p_62734_) {
-      return this.wrapped.getReferencesForFeature(p_62734_);
+   public LongSet getReferencesForFeature(ConfiguredStructureFeature<?, ?> p_208114_) {
+      return this.wrapped.getReferencesForFeature(p_208114_);
    }
 
-   public void addReferenceForFeature(StructureFeature<?> p_62711_, long p_62712_) {
+   public void addReferenceForFeature(ConfiguredStructureFeature<?, ?> p_208108_, long p_208109_) {
    }
 
-   public Map<StructureFeature<?>, LongSet> getAllReferences() {
+   public Map<ConfiguredStructureFeature<?, ?>, LongSet> getAllReferences() {
       return this.wrapped.getAllReferences();
    }
 
-   public void setAllReferences(Map<StructureFeature<?>, LongSet> p_62738_) {
+   public void setAllReferences(Map<ConfiguredStructureFeature<?, ?>, LongSet> p_62738_) {
    }
 
    public void setUnsaved(boolean p_62730_) {

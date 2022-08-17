@@ -1,5 +1,6 @@
 package net.minecraft.world.level.block.entity;
 
+import com.mojang.logging.LogUtils;
 import java.util.List;
 import java.util.Random;
 import javax.annotation.Nullable;
@@ -27,11 +28,10 @@ import net.minecraft.world.level.levelgen.feature.Feature;
 import net.minecraft.world.level.levelgen.feature.configurations.EndGatewayConfiguration;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int SPAWN_TIME = 200;
    private static final int COOLDOWN_TIME = 40;
    private static final int ATTENTION_INTERVAL = 2400;
@@ -202,7 +202,7 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
       if (blockpos == null) {
          blockpos = new BlockPos(vec3.x + 0.5D, 75.0D, vec3.z + 0.5D);
          LOGGER.debug("Failed to find a suitable block to teleport to, spawning an island on {}", (Object)blockpos);
-         EndFeatures.END_ISLAND.place(p_155819_, p_155819_.getChunkSource().getGenerator(), new Random(blockpos.asLong()), blockpos);
+         EndFeatures.END_ISLAND.value().place(p_155819_, p_155819_.getChunkSource().getGenerator(), new Random(blockpos.asLong()), blockpos);
       } else {
          LOGGER.debug("Found suitable block to teleport to: {}", (Object)blockpos);
       }
@@ -270,7 +270,7 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
          BlockPos blockpos4 = blockpos3.above();
          BlockPos blockpos5 = blockpos3.above(2);
          if (blockstate.is(Blocks.END_STONE) && !p_59954_.getBlockState(blockpos4).isCollisionShapeFullBlock(p_59954_, blockpos4) && !p_59954_.getBlockState(blockpos5).isCollisionShapeFullBlock(p_59954_, blockpos5)) {
-            double d1 = blockpos3.distSqr(0.0D, 0.0D, 0.0D, true);
+            double d1 = blockpos3.distToCenterSqr(0.0D, 0.0D, 0.0D);
             if (blockpos2 == null || d1 < d0) {
                blockpos2 = blockpos3;
                d0 = d1;
@@ -282,7 +282,7 @@ public class TheEndGatewayBlockEntity extends TheEndPortalBlockEntity {
    }
 
    private static void spawnGatewayPortal(ServerLevel p_155822_, BlockPos p_155823_, EndGatewayConfiguration p_155824_) {
-      Feature.END_GATEWAY.configured(p_155824_).place(p_155822_, p_155822_.getChunkSource().getGenerator(), new Random(), p_155823_);
+      Feature.END_GATEWAY.place(p_155824_, p_155822_, p_155822_.getChunkSource().getGenerator(), new Random(), p_155823_);
    }
 
    public boolean shouldRenderFace(Direction p_59959_) {

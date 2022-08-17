@@ -4,6 +4,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.tags.FluidTags;
@@ -31,8 +32,8 @@ public interface LevelReader extends BlockAndTintGetter, CollisionGetter, BiomeM
 
    BiomeManager getBiomeManager();
 
-   default Biome getBiome(BlockPos p_46858_) {
-      return this.getBiomeManager().getBiome(p_46858_);
+   default Holder<Biome> getBiome(BlockPos p_204167_) {
+      return this.getBiomeManager().getBiome(p_204167_);
    }
 
    default Stream<BlockState> getBlockStatesIfLoaded(AABB p_46848_) {
@@ -46,15 +47,15 @@ public interface LevelReader extends BlockAndTintGetter, CollisionGetter, BiomeM
    }
 
    default int getBlockTint(BlockPos p_46836_, ColorResolver p_46837_) {
-      return p_46837_.getColor(this.getBiome(p_46836_), (double)p_46836_.getX(), (double)p_46836_.getZ());
+      return p_46837_.getColor(this.getBiome(p_46836_).value(), (double)p_46836_.getX(), (double)p_46836_.getZ());
    }
 
-   default Biome getNoiseBiome(int p_46841_, int p_46842_, int p_46843_) {
-      ChunkAccess chunkaccess = this.getChunk(QuartPos.toSection(p_46841_), QuartPos.toSection(p_46843_), ChunkStatus.BIOMES, false);
-      return chunkaccess != null ? chunkaccess.getNoiseBiome(p_46841_, p_46842_, p_46843_) : this.getUncachedNoiseBiome(p_46841_, p_46842_, p_46843_);
+   default Holder<Biome> getNoiseBiome(int p_204163_, int p_204164_, int p_204165_) {
+      ChunkAccess chunkaccess = this.getChunk(QuartPos.toSection(p_204163_), QuartPos.toSection(p_204165_), ChunkStatus.BIOMES, false);
+      return chunkaccess != null ? chunkaccess.getNoiseBiome(p_204163_, p_204164_, p_204165_) : this.getUncachedNoiseBiome(p_204163_, p_204164_, p_204165_);
    }
 
-   Biome getUncachedNoiseBiome(int p_46809_, int p_46810_, int p_46811_);
+   Holder<Biome> getUncachedNoiseBiome(int p_204159_, int p_204160_, int p_204161_);
 
    boolean isClientSide();
 

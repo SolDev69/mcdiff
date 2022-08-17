@@ -3,6 +3,7 @@ package net.minecraft.world.level.block;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Optional;
 import java.util.Random;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
@@ -37,6 +38,7 @@ import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -46,7 +48,6 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
    public static final EnumProperty<DripstoneThickness> THICKNESS = BlockStateProperties.DRIPSTONE_THICKNESS;
    public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
    private static final int MAX_SEARCH_LENGTH_WHEN_CHECKING_DRIP_TYPE = 11;
-   private static final int MAX_SEARCH_LENGTH_WHEN_LOOKING_FOR_TIP_OF_FALLING_STALACTITE = Integer.MAX_VALUE;
    private static final int DELAY_BEFORE_FALLING = 2;
    private static final float DRIP_PROBABILITY_PER_ANIMATE_TICK = 0.02F;
    private static final float DRIP_PROBABILITY_PER_ANIMATE_TICK_IF_UNDER_LIQUID_SOURCE = 0.12F;
@@ -71,6 +72,7 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
    private static final VoxelShape MIDDLE_SHAPE = Block.box(3.0D, 0.0D, 3.0D, 13.0D, 16.0D, 13.0D);
    private static final VoxelShape BASE_SHAPE = Block.box(2.0D, 0.0D, 2.0D, 14.0D, 16.0D, 14.0D);
    private static final float MAX_HORIZONTAL_OFFSET = 0.125F;
+   private static final VoxelShape REQUIRED_SPACE_TO_DRIP_THROUGH_NON_SOLID_BLOCK = Block.box(6.0D, 0.0D, 6.0D, 10.0D, 16.0D, 10.0D);
 
    public PointedDripstoneBlock(BlockBehaviour.Properties p_154025_) {
       super(p_154025_);
@@ -98,7 +100,7 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
             return p_154147_;
          } else if (p_154148_ == direction.getOpposite() && !this.canSurvive(p_154147_, p_154150_, p_154151_)) {
             if (direction == Direction.DOWN) {
-               this.scheduleStalactiteFallTicks(p_154147_, p_154150_, p_154151_);
+               p_154150_.scheduleTick(p_154151_, this, 2);
             } else {
                p_154150_.scheduleTick(p_154151_, this, 1);
             }
@@ -269,49 +271,21 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
       return EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(EntitySelector.LIVING_ENTITY_STILL_ALIVE);
    }
 
-   private void scheduleStalactiteFallTicks(BlockState p_154127_, LevelAccessor p_154128_, BlockPos p_154129_) {
-      BlockPos blockpos = findTip(p_154127_, p_154128_, p_154129_, Integer.MAX_VALUE, true);
-      if (blockpos != null) {
-         BlockPos.MutableBlockPos blockpos$mutableblockpos = blockpos.mutable();
-         blockpos$mutableblockpos.move(Direction.DOWN);
-         BlockState blockstate = p_154128_.getBlockState(blockpos$mutableblockpos);
-         if (blockstate.getCollisionShape(p_154128_, blockpos$mutableblockpos, CollisionContext.empty()).max(Direction.Axis.Y) >= 1.0D || blockstate.is(Blocks.POWDER_SNOW)) {
-            p_154128_.destroyBlock(blockpos, true);
-            blockpos$mutableblockpos.move(Direction.UP);
-         }
-
-         blockpos$mutableblockpos.move(Direction.UP);
-
-         while(isStalactite(p_154128_.getBlockState(blockpos$mutableblockpos))) {
-            p_154128_.scheduleTick(blockpos$mutableblockpos, this, 2);
-            blockpos$mutableblockpos.move(Direction.UP);
-         }
-
-      }
-   }
-
-   private static int getStalactiteSizeFromTip(ServerLevel p_154175_, BlockPos p_154176_, int p_154177_) {
-      int i = 1;
-      BlockPos.MutableBlockPos blockpos$mutableblockpos = p_154176_.mutable().move(Direction.UP);
-
-      while(i < p_154177_ && isStalactite(p_154175_.getBlockState(blockpos$mutableblockpos))) {
-         ++i;
-         blockpos$mutableblockpos.move(Direction.UP);
-      }
-
-      return i;
-   }
-
    private static void spawnFallingStalactite(BlockState p_154098_, ServerLevel p_154099_, BlockPos p_154100_) {
-      Vec3 vec3 = Vec3.atBottomCenterOf(p_154100_);
-      FallingBlockEntity fallingblockentity = new FallingBlockEntity(p_154099_, vec3.x, vec3.y, vec3.z, p_154098_);
-      if (isTip(p_154098_, true)) {
-         int i = getStalactiteSizeFromTip(p_154099_, p_154100_, 6);
-         float f = 1.0F * (float)i;
-         fallingblockentity.setHurtsEntities(f, 40);
+      BlockPos.MutableBlockPos blockpos$mutableblockpos = p_154100_.mutable();
+
+      for(BlockState blockstate = p_154098_; isStalactite(blockstate); blockstate = p_154099_.getBlockState(blockpos$mutableblockpos)) {
+         FallingBlockEntity fallingblockentity = FallingBlockEntity.fall(p_154099_, blockpos$mutableblockpos, blockstate);
+         if (isTip(blockstate, true)) {
+            int i = Math.max(1 + p_154100_.getY() - blockpos$mutableblockpos.getY(), 6);
+            float f = 1.0F * (float)i;
+            fallingblockentity.setHurtsEntities(f, 40);
+            break;
+         }
+
+         blockpos$mutableblockpos.move(Direction.DOWN);
       }
 
-      p_154099_.addFreshEntity(fallingblockentity);
    }
 
    @VisibleForTesting
@@ -351,6 +325,10 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
 
          if (isValidPointedDripstonePlacement(p_154033_, blockpos$mutableblockpos, Direction.UP) && !p_154033_.isWaterAt(blockpos$mutableblockpos.below())) {
             grow(p_154033_, blockpos$mutableblockpos.below(), Direction.UP);
+            return;
+         }
+
+         if (!canDripThrough(p_154033_, blockpos$mutableblockpos, blockstate)) {
             return;
          }
       }
@@ -411,10 +389,10 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
          return p_154133_;
       } else {
          Direction direction = p_154131_.getValue(TIP_DIRECTION);
-         Predicate<BlockState> predicate = (p_154212_) -> {
-            return p_154212_.is(Blocks.POINTED_DRIPSTONE) && p_154212_.getValue(TIP_DIRECTION) == direction;
+         BiPredicate<BlockPos, BlockState> bipredicate = (p_202023_, p_202024_) -> {
+            return p_202024_.is(Blocks.POINTED_DRIPSTONE) && p_202024_.getValue(TIP_DIRECTION) == direction;
          };
-         return findBlockVertical(p_154132_, p_154133_, direction.getAxisDirection(), predicate, (p_154168_) -> {
+         return findBlockVertical(p_154132_, p_154133_, direction.getAxisDirection(), bipredicate, (p_154168_) -> {
             return isTip(p_154168_, p_154135_);
          }, p_154134_).orElse((BlockPos)null);
       }
@@ -471,10 +449,10 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
 
    private static Optional<BlockPos> findRootBlock(Level p_154067_, BlockPos p_154068_, BlockState p_154069_, int p_154070_) {
       Direction direction = p_154069_.getValue(TIP_DIRECTION);
-      Predicate<BlockState> predicate = (p_154165_) -> {
-         return p_154165_.is(Blocks.POINTED_DRIPSTONE) && p_154165_.getValue(TIP_DIRECTION) == direction;
+      BiPredicate<BlockPos, BlockState> bipredicate = (p_202015_, p_202016_) -> {
+         return p_202016_.is(Blocks.POINTED_DRIPSTONE) && p_202016_.getValue(TIP_DIRECTION) == direction;
       };
-      return findBlockVertical(p_154067_, p_154068_, direction.getOpposite().getAxisDirection(), predicate, (p_154245_) -> {
+      return findBlockVertical(p_154067_, p_154068_, direction.getOpposite().getAxisDirection(), bipredicate, (p_154245_) -> {
          return !p_154245_.is(Blocks.POINTED_DRIPSTONE);
       }, p_154070_);
    }
@@ -523,12 +501,18 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
       Predicate<BlockState> predicate = (p_154162_) -> {
          return p_154162_.getBlock() instanceof AbstractCauldronBlock && ((AbstractCauldronBlock)p_154162_.getBlock()).canReceiveStalactiteDrip(p_154079_);
       };
-      return findBlockVertical(p_154077_, p_154078_, Direction.DOWN.getAxisDirection(), BlockBehaviour.BlockStateBase::isAir, predicate, 11).orElse((BlockPos)null);
+      BiPredicate<BlockPos, BlockState> bipredicate = (p_202034_, p_202035_) -> {
+         return canDripThrough(p_154077_, p_202034_, p_202035_);
+      };
+      return findBlockVertical(p_154077_, p_154078_, Direction.DOWN.getAxisDirection(), bipredicate, predicate, 11).orElse((BlockPos)null);
    }
 
    @Nullable
    public static BlockPos findStalactiteTipAboveCauldron(Level p_154056_, BlockPos p_154057_) {
-      return findBlockVertical(p_154056_, p_154057_, Direction.UP.getAxisDirection(), BlockBehaviour.BlockStateBase::isAir, PointedDripstoneBlock::canDrip, 11).orElse((BlockPos)null);
+      BiPredicate<BlockPos, BlockState> bipredicate = (p_202030_, p_202031_) -> {
+         return canDripThrough(p_154056_, p_202030_, p_202031_);
+      };
+      return findBlockVertical(p_154056_, p_154057_, Direction.UP.getAxisDirection(), bipredicate, PointedDripstoneBlock::canDrip, 11).orElse((BlockPos)null);
    }
 
    public static Fluid getCauldronFillFluidType(Level p_154179_, BlockPos p_154180_) {
@@ -536,8 +520,8 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
    }
 
    private static Optional<Fluid> getFluidAboveStalactite(Level p_154182_, BlockPos p_154183_, BlockState p_154184_) {
-      return !isStalactite(p_154184_) ? Optional.empty() : findRootBlock(p_154182_, p_154183_, p_154184_, 11).map((p_154215_) -> {
-         return p_154182_.getFluidState(p_154215_.above()).getType();
+      return !isStalactite(p_154184_) ? Optional.empty() : findRootBlock(p_154182_, p_154183_, p_154184_, 11).map((p_202027_) -> {
+         return p_154182_.getFluidState(p_202027_.above()).getType();
       });
    }
 
@@ -557,22 +541,35 @@ public class PointedDripstoneBlock extends Block implements Fallable, SimpleWate
       }
    }
 
-   private static Optional<BlockPos> findBlockVertical(LevelAccessor p_154081_, BlockPos p_154082_, Direction.AxisDirection p_154083_, Predicate<BlockState> p_154084_, Predicate<BlockState> p_154085_, int p_154086_) {
-      Direction direction = Direction.get(p_154083_, Direction.Axis.Y);
-      BlockPos.MutableBlockPos blockpos$mutableblockpos = p_154082_.mutable();
+   private static Optional<BlockPos> findBlockVertical(LevelAccessor p_202007_, BlockPos p_202008_, Direction.AxisDirection p_202009_, BiPredicate<BlockPos, BlockState> p_202010_, Predicate<BlockState> p_202011_, int p_202012_) {
+      Direction direction = Direction.get(p_202009_, Direction.Axis.Y);
+      BlockPos.MutableBlockPos blockpos$mutableblockpos = p_202008_.mutable();
 
-      for(int i = 1; i < p_154086_; ++i) {
+      for(int i = 1; i < p_202012_; ++i) {
          blockpos$mutableblockpos.move(direction);
-         BlockState blockstate = p_154081_.getBlockState(blockpos$mutableblockpos);
-         if (p_154085_.test(blockstate)) {
+         BlockState blockstate = p_202007_.getBlockState(blockpos$mutableblockpos);
+         if (p_202011_.test(blockstate)) {
             return Optional.of(blockpos$mutableblockpos.immutable());
          }
 
-         if (p_154081_.isOutsideBuildHeight(blockpos$mutableblockpos.getY()) || !p_154084_.test(blockstate)) {
+         if (p_202007_.isOutsideBuildHeight(blockpos$mutableblockpos.getY()) || !p_202010_.test(blockpos$mutableblockpos, blockstate)) {
             return Optional.empty();
          }
       }
 
       return Optional.empty();
+   }
+
+   private static boolean canDripThrough(BlockGetter p_202018_, BlockPos p_202019_, BlockState p_202020_) {
+      if (p_202020_.isAir()) {
+         return true;
+      } else if (p_202020_.isSolidRender(p_202018_, p_202019_)) {
+         return false;
+      } else if (!p_202020_.getFluidState().isEmpty()) {
+         return false;
+      } else {
+         VoxelShape voxelshape = p_202020_.getCollisionShape(p_202018_, p_202019_);
+         return !Shapes.joinIsNotEmpty(REQUIRED_SPACE_TO_DRIP_THROUGH_NON_SOLID_BLOCK, voxelshape, BooleanOp.AND);
+      }
    }
 }

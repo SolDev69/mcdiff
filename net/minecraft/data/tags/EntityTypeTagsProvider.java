@@ -1,9 +1,7 @@
 package net.minecraft.data.tags;
 
-import java.nio.file.Path;
 import net.minecraft.core.Registry;
 import net.minecraft.data.DataGenerator;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.world.entity.EntityType;
 
@@ -23,10 +21,6 @@ public class EntityTypeTagsProvider extends TagsProvider<EntityType<?>> {
       this.tag(EntityTypeTags.AXOLOTL_ALWAYS_HOSTILES).add(EntityType.DROWNED, EntityType.GUARDIAN, EntityType.ELDER_GUARDIAN);
       this.tag(EntityTypeTags.FREEZE_IMMUNE_ENTITY_TYPES).add(EntityType.STRAY, EntityType.POLAR_BEAR, EntityType.SNOW_GOLEM, EntityType.WITHER);
       this.tag(EntityTypeTags.FREEZE_HURTS_EXTRA_TYPES).add(EntityType.STRIDER, EntityType.BLAZE, EntityType.MAGMA_CUBE);
-   }
-
-   protected Path getPath(ResourceLocation p_126520_) {
-      return this.generator.getOutputFolder().resolve("data/" + p_126520_.getNamespace() + "/tags/entity_types/" + p_126520_.getPath() + ".json");
    }
 
    public String getName() {

@@ -321,7 +321,7 @@ public class HumanoidModel<T extends LivingEntity> extends AgeableListModel<T> i
          f = 1.0F - f;
          float f1 = Mth.sin(f * (float)Math.PI);
          float f2 = Mth.sin(this.attackTime * (float)Math.PI) * -(this.head.xRot - 0.7F) * 0.75F;
-         modelpart.xRot = (float)((double)modelpart.xRot - ((double)f1 * 1.2D + (double)f2));
+         modelpart.xRot -= f1 * 1.2F + f2;
          modelpart.yRot += this.body.yRot * 2.0F;
          modelpart.zRot += Mth.sin(this.attackTime * (float)Math.PI) * -0.4F;
       }

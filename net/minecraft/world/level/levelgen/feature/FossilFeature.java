@@ -51,14 +51,10 @@ public class FossilFeature extends Feature<FossilFeatureConfiguration> {
          return false;
       } else {
          structureplacesettings.clearProcessors();
-         fossilfeatureconfiguration.fossilProcessors.get().list().forEach((p_159795_) -> {
-            structureplacesettings.addProcessor(p_159795_);
-         });
+         fossilfeatureconfiguration.fossilProcessors.value().list().forEach(structureplacesettings::addProcessor);
          structuretemplate.placeInWorld(worldgenlevel, blockpos2, blockpos2, structureplacesettings, random, 4);
          structureplacesettings.clearProcessors();
-         fossilfeatureconfiguration.overlayProcessors.get().list().forEach((p_159792_) -> {
-            structureplacesettings.addProcessor(p_159792_);
-         });
+         fossilfeatureconfiguration.overlayProcessors.value().list().forEach(structureplacesettings::addProcessor);
          structuretemplate1.placeInWorld(worldgenlevel, blockpos2, blockpos2, structureplacesettings, random, 4);
          return true;
       }
@@ -66,8 +62,8 @@ public class FossilFeature extends Feature<FossilFeatureConfiguration> {
 
    private static int countEmptyCorners(WorldGenLevel p_159782_, BoundingBox p_159783_) {
       MutableInt mutableint = new MutableInt(0);
-      p_159783_.forAllCorners((p_159787_) -> {
-         BlockState blockstate = p_159782_.getBlockState(p_159787_);
+      p_159783_.forAllCorners((p_204749_) -> {
+         BlockState blockstate = p_159782_.getBlockState(p_204749_);
          if (blockstate.isAir() || blockstate.is(Blocks.LAVA) || blockstate.is(Blocks.WATER)) {
             mutableint.add(1);
          }

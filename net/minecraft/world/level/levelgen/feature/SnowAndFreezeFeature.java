@@ -29,7 +29,7 @@ public class SnowAndFreezeFeature extends Feature<NoneFeatureConfiguration> {
             int i1 = worldgenlevel.getHeight(Heightmap.Types.MOTION_BLOCKING, k, l);
             blockpos$mutableblockpos.set(k, i1, l);
             blockpos$mutableblockpos1.set(blockpos$mutableblockpos).move(Direction.DOWN, 1);
-            Biome biome = worldgenlevel.getBiome(blockpos$mutableblockpos);
+            Biome biome = worldgenlevel.getBiome(blockpos$mutableblockpos).value();
             if (biome.shouldFreeze(worldgenlevel, blockpos$mutableblockpos1, false)) {
                worldgenlevel.setBlock(blockpos$mutableblockpos1, Blocks.ICE.defaultBlockState(), 2);
             }

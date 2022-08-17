@@ -1,6 +1,7 @@
 package com.mojang.realmsclient.gui.screens;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.logging.LogUtils;
 import com.mojang.realmsclient.client.RealmsClient;
 import com.mojang.realmsclient.dto.RealmsServer;
 import com.mojang.realmsclient.dto.Subscription;
@@ -22,12 +23,11 @@ import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.realms.RealmsScreen;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class RealmsSubscriptionInfoScreen extends RealmsScreen {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final Component SUBSCRIPTION_TITLE = new TranslatableComponent("mco.configure.world.subscription.title");
    private static final Component SUBSCRIPTION_START_LABEL = new TranslatableComponent("mco.configure.world.subscription.start");
    private static final Component TIME_LEFT_LABEL = new TranslatableComponent("mco.configure.world.subscription.timeleft");
@@ -88,8 +88,7 @@ public class RealmsSubscriptionInfoScreen extends RealmsScreen {
                   RealmsClient realmsclient = RealmsClient.create();
                   realmsclient.deleteWorld(RealmsSubscriptionInfoScreen.this.serverData.id);
                } catch (RealmsServiceException realmsserviceexception) {
-                  RealmsSubscriptionInfoScreen.LOGGER.error("Couldn't delete world");
-                  RealmsSubscriptionInfoScreen.LOGGER.error(realmsserviceexception);
+                  RealmsSubscriptionInfoScreen.LOGGER.error("Couldn't delete world", (Throwable)realmsserviceexception);
                }
 
                RealmsSubscriptionInfoScreen.this.minecraft.execute(() -> {

@@ -3,30 +3,28 @@ package net.minecraft.advancements.critereon;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.SerializationTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 
 public class FluidPredicate {
-   public static final FluidPredicate ANY = new FluidPredicate((Tag<Fluid>)null, (Fluid)null, StatePropertiesPredicate.ANY);
+   public static final FluidPredicate ANY = new FluidPredicate((TagKey<Fluid>)null, (Fluid)null, StatePropertiesPredicate.ANY);
    @Nullable
-   private final Tag<Fluid> tag;
+   private final TagKey<Fluid> tag;
    @Nullable
    private final Fluid fluid;
    private final StatePropertiesPredicate properties;
 
-   public FluidPredicate(@Nullable Tag<Fluid> p_41100_, @Nullable Fluid p_41101_, StatePropertiesPredicate p_41102_) {
-      this.tag = p_41100_;
-      this.fluid = p_41101_;
-      this.properties = p_41102_;
+   public FluidPredicate(@Nullable TagKey<Fluid> p_204102_, @Nullable Fluid p_204103_, StatePropertiesPredicate p_204104_) {
+      this.tag = p_204102_;
+      this.fluid = p_204103_;
+      this.properties = p_204104_;
    }
 
    public boolean matches(ServerLevel p_41105_, BlockPos p_41106_) {
@@ -36,10 +34,9 @@ public class FluidPredicate {
          return false;
       } else {
          FluidState fluidstate = p_41105_.getFluidState(p_41106_);
-         Fluid fluid = fluidstate.getType();
-         if (this.tag != null && !fluid.is(this.tag)) {
+         if (this.tag != null && !fluidstate.is(this.tag)) {
             return false;
-         } else if (this.fluid != null && fluid != this.fluid) {
+         } else if (this.fluid != null && !fluidstate.is(this.fluid)) {
             return false;
          } else {
             return this.properties.matches(fluidstate);
@@ -56,16 +53,14 @@ public class FluidPredicate {
             fluid = Registry.FLUID.get(resourcelocation);
          }
 
-         Tag<Fluid> tag = null;
+         TagKey<Fluid> tagkey = null;
          if (jsonobject.has("tag")) {
             ResourceLocation resourcelocation1 = new ResourceLocation(GsonHelper.getAsString(jsonobject, "tag"));
-            tag = SerializationTags.getInstance().getTagOrThrow(Registry.FLUID_REGISTRY, resourcelocation1, (p_151160_) -> {
-               return new JsonSyntaxException("Unknown fluid tag '" + p_151160_ + "'");
-            });
+            tagkey = TagKey.create(Registry.FLUID_REGISTRY, resourcelocation1);
          }
 
          StatePropertiesPredicate statepropertiespredicate = StatePropertiesPredicate.fromJson(jsonobject.get("state"));
-         return new FluidPredicate(tag, fluid, statepropertiespredicate);
+         return new FluidPredicate(tagkey, fluid, statepropertiespredicate);
       } else {
          return ANY;
       }
@@ -81,9 +76,7 @@ public class FluidPredicate {
          }
 
          if (this.tag != null) {
-            jsonobject.addProperty("tag", SerializationTags.getInstance().getIdOrThrow(Registry.FLUID_REGISTRY, this.tag, () -> {
-               return new IllegalStateException("Unknown fluid tag");
-            }).toString());
+            jsonobject.addProperty("tag", this.tag.location().toString());
          }
 
          jsonobject.add("state", this.properties.serializeToJson());
@@ -95,7 +88,7 @@ public class FluidPredicate {
       @Nullable
       private Fluid fluid;
       @Nullable
-      private Tag<Fluid> fluids;
+      private TagKey<Fluid> fluids;
       private StatePropertiesPredicate properties = StatePropertiesPredicate.ANY;
 
       private Builder() {
@@ -110,8 +103,8 @@ public class FluidPredicate {
          return this;
       }
 
-      public FluidPredicate.Builder of(Tag<Fluid> p_151168_) {
-         this.fluids = p_151168_;
+      public FluidPredicate.Builder of(TagKey<Fluid> p_204106_) {
+         this.fluids = p_204106_;
          return this;
       }
 

@@ -7,13 +7,11 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
 import com.mojang.brigadier.exceptions.Dynamic3CommandExceptionType;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import java.util.UUID;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.arguments.ResourceKeyArgument;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.core.Registry;
 import net.minecraft.network.chat.TranslatableComponent;
@@ -25,47 +23,44 @@ import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 
 public class AttributeCommand {
-   private static final SuggestionProvider<CommandSourceStack> AVAILABLE_ATTRIBUTES = (p_136449_, p_136450_) -> {
-      return SharedSuggestionProvider.suggestResource(Registry.ATTRIBUTE.keySet(), p_136450_);
-   };
-   private static final DynamicCommandExceptionType ERROR_NOT_LIVING_ENTITY = new DynamicCommandExceptionType((p_136478_) -> {
-      return new TranslatableComponent("commands.attribute.failed.entity", p_136478_);
+   private static final DynamicCommandExceptionType ERROR_NOT_LIVING_ENTITY = new DynamicCommandExceptionType((p_212443_) -> {
+      return new TranslatableComponent("commands.attribute.failed.entity", p_212443_);
    });
-   private static final Dynamic2CommandExceptionType ERROR_NO_SUCH_ATTRIBUTE = new Dynamic2CommandExceptionType((p_136480_, p_136481_) -> {
-      return new TranslatableComponent("commands.attribute.failed.no_attribute", p_136480_, p_136481_);
+   private static final Dynamic2CommandExceptionType ERROR_NO_SUCH_ATTRIBUTE = new Dynamic2CommandExceptionType((p_212445_, p_212446_) -> {
+      return new TranslatableComponent("commands.attribute.failed.no_attribute", p_212445_, p_212446_);
    });
-   private static final Dynamic3CommandExceptionType ERROR_NO_SUCH_MODIFIER = new Dynamic3CommandExceptionType((p_136497_, p_136498_, p_136499_) -> {
-      return new TranslatableComponent("commands.attribute.failed.no_modifier", p_136498_, p_136497_, p_136499_);
+   private static final Dynamic3CommandExceptionType ERROR_NO_SUCH_MODIFIER = new Dynamic3CommandExceptionType((p_212448_, p_212449_, p_212450_) -> {
+      return new TranslatableComponent("commands.attribute.failed.no_modifier", p_212449_, p_212448_, p_212450_);
    });
-   private static final Dynamic3CommandExceptionType ERROR_MODIFIER_ALREADY_PRESENT = new Dynamic3CommandExceptionType((p_136483_, p_136484_, p_136485_) -> {
-      return new TranslatableComponent("commands.attribute.failed.modifier_already_present", p_136485_, p_136484_, p_136483_);
+   private static final Dynamic3CommandExceptionType ERROR_MODIFIER_ALREADY_PRESENT = new Dynamic3CommandExceptionType((p_136497_, p_136498_, p_136499_) -> {
+      return new TranslatableComponent("commands.attribute.failed.modifier_already_present", p_136499_, p_136498_, p_136497_);
    });
 
    public static void register(CommandDispatcher<CommandSourceStack> p_136445_) {
-      p_136445_.register(Commands.literal("attribute").requires((p_136452_) -> {
-         return p_136452_.hasPermission(2);
-      }).then(Commands.argument("target", EntityArgument.entity()).then(Commands.argument("attribute", ResourceLocationArgument.id()).suggests(AVAILABLE_ATTRIBUTES).then(Commands.literal("get").executes((p_136522_) -> {
-         return getAttributeValue(p_136522_.getSource(), EntityArgument.getEntity(p_136522_, "target"), ResourceLocationArgument.getAttribute(p_136522_, "attribute"), 1.0D);
-      }).then(Commands.argument("scale", DoubleArgumentType.doubleArg()).executes((p_136520_) -> {
-         return getAttributeValue(p_136520_.getSource(), EntityArgument.getEntity(p_136520_, "target"), ResourceLocationArgument.getAttribute(p_136520_, "attribute"), DoubleArgumentType.getDouble(p_136520_, "scale"));
-      }))).then(Commands.literal("base").then(Commands.literal("set").then(Commands.argument("value", DoubleArgumentType.doubleArg()).executes((p_136518_) -> {
-         return setAttributeBase(p_136518_.getSource(), EntityArgument.getEntity(p_136518_, "target"), ResourceLocationArgument.getAttribute(p_136518_, "attribute"), DoubleArgumentType.getDouble(p_136518_, "value"));
-      }))).then(Commands.literal("get").executes((p_136516_) -> {
-         return getAttributeBase(p_136516_.getSource(), EntityArgument.getEntity(p_136516_, "target"), ResourceLocationArgument.getAttribute(p_136516_, "attribute"), 1.0D);
-      }).then(Commands.argument("scale", DoubleArgumentType.doubleArg()).executes((p_136514_) -> {
-         return getAttributeBase(p_136514_.getSource(), EntityArgument.getEntity(p_136514_, "target"), ResourceLocationArgument.getAttribute(p_136514_, "attribute"), DoubleArgumentType.getDouble(p_136514_, "scale"));
-      })))).then(Commands.literal("modifier").then(Commands.literal("add").then(Commands.argument("uuid", UuidArgument.uuid()).then(Commands.argument("name", StringArgumentType.string()).then(Commands.argument("value", DoubleArgumentType.doubleArg()).then(Commands.literal("add").executes((p_136512_) -> {
-         return addModifier(p_136512_.getSource(), EntityArgument.getEntity(p_136512_, "target"), ResourceLocationArgument.getAttribute(p_136512_, "attribute"), UuidArgument.getUuid(p_136512_, "uuid"), StringArgumentType.getString(p_136512_, "name"), DoubleArgumentType.getDouble(p_136512_, "value"), AttributeModifier.Operation.ADDITION);
-      })).then(Commands.literal("multiply").executes((p_136510_) -> {
-         return addModifier(p_136510_.getSource(), EntityArgument.getEntity(p_136510_, "target"), ResourceLocationArgument.getAttribute(p_136510_, "attribute"), UuidArgument.getUuid(p_136510_, "uuid"), StringArgumentType.getString(p_136510_, "name"), DoubleArgumentType.getDouble(p_136510_, "value"), AttributeModifier.Operation.MULTIPLY_TOTAL);
-      })).then(Commands.literal("multiply_base").executes((p_136508_) -> {
-         return addModifier(p_136508_.getSource(), EntityArgument.getEntity(p_136508_, "target"), ResourceLocationArgument.getAttribute(p_136508_, "attribute"), UuidArgument.getUuid(p_136508_, "uuid"), StringArgumentType.getString(p_136508_, "name"), DoubleArgumentType.getDouble(p_136508_, "value"), AttributeModifier.Operation.MULTIPLY_BASE);
-      })))))).then(Commands.literal("remove").then(Commands.argument("uuid", UuidArgument.uuid()).executes((p_136501_) -> {
-         return removeModifier(p_136501_.getSource(), EntityArgument.getEntity(p_136501_, "target"), ResourceLocationArgument.getAttribute(p_136501_, "attribute"), UuidArgument.getUuid(p_136501_, "uuid"));
-      }))).then(Commands.literal("value").then(Commands.literal("get").then(Commands.argument("uuid", UuidArgument.uuid()).executes((p_136490_) -> {
-         return getAttributeModifier(p_136490_.getSource(), EntityArgument.getEntity(p_136490_, "target"), ResourceLocationArgument.getAttribute(p_136490_, "attribute"), UuidArgument.getUuid(p_136490_, "uuid"), 1.0D);
-      }).then(Commands.argument("scale", DoubleArgumentType.doubleArg()).executes((p_136447_) -> {
-         return getAttributeModifier(p_136447_.getSource(), EntityArgument.getEntity(p_136447_, "target"), ResourceLocationArgument.getAttribute(p_136447_, "attribute"), UuidArgument.getUuid(p_136447_, "uuid"), DoubleArgumentType.getDouble(p_136447_, "scale"));
+      p_136445_.register(Commands.literal("attribute").requires((p_212441_) -> {
+         return p_212441_.hasPermission(2);
+      }).then(Commands.argument("target", EntityArgument.entity()).then(Commands.argument("attribute", ResourceKeyArgument.key(Registry.ATTRIBUTE_REGISTRY)).then(Commands.literal("get").executes((p_212452_) -> {
+         return getAttributeValue(p_212452_.getSource(), EntityArgument.getEntity(p_212452_, "target"), ResourceKeyArgument.getAttribute(p_212452_, "attribute"), 1.0D);
+      }).then(Commands.argument("scale", DoubleArgumentType.doubleArg()).executes((p_136522_) -> {
+         return getAttributeValue(p_136522_.getSource(), EntityArgument.getEntity(p_136522_, "target"), ResourceKeyArgument.getAttribute(p_136522_, "attribute"), DoubleArgumentType.getDouble(p_136522_, "scale"));
+      }))).then(Commands.literal("base").then(Commands.literal("set").then(Commands.argument("value", DoubleArgumentType.doubleArg()).executes((p_136520_) -> {
+         return setAttributeBase(p_136520_.getSource(), EntityArgument.getEntity(p_136520_, "target"), ResourceKeyArgument.getAttribute(p_136520_, "attribute"), DoubleArgumentType.getDouble(p_136520_, "value"));
+      }))).then(Commands.literal("get").executes((p_136518_) -> {
+         return getAttributeBase(p_136518_.getSource(), EntityArgument.getEntity(p_136518_, "target"), ResourceKeyArgument.getAttribute(p_136518_, "attribute"), 1.0D);
+      }).then(Commands.argument("scale", DoubleArgumentType.doubleArg()).executes((p_136516_) -> {
+         return getAttributeBase(p_136516_.getSource(), EntityArgument.getEntity(p_136516_, "target"), ResourceKeyArgument.getAttribute(p_136516_, "attribute"), DoubleArgumentType.getDouble(p_136516_, "scale"));
+      })))).then(Commands.literal("modifier").then(Commands.literal("add").then(Commands.argument("uuid", UuidArgument.uuid()).then(Commands.argument("name", StringArgumentType.string()).then(Commands.argument("value", DoubleArgumentType.doubleArg()).then(Commands.literal("add").executes((p_136514_) -> {
+         return addModifier(p_136514_.getSource(), EntityArgument.getEntity(p_136514_, "target"), ResourceKeyArgument.getAttribute(p_136514_, "attribute"), UuidArgument.getUuid(p_136514_, "uuid"), StringArgumentType.getString(p_136514_, "name"), DoubleArgumentType.getDouble(p_136514_, "value"), AttributeModifier.Operation.ADDITION);
+      })).then(Commands.literal("multiply").executes((p_136512_) -> {
+         return addModifier(p_136512_.getSource(), EntityArgument.getEntity(p_136512_, "target"), ResourceKeyArgument.getAttribute(p_136512_, "attribute"), UuidArgument.getUuid(p_136512_, "uuid"), StringArgumentType.getString(p_136512_, "name"), DoubleArgumentType.getDouble(p_136512_, "value"), AttributeModifier.Operation.MULTIPLY_TOTAL);
+      })).then(Commands.literal("multiply_base").executes((p_136510_) -> {
+         return addModifier(p_136510_.getSource(), EntityArgument.getEntity(p_136510_, "target"), ResourceKeyArgument.getAttribute(p_136510_, "attribute"), UuidArgument.getUuid(p_136510_, "uuid"), StringArgumentType.getString(p_136510_, "name"), DoubleArgumentType.getDouble(p_136510_, "value"), AttributeModifier.Operation.MULTIPLY_BASE);
+      })))))).then(Commands.literal("remove").then(Commands.argument("uuid", UuidArgument.uuid()).executes((p_136508_) -> {
+         return removeModifier(p_136508_.getSource(), EntityArgument.getEntity(p_136508_, "target"), ResourceKeyArgument.getAttribute(p_136508_, "attribute"), UuidArgument.getUuid(p_136508_, "uuid"));
+      }))).then(Commands.literal("value").then(Commands.literal("get").then(Commands.argument("uuid", UuidArgument.uuid()).executes((p_136501_) -> {
+         return getAttributeModifier(p_136501_.getSource(), EntityArgument.getEntity(p_136501_, "target"), ResourceKeyArgument.getAttribute(p_136501_, "attribute"), UuidArgument.getUuid(p_136501_, "uuid"), 1.0D);
+      }).then(Commands.argument("scale", DoubleArgumentType.doubleArg()).executes((p_136490_) -> {
+         return getAttributeModifier(p_136490_.getSource(), EntityArgument.getEntity(p_136490_, "target"), ResourceKeyArgument.getAttribute(p_136490_, "attribute"), UuidArgument.getUuid(p_136490_, "uuid"), DoubleArgumentType.getDouble(p_136490_, "scale"));
       })))))))));
    }
 

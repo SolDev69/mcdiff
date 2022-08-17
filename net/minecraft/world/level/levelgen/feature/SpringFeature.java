@@ -15,34 +15,34 @@ public class SpringFeature extends Feature<SpringConfiguration> {
       SpringConfiguration springconfiguration = p_160404_.config();
       WorldGenLevel worldgenlevel = p_160404_.level();
       BlockPos blockpos = p_160404_.origin();
-      if (!springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.above()).getBlock())) {
+      if (!worldgenlevel.getBlockState(blockpos.above()).is(springconfiguration.validBlocks)) {
          return false;
-      } else if (springconfiguration.requiresBlockBelow && !springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.below()).getBlock())) {
+      } else if (springconfiguration.requiresBlockBelow && !worldgenlevel.getBlockState(blockpos.below()).is(springconfiguration.validBlocks)) {
          return false;
       } else {
          BlockState blockstate = worldgenlevel.getBlockState(blockpos);
-         if (!blockstate.isAir() && !springconfiguration.validBlocks.contains(blockstate.getBlock())) {
+         if (!blockstate.isAir() && !blockstate.is(springconfiguration.validBlocks)) {
             return false;
          } else {
             int i = 0;
             int j = 0;
-            if (springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.west()).getBlock())) {
+            if (worldgenlevel.getBlockState(blockpos.west()).is(springconfiguration.validBlocks)) {
                ++j;
             }
 
-            if (springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.east()).getBlock())) {
+            if (worldgenlevel.getBlockState(blockpos.east()).is(springconfiguration.validBlocks)) {
                ++j;
             }
 
-            if (springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.north()).getBlock())) {
+            if (worldgenlevel.getBlockState(blockpos.north()).is(springconfiguration.validBlocks)) {
                ++j;
             }
 
-            if (springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.south()).getBlock())) {
+            if (worldgenlevel.getBlockState(blockpos.south()).is(springconfiguration.validBlocks)) {
                ++j;
             }
 
-            if (springconfiguration.validBlocks.contains(worldgenlevel.getBlockState(blockpos.below()).getBlock())) {
+            if (worldgenlevel.getBlockState(blockpos.below()).is(springconfiguration.validBlocks)) {
                ++j;
             }
 

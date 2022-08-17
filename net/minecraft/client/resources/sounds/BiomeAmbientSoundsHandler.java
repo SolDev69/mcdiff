@@ -47,7 +47,7 @@ public class BiomeAmbientSoundsHandler implements AmbientSoundHandler {
 
    public void tick() {
       this.loopSounds.values().removeIf(AbstractTickableSoundInstance::isStopped);
-      Biome biome = this.biomeManager.getNoiseBiomeAtPosition(this.player.getX(), this.player.getY(), this.player.getZ());
+      Biome biome = this.biomeManager.getNoiseBiomeAtPosition(this.player.getX(), this.player.getY(), this.player.getZ()).value();
       if (biome != this.previousBiome) {
          this.previousBiome = biome;
          this.moodSettings = biome.getAmbientMood();

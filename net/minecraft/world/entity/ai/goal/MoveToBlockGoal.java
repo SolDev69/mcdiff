@@ -75,7 +75,7 @@ public abstract class MoveToBlockGoal extends Goal {
 
    public void tick() {
       BlockPos blockpos = this.getMoveToTarget();
-      if (!blockpos.closerThan(this.mob.position(), this.acceptedDistance())) {
+      if (!blockpos.closerToCenterThan(this.mob.position(), this.acceptedDistance())) {
          this.reachedTarget = false;
          ++this.tryTicks;
          if (this.shouldRecalculatePath()) {

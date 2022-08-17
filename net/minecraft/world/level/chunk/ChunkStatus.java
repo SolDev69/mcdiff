@@ -312,7 +312,8 @@ public class ChunkStatus {
          if (p_187891_ || !p_187890_.getStatus().isOrAfter(p_187882_)) {
             this.doWork(p_187882_, p_187884_, p_187885_, p_187889_, p_187890_);
             if (p_187890_ instanceof ProtoChunk) {
-               ((ProtoChunk)p_187890_).setStatus(p_187882_);
+               ProtoChunk protochunk = (ProtoChunk)p_187890_;
+               protochunk.setStatus(p_187882_);
             }
          }
 

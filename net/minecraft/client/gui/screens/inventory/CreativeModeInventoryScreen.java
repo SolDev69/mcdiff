@@ -2,15 +2,16 @@ package net.minecraft.client.gui.screens.inventory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.datafixers.util.Pair;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.ChatFormatting;
@@ -28,9 +29,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.tags.Tag;
-import net.minecraft.tags.TagCollection;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
@@ -75,7 +74,7 @@ public class CreativeModeInventoryScreen extends EffectRenderingInventoryScreen<
    private CreativeInventoryListener listener;
    private boolean ignoreTextInput;
    private boolean hasClickedOutside;
-   private final Map<ResourceLocation, Tag<Item>> visibleTags = Maps.newTreeMap();
+   private final Set<TagKey<Item>> visibleTags = new HashSet<>();
 
    public CreativeModeInventoryScreen(Player p_98519_) {
       super(new CreativeModeInventoryScreen.ItemPickerMenu(p_98519_), p_98519_.getInventory(), TextComponent.EMPTY);
@@ -366,10 +365,9 @@ public class CreativeModeInventoryScreen extends EffectRenderingInventoryScreen<
          };
       }
 
-      TagCollection<Item> tagcollection = ItemTags.getAllTags();
-      tagcollection.getAvailableTags().stream().filter(predicate).forEach((p_98552_) -> {
-         this.visibleTags.put(p_98552_, tagcollection.getTag(p_98552_));
-      });
+      Registry.ITEM.getTagNames().filter((p_205410_) -> {
+         return predicate.test(p_205410_.location());
+      }).forEach(this.visibleTags::add);
    }
 
    protected void renderLabels(PoseStack p_98616_, int p_98617_, int p_98618_) {
@@ -527,8 +525,8 @@ public class CreativeModeInventoryScreen extends EffectRenderingInventoryScreen<
          return false;
       } else {
          int i = ((this.menu).items.size() + 9 - 1) / 9 - 5;
-         this.scrollOffs = (float)((double)this.scrollOffs - p_98529_ / (double)i);
-         this.scrollOffs = Mth.clamp(this.scrollOffs, 0.0F, 1.0F);
+         float f = (float)(p_98529_ / (double)i);
+         this.scrollOffs = Mth.clamp(this.scrollOffs - f, 0.0F, 1.0F);
          this.menu.scrollTo(this.scrollOffs);
          return true;
       }
@@ -601,9 +599,9 @@ public class CreativeModeInventoryScreen extends EffectRenderingInventoryScreen<
             }
          }
 
-         this.visibleTags.forEach((p_169747_, p_169748_) -> {
-            if (p_98591_.is(p_169748_)) {
-               list1.add(1, (new TextComponent("#" + p_169747_)).withStyle(ChatFormatting.DARK_PURPLE));
+         this.visibleTags.forEach((p_205407_) -> {
+            if (p_98591_.is(p_205407_)) {
+               list1.add(1, (new TextComponent("#" + p_205407_.location())).withStyle(ChatFormatting.DARK_PURPLE));
             }
 
          });

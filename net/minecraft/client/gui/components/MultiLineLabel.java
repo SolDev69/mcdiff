@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.Arrays;
 import java.util.List;
 import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.util.FormattedCharSequence;
@@ -28,6 +29,9 @@ public interface MultiLineLabel {
 
       public int renderLeftAlignedNoShadow(PoseStack p_94394_, int p_94395_, int p_94396_, int p_94397_, int p_94398_) {
          return p_94396_;
+      }
+
+      public void renderBackgroundCentered(PoseStack p_210824_, int p_210825_, int p_210826_, int p_210827_, int p_210828_, int p_210829_) {
       }
 
       public int getLineCount() {
@@ -98,6 +102,16 @@ public interface MultiLineLabel {
             return i;
          }
 
+         public void renderBackgroundCentered(PoseStack p_210831_, int p_210832_, int p_210833_, int p_210834_, int p_210835_, int p_210836_) {
+            int i = p_94363_.stream().mapToInt((p_210838_) -> {
+               return p_210838_.width;
+            }).max().orElse(0);
+            if (i > 0) {
+               GuiComponent.fill(p_210831_, p_210832_ - i / 2 - p_210835_, p_210833_ - p_210835_, p_210832_ + i / 2 + p_210835_, p_210833_ + p_94363_.size() * p_210834_ + p_210835_, p_210836_);
+            }
+
+         }
+
          public int getLineCount() {
             return p_94363_.size();
          }
@@ -111,6 +125,8 @@ public interface MultiLineLabel {
    int renderLeftAligned(PoseStack p_94353_, int p_94354_, int p_94355_, int p_94356_, int p_94357_);
 
    int renderLeftAlignedNoShadow(PoseStack p_94364_, int p_94365_, int p_94366_, int p_94367_, int p_94368_);
+
+   void renderBackgroundCentered(PoseStack p_210817_, int p_210818_, int p_210819_, int p_210820_, int p_210821_, int p_210822_);
 
    int getLineCount();
 

@@ -1,54 +1,38 @@
 package net.minecraft.tags;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.datafixers.util.Either;
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 
-public interface Tag<T> {
-   static <T> Codec<Tag<T>> codec(Supplier<TagCollection<T>> p_13291_) {
-      return ResourceLocation.CODEC.flatXmap((p_13297_) -> {
-         return Optional.ofNullable(p_13291_.get().getTag(p_13297_)).map(DataResult::success).orElseGet(() -> {
-            return DataResult.error("Unknown tag: " + p_13297_);
-         });
-      }, (p_13294_) -> {
-         return Optional.ofNullable(p_13291_.get().getId(p_13294_)).map(DataResult::success).orElseGet(() -> {
-            return DataResult.error("Unknown tag: " + p_13294_);
-         });
-      });
+public class Tag<T> {
+   private static final Tag<?> EMPTY = new Tag(List.of());
+   final List<T> elements;
+
+   public Tag(Collection<T> p_203860_) {
+      this.elements = List.copyOf(p_203860_);
    }
 
-   boolean contains(T p_13287_);
-
-   List<T> getValues();
-
-   default T getRandomElement(Random p_13289_) {
-      List<T> list = this.getValues();
-      return list.get(p_13289_.nextInt(list.size()));
+   public List<T> getValues() {
+      return this.elements;
    }
 
-   static <T> Tag<T> fromSet(Set<T> p_13301_) {
-      return SetTag.create(p_13301_);
+   public static <T> Tag<T> empty() {
+      return (Tag<T>)EMPTY;
    }
 
    public static class Builder {
-      private final List<Tag.BuilderEntry> entries = Lists.newArrayList();
+      private final List<Tag.BuilderEntry> entries = new ArrayList<>();
 
       public static Tag.Builder tag() {
          return new Tag.Builder();
@@ -81,15 +65,15 @@ public interface Tag<T> {
 
       public <T> Either<Collection<Tag.BuilderEntry>, Tag<T>> build(Function<ResourceLocation, Tag<T>> p_144372_, Function<ResourceLocation, T> p_144373_) {
          ImmutableSet.Builder<T> builder = ImmutableSet.builder();
-         List<Tag.BuilderEntry> list = Lists.newArrayList();
+         List<Tag.BuilderEntry> list = new ArrayList<>();
 
          for(Tag.BuilderEntry tag$builderentry : this.entries) {
-            if (!tag$builderentry.getEntry().build(p_144372_, p_144373_, builder::add)) {
+            if (!tag$builderentry.entry().build(p_144372_, p_144373_, builder::add)) {
                list.add(tag$builderentry);
             }
          }
 
-         return list.isEmpty() ? Either.right(Tag.fromSet(builder.build())) : Either.left(list);
+         return list.isEmpty() ? Either.right(new Tag<>(builder.build())) : Either.left(list);
       }
 
       public Stream<Tag.BuilderEntry> getEntries() {
@@ -110,7 +94,7 @@ public interface Tag<T> {
 
       public Tag.Builder addFromJson(JsonObject p_13313_, String p_13314_) {
          JsonArray jsonarray = GsonHelper.getAsJsonArray(p_13313_, "values");
-         List<Tag.Entry> list = Lists.newArrayList();
+         List<Tag.Entry> list = new ArrayList<>();
 
          for(JsonElement jsonelement : jsonarray) {
             list.add(parseEntry(jsonelement));
@@ -152,7 +136,7 @@ public interface Tag<T> {
          JsonArray jsonarray = new JsonArray();
 
          for(Tag.BuilderEntry tag$builderentry : this.entries) {
-            tag$builderentry.getEntry().serializeTo(jsonarray);
+            tag$builderentry.entry().serializeTo(jsonarray);
          }
 
          jsonobject.addProperty("replace", false);
@@ -161,29 +145,13 @@ public interface Tag<T> {
       }
    }
 
-   public static class BuilderEntry {
-      final Tag.Entry entry;
-      private final String source;
-
-      BuilderEntry(Tag.Entry p_13341_, String p_13342_) {
-         this.entry = p_13341_;
-         this.source = p_13342_;
-      }
-
-      public Tag.Entry getEntry() {
-         return this.entry;
-      }
-
-      public String getSource() {
-         return this.source;
-      }
-
+   public static record BuilderEntry(Tag.Entry entry, String source) {
       public String toString() {
          return this.entry + " (from " + this.source + ")";
       }
    }
 
-   public static class ElementEntry implements Tag.Entry {
+   static class ElementEntry implements Tag.Entry {
       private final ResourceLocation id;
 
       public ElementEntry(ResourceLocation p_13351_) {
@@ -227,11 +195,7 @@ public interface Tag<T> {
       boolean verifyIfPresent(Predicate<ResourceLocation> p_144390_, Predicate<ResourceLocation> p_144391_);
    }
 
-   public interface Named<T> extends Tag<T> {
-      ResourceLocation getName();
-   }
-
-   public static class OptionalElementEntry implements Tag.Entry {
+   static class OptionalElementEntry implements Tag.Entry {
       private final ResourceLocation id;
 
       public OptionalElementEntry(ResourceLocation p_13365_) {
@@ -263,7 +227,7 @@ public interface Tag<T> {
       }
    }
 
-   public static class OptionalTagEntry implements Tag.Entry {
+   static class OptionalTagEntry implements Tag.Entry {
       private final ResourceLocation id;
 
       public OptionalTagEntry(ResourceLocation p_13375_) {
@@ -273,7 +237,7 @@ public interface Tag<T> {
       public <T> boolean build(Function<ResourceLocation, Tag<T>> p_13379_, Function<ResourceLocation, T> p_13380_, Consumer<T> p_13381_) {
          Tag<T> tag = p_13379_.apply(this.id);
          if (tag != null) {
-            tag.getValues().forEach(p_13381_);
+            tag.elements.forEach(p_13381_);
          }
 
          return true;
@@ -299,7 +263,7 @@ public interface Tag<T> {
       }
    }
 
-   public static class TagEntry implements Tag.Entry {
+   static class TagEntry implements Tag.Entry {
       private final ResourceLocation id;
 
       public TagEntry(ResourceLocation p_13385_) {
@@ -311,7 +275,7 @@ public interface Tag<T> {
          if (tag == null) {
             return false;
          } else {
-            tag.getValues().forEach(p_13391_);
+            tag.elements.forEach(p_13391_);
             return true;
          }
       }

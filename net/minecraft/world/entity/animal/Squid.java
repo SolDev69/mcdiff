@@ -100,7 +100,7 @@ public class Squid extends WaterAnimal {
          if (this.level.isClientSide) {
             this.tentacleMovement = ((float)Math.PI * 2F);
          } else {
-            this.tentacleMovement = (float)((double)this.tentacleMovement - (Math.PI * 2D));
+            this.tentacleMovement -= ((float)Math.PI * 2F);
             if (this.random.nextInt(10) == 0) {
                this.tentacleSpeed = 1.0F / (this.random.nextFloat() + 1.0F) * 0.2F;
             }
@@ -133,7 +133,7 @@ public class Squid extends WaterAnimal {
          double d0 = vec3.horizontalDistance();
          this.yBodyRot += (-((float)Mth.atan2(vec3.x, vec3.z)) * (180F / (float)Math.PI) - this.yBodyRot) * 0.1F;
          this.setYRot(this.yBodyRot);
-         this.zBodyRot = (float)((double)this.zBodyRot + Math.PI * (double)this.rotateSpeed * 1.5D);
+         this.zBodyRot += (float)Math.PI * this.rotateSpeed * 1.5F;
          this.xBodyRot += (-((float)Mth.atan2(d0, vec3.y)) * (180F / (float)Math.PI) - this.xBodyRot) * 0.1F;
       } else {
          this.tentacleAngle = Mth.abs(Mth.sin(this.tentacleMovement)) * (float)Math.PI * 0.25F;
@@ -148,14 +148,17 @@ public class Squid extends WaterAnimal {
             this.setDeltaMovement(0.0D, d1 * (double)0.98F, 0.0D);
          }
 
-         this.xBodyRot = (float)((double)this.xBodyRot + (double)(-90.0F - this.xBodyRot) * 0.02D);
+         this.xBodyRot += (-90.0F - this.xBodyRot) * 0.02F;
       }
 
    }
 
    public boolean hurt(DamageSource p_29963_, float p_29964_) {
       if (super.hurt(p_29963_, p_29964_) && this.getLastHurtByMob() != null) {
-         this.spawnInk();
+         if (!this.level.isClientSide) {
+            this.spawnInk();
+         }
+
          return true;
       } else {
          return false;
@@ -240,13 +243,13 @@ public class Squid extends WaterAnimal {
                double d0 = vec3.length();
                if (d0 > 0.0D) {
                   vec3.normalize();
-                  float f = 3.0F;
+                  double d1 = 3.0D;
                   if (d0 > 5.0D) {
-                     f = (float)((double)f - (d0 - 5.0D) / 5.0D);
+                     d1 -= (d0 - 5.0D) / 5.0D;
                   }
 
-                  if (f > 0.0F) {
-                     vec3 = vec3.scale((double)f);
+                  if (d1 > 0.0D) {
+                     vec3 = vec3.scale(d1);
                   }
                }
 

@@ -12,7 +12,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class JigsawReplacementProcessor extends StructureProcessor {
-   public static final Codec<JigsawReplacementProcessor> CODEC;
+   public static final Codec<JigsawReplacementProcessor> CODEC = Codec.unit(() -> {
+      return JigsawReplacementProcessor.INSTANCE;
+   });
    public static final JigsawReplacementProcessor INSTANCE = new JigsawReplacementProcessor();
 
    private JigsawReplacementProcessor() {
@@ -39,11 +41,5 @@ public class JigsawReplacementProcessor extends StructureProcessor {
 
    protected StructureProcessorType<?> getType() {
       return StructureProcessorType.JIGSAW_REPLACEMENT;
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
-      });
    }
 }

@@ -16,8 +16,8 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public class IntegratedPlayerList extends PlayerList {
    private CompoundTag playerData;
 
-   public IntegratedPlayerList(IntegratedServer p_120003_, RegistryAccess.RegistryHolder p_120004_, PlayerDataStorage p_120005_) {
-      super(p_120003_, p_120004_, p_120005_, 8);
+   public IntegratedPlayerList(IntegratedServer p_205649_, RegistryAccess.Frozen p_205650_, PlayerDataStorage p_205651_) {
+      super(p_205649_, p_205650_, p_205651_, 8);
       this.setViewDistance(10);
    }
 

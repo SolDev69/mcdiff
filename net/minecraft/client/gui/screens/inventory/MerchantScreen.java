@@ -259,8 +259,7 @@ public class MerchantScreen extends AbstractContainerScreen<MerchantMenu> {
       int i = this.menu.getOffers().size();
       if (this.canScroll(i)) {
          int j = i - 7;
-         this.scrollOff = (int)((double)this.scrollOff - p_99129_);
-         this.scrollOff = Mth.clamp(this.scrollOff, 0, j);
+         this.scrollOff = Mth.clamp((int)((double)this.scrollOff - p_99129_), 0, j);
       }
 
       return true;

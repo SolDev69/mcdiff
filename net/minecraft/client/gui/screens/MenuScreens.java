@@ -1,6 +1,7 @@
 package net.minecraft.client.gui.screens;
 
 import com.google.common.collect.Maps;
+import com.mojang.logging.LogUtils;
 import java.util.Map;
 import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
@@ -31,12 +32,11 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class MenuScreens {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Map<MenuType<?>, MenuScreens.ScreenConstructor<?, ?>> SCREENS = Maps.newHashMap();
 
    public static <T extends AbstractContainerMenu> void create(@Nullable MenuType<T> p_96202_, Minecraft p_96203_, int p_96204_, Component p_96205_) {

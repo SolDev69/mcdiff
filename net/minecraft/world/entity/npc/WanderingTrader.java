@@ -253,7 +253,7 @@ public class WanderingTrader extends AbstractVillager {
       }
 
       private boolean isTooFarAway(BlockPos p_35904_, double p_35905_) {
-         return !p_35904_.closerThan(this.trader.position(), p_35905_);
+         return !p_35904_.closerToCenterThan(this.trader.position(), p_35905_);
       }
    }
 }

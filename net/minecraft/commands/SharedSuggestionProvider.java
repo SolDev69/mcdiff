@@ -16,9 +16,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 
 public interface SharedSuggestionProvider {
@@ -34,7 +36,7 @@ public interface SharedSuggestionProvider {
 
    Stream<ResourceLocation> getRecipeNames();
 
-   CompletableFuture<Suggestions> customSuggestion(CommandContext<SharedSuggestionProvider> p_82912_, SuggestionsBuilder p_82913_);
+   CompletableFuture<Suggestions> customSuggestion(CommandContext<?> p_212334_);
 
    default Collection<SharedSuggestionProvider.TextCoordinates> getRelevantCoordinates() {
       return Collections.singleton(SharedSuggestionProvider.TextCoordinates.DEFAULT_GLOBAL);
@@ -47,6 +49,19 @@ public interface SharedSuggestionProvider {
    Set<ResourceKey<Level>> levels();
 
    RegistryAccess registryAccess();
+
+   default void suggestRegistryElements(Registry<?> p_212336_, SharedSuggestionProvider.ElementSuggestionType p_212337_, SuggestionsBuilder p_212338_) {
+      if (p_212337_.shouldSuggestTags()) {
+         suggestResource(p_212336_.getTagNames().map(TagKey::location), p_212338_, "#");
+      }
+
+      if (p_212337_.shouldSuggestElements()) {
+         suggestResource(p_212336_.keySet(), p_212338_);
+      }
+
+   }
+
+   CompletableFuture<Suggestions> suggestRegistryElements(ResourceKey<? extends Registry<?>> p_212339_, SharedSuggestionProvider.ElementSuggestionType p_212340_, SuggestionsBuilder p_212341_, CommandContext<?> p_212342_);
 
    boolean hasPermission(int p_82986_);
 
@@ -88,6 +103,10 @@ public interface SharedSuggestionProvider {
          p_82931_.suggest(p_82932_ + p_82917_);
       });
       return p_82931_.buildFuture();
+   }
+
+   static CompletableFuture<Suggestions> suggestResource(Stream<ResourceLocation> p_205107_, SuggestionsBuilder p_205108_, String p_205109_) {
+      return suggestResource(p_205107_::iterator, p_205108_, p_205109_);
    }
 
    static CompletableFuture<Suggestions> suggestResource(Iterable<ResourceLocation> p_82927_, SuggestionsBuilder p_82928_) {
@@ -229,6 +248,20 @@ public interface SharedSuggestionProvider {
       }
 
       return true;
+   }
+
+   public static enum ElementSuggestionType {
+      TAGS,
+      ELEMENTS,
+      ALL;
+
+      public boolean shouldSuggestTags() {
+         return this == TAGS || this == ALL;
+      }
+
+      public boolean shouldSuggestElements() {
+         return this == ELEMENTS || this == ALL;
+      }
    }
 
    public static class TextCoordinates {

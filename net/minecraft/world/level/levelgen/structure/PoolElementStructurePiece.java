@@ -1,7 +1,9 @@
 package net.minecraft.world.level.levelgen.structure;
 
 import com.google.common.collect.Lists;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.DynamicOps;
 import java.util.List;
 import java.util.Random;
 import net.minecraft.core.BlockPos;
@@ -9,23 +11,21 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.RegistryReadOps;
-import net.minecraft.resources.RegistryWriteOps;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureFeatureManager;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.StructurePieceType;
-import net.minecraft.world.level.levelgen.feature.structures.JigsawJunction;
-import net.minecraft.world.level.levelgen.feature.structures.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
+import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
+import net.minecraft.world.level.levelgen.structure.pools.StructurePoolElement;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureManager;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class PoolElementStructurePiece extends StructurePiece {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    protected final StructurePoolElement element;
    protected BlockPos position;
    private final int groundLevelDelta;
@@ -33,13 +33,13 @@ public class PoolElementStructurePiece extends StructurePiece {
    private final List<JigsawJunction> junctions = Lists.newArrayList();
    private final StructureManager structureManager;
 
-   public PoolElementStructurePiece(StructureManager p_72606_, StructurePoolElement p_72607_, BlockPos p_72608_, int p_72609_, Rotation p_72610_, BoundingBox p_72611_) {
-      super(StructurePieceType.JIGSAW, 0, p_72611_);
-      this.structureManager = p_72606_;
-      this.element = p_72607_;
-      this.position = p_72608_;
-      this.groundLevelDelta = p_72609_;
-      this.rotation = p_72610_;
+   public PoolElementStructurePiece(StructureManager p_209910_, StructurePoolElement p_209911_, BlockPos p_209912_, int p_209913_, Rotation p_209914_, BoundingBox p_209915_) {
+      super(StructurePieceType.JIGSAW, 0, p_209915_);
+      this.structureManager = p_209910_;
+      this.element = p_209911_;
+      this.position = p_209912_;
+      this.groundLevelDelta = p_209913_;
+      this.rotation = p_209914_;
    }
 
    public PoolElementStructurePiece(StructurePieceSerializationContext p_192406_, CompoundTag p_192407_) {
@@ -47,16 +47,16 @@ public class PoolElementStructurePiece extends StructurePiece {
       this.structureManager = p_192406_.structureManager();
       this.position = new BlockPos(p_192407_.getInt("PosX"), p_192407_.getInt("PosY"), p_192407_.getInt("PosZ"));
       this.groundLevelDelta = p_192407_.getInt("ground_level_delta");
-      RegistryReadOps<Tag> registryreadops = RegistryReadOps.create(NbtOps.INSTANCE, p_192406_.resourceManager(), p_192406_.registryAccess());
-      this.element = StructurePoolElement.CODEC.parse(registryreadops, p_192407_.getCompound("pool_element")).resultOrPartial(LOGGER::error).orElseThrow(() -> {
+      DynamicOps<Tag> dynamicops = RegistryOps.create(NbtOps.INSTANCE, p_192406_.registryAccess());
+      this.element = StructurePoolElement.CODEC.parse(dynamicops, p_192407_.getCompound("pool_element")).resultOrPartial(LOGGER::error).orElseThrow(() -> {
          return new IllegalStateException("Invalid pool element found");
       });
       this.rotation = Rotation.valueOf(p_192407_.getString("rotation"));
       this.boundingBox = this.element.getBoundingBox(this.structureManager, this.position, this.rotation);
       ListTag listtag = p_192407_.getList("junctions", 10);
       this.junctions.clear();
-      listtag.forEach((p_163128_) -> {
-         this.junctions.add(JigsawJunction.deserialize(new Dynamic<>(registryreadops, p_163128_)));
+      listtag.forEach((p_204943_) -> {
+         this.junctions.add(JigsawJunction.deserialize(new Dynamic<>(dynamicops, p_204943_)));
       });
    }
 
@@ -65,15 +65,15 @@ public class PoolElementStructurePiece extends StructurePiece {
       p_192426_.putInt("PosY", this.position.getY());
       p_192426_.putInt("PosZ", this.position.getZ());
       p_192426_.putInt("ground_level_delta", this.groundLevelDelta);
-      RegistryWriteOps<Tag> registrywriteops = RegistryWriteOps.create(NbtOps.INSTANCE, p_192425_.registryAccess());
-      StructurePoolElement.CODEC.encodeStart(registrywriteops, this.element).resultOrPartial(LOGGER::error).ifPresent((p_163125_) -> {
+      DynamicOps<Tag> dynamicops = RegistryOps.create(NbtOps.INSTANCE, p_192425_.registryAccess());
+      StructurePoolElement.CODEC.encodeStart(dynamicops, this.element).resultOrPartial(LOGGER::error).ifPresent((p_163125_) -> {
          p_192426_.put("pool_element", p_163125_);
       });
       p_192426_.putString("rotation", this.rotation.name());
       ListTag listtag = new ListTag();
 
       for(JigsawJunction jigsawjunction : this.junctions) {
-         listtag.add(jigsawjunction.serialize(registrywriteops).getValue());
+         listtag.add(jigsawjunction.serialize(dynamicops).getValue());
       }
 
       p_192426_.put("junctions", listtag);
@@ -112,8 +112,8 @@ public class PoolElementStructurePiece extends StructurePiece {
       return this.groundLevelDelta;
    }
 
-   public void addJunction(JigsawJunction p_72636_) {
-      this.junctions.add(p_72636_);
+   public void addJunction(JigsawJunction p_209917_) {
+      this.junctions.add(p_209917_);
    }
 
    public List<JigsawJunction> getJunctions() {

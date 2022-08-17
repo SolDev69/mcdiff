@@ -1,6 +1,7 @@
 package net.minecraft.world.level.chunk.storage;
 
 import com.google.common.collect.Maps;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -8,14 +9,15 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.shorts.ShortList;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Map.Entry;
 import javax.annotation.Nullable;
 import net.minecraft.SharedConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -49,6 +51,7 @@ import net.minecraft.world.level.levelgen.BelowZeroRetrogen;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.blending.BlendingData;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.StructureFeature;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
@@ -56,12 +59,11 @@ import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.ticks.LevelChunkTicks;
 import net.minecraft.world.ticks.ProtoChunkTicks;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ChunkSerializer {
    private static final Codec<PalettedContainer<BlockState>> BLOCK_STATE_CODEC = PalettedContainer.codec(Block.BLOCK_STATE_REGISTRY, BlockState.CODEC, PalettedContainer.Strategy.SECTION_STATES, Blocks.AIR.defaultBlockState());
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final String TAG_UPGRADE_DATA = "UpgradeData";
    private static final String BLOCK_TICKS_TAG = "block_ticks";
    private static final String FLUID_TICKS_TAG = "fluid_ticks";
@@ -85,7 +87,7 @@ public class ChunkSerializer {
       }
 
       Registry<Biome> registry = p_188231_.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY);
-      Codec<PalettedContainer<Biome>> codec = makeBiomeCodec(registry);
+      Codec<PalettedContainer<Holder<Biome>>> codec = makeBiomeCodec(registry);
 
       for(int j = 0; j < listtag.size(); ++j) {
          CompoundTag compoundtag = listtag.getCompound(j);
@@ -101,13 +103,13 @@ public class ChunkSerializer {
                palettedcontainer = new PalettedContainer<>(Block.BLOCK_STATE_REGISTRY, Blocks.AIR.defaultBlockState(), PalettedContainer.Strategy.SECTION_STATES);
             }
 
-            PalettedContainer<Biome> palettedcontainer1;
+            PalettedContainer<Holder<Biome>> palettedcontainer1;
             if (compoundtag.contains("biomes", 10)) {
                palettedcontainer1 = codec.parse(NbtOps.INSTANCE, compoundtag.getCompound("biomes")).promotePartial((p_188274_) -> {
                   logErrors(p_188233_, k, p_188274_);
                }).getOrThrow(false, LOGGER::error);
             } else {
-               palettedcontainer1 = new PalettedContainer<>(registry, registry.getOrThrow(Biomes.PLAINS), PalettedContainer.Strategy.SECTION_BIOMES);
+               palettedcontainer1 = new PalettedContainer<>(registry.asHolderIdMap(), registry.getHolderOrThrow(Biomes.PLAINS), PalettedContainer.Strategy.SECTION_BIOMES);
             }
 
             LevelChunkSection levelchunksection = new LevelChunkSection(k, palettedcontainer, palettedcontainer1);
@@ -191,7 +193,7 @@ public class ChunkSerializer {
       Heightmap.primeHeightmaps(chunkaccess, enumset);
       CompoundTag compoundtag3 = p_188234_.getCompound("structures");
       chunkaccess.setAllStarts(unpackStructureStart(StructurePieceSerializationContext.fromLevel(p_188231_), compoundtag3, p_188231_.getSeed()));
-      chunkaccess.setAllReferences(unpackStructureReferences(p_188233_, compoundtag3));
+      chunkaccess.setAllReferences(unpackStructureReferences(p_188231_.registryAccess(), p_188233_, compoundtag3));
       if (p_188234_.getBoolean("shouldSave")) {
          chunkaccess.setUnsaved(true);
       }
@@ -248,8 +250,8 @@ public class ChunkSerializer {
       LOGGER.error("Recoverable errors when loading section [" + p_188240_.x + ", " + p_188241_ + ", " + p_188240_.z + "]: " + p_188242_);
    }
 
-   private static Codec<PalettedContainer<Biome>> makeBiomeCodec(Registry<Biome> p_188261_) {
-      return PalettedContainer.codec(p_188261_, p_188261_.byNameCodec(), PalettedContainer.Strategy.SECTION_BIOMES, p_188261_.getOrThrow(Biomes.PLAINS));
+   private static Codec<PalettedContainer<Holder<Biome>>> makeBiomeCodec(Registry<Biome> p_188261_) {
+      return PalettedContainer.codec(p_188261_.asHolderIdMap(), p_188261_.holderByNameCodec(), PalettedContainer.Strategy.SECTION_BIOMES, p_188261_.getHolderOrThrow(Biomes.PLAINS));
    }
 
    public static CompoundTag write(ServerLevel p_63455_, ChunkAccess p_63456_) {
@@ -285,7 +287,7 @@ public class ChunkSerializer {
       ListTag listtag = new ListTag();
       LevelLightEngine levellightengine = p_63455_.getChunkSource().getLightEngine();
       Registry<Biome> registry = p_63455_.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY);
-      Codec<PalettedContainer<Biome>> codec = makeBiomeCodec(registry);
+      Codec<PalettedContainer<Holder<Biome>>> codec = makeBiomeCodec(registry);
       boolean flag = p_63456_.isLightCorrect();
 
       for(int i = levellightengine.getMinLightSection(); i < levellightengine.getMaxLightSection(); ++i) {
@@ -412,38 +414,44 @@ public class ChunkSerializer {
       return listtag.isEmpty() ? null : listtag;
    }
 
-   private static CompoundTag packStructureData(StructurePieceSerializationContext p_188250_, ChunkPos p_188251_, Map<StructureFeature<?>, StructureStart<?>> p_188252_, Map<StructureFeature<?>, LongSet> p_188253_) {
+   private static CompoundTag packStructureData(StructurePieceSerializationContext p_188250_, ChunkPos p_188251_, Map<ConfiguredStructureFeature<?, ?>, StructureStart> p_188252_, Map<ConfiguredStructureFeature<?, ?>, LongSet> p_188253_) {
       CompoundTag compoundtag = new CompoundTag();
       CompoundTag compoundtag1 = new CompoundTag();
+      Registry<ConfiguredStructureFeature<?, ?>> registry = p_188250_.registryAccess().registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY);
 
-      for(Entry<StructureFeature<?>, StructureStart<?>> entry : p_188252_.entrySet()) {
-         compoundtag1.put(entry.getKey().getFeatureName(), entry.getValue().createTag(p_188250_, p_188251_));
+      for(Entry<ConfiguredStructureFeature<?, ?>, StructureStart> entry : p_188252_.entrySet()) {
+         ResourceLocation resourcelocation = registry.getKey(entry.getKey());
+         compoundtag1.put(resourcelocation.toString(), entry.getValue().createTag(p_188250_, p_188251_));
       }
 
       compoundtag.put("starts", compoundtag1);
       CompoundTag compoundtag2 = new CompoundTag();
 
-      for(Entry<StructureFeature<?>, LongSet> entry1 : p_188253_.entrySet()) {
-         compoundtag2.put(entry1.getKey().getFeatureName(), new LongArrayTag(entry1.getValue()));
+      for(Entry<ConfiguredStructureFeature<?, ?>, LongSet> entry1 : p_188253_.entrySet()) {
+         if (!entry1.getValue().isEmpty()) {
+            ResourceLocation resourcelocation1 = registry.getKey(entry1.getKey());
+            compoundtag2.put(resourcelocation1.toString(), new LongArrayTag(entry1.getValue()));
+         }
       }
 
       compoundtag.put("References", compoundtag2);
       return compoundtag;
    }
 
-   private static Map<StructureFeature<?>, StructureStart<?>> unpackStructureStart(StructurePieceSerializationContext p_188255_, CompoundTag p_188256_, long p_188257_) {
-      Map<StructureFeature<?>, StructureStart<?>> map = Maps.newHashMap();
+   private static Map<ConfiguredStructureFeature<?, ?>, StructureStart> unpackStructureStart(StructurePieceSerializationContext p_188255_, CompoundTag p_188256_, long p_188257_) {
+      Map<ConfiguredStructureFeature<?, ?>, StructureStart> map = Maps.newHashMap();
+      Registry<ConfiguredStructureFeature<?, ?>> registry = p_188255_.registryAccess().registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY);
       CompoundTag compoundtag = p_188256_.getCompound("starts");
 
       for(String s : compoundtag.getAllKeys()) {
-         String s1 = s.toLowerCase(Locale.ROOT);
-         StructureFeature<?> structurefeature = StructureFeature.STRUCTURES_REGISTRY.get(s1);
-         if (structurefeature == null) {
-            LOGGER.error("Unknown structure start: {}", (Object)s1);
+         ResourceLocation resourcelocation = ResourceLocation.tryParse(s);
+         ConfiguredStructureFeature<?, ?> configuredstructurefeature = registry.get(resourcelocation);
+         if (configuredstructurefeature == null) {
+            LOGGER.error("Unknown structure start: {}", (Object)resourcelocation);
          } else {
-            StructureStart<?> structurestart = StructureFeature.loadStaticStart(p_188255_, compoundtag.getCompound(s), p_188257_);
+            StructureStart structurestart = StructureFeature.loadStaticStart(p_188255_, compoundtag.getCompound(s), p_188257_);
             if (structurestart != null) {
-               map.put(structurefeature, structurestart);
+               map.put(configuredstructurefeature, structurestart);
             }
          }
       }
@@ -451,25 +459,29 @@ public class ChunkSerializer {
       return map;
    }
 
-   private static Map<StructureFeature<?>, LongSet> unpackStructureReferences(ChunkPos p_63472_, CompoundTag p_63473_) {
-      Map<StructureFeature<?>, LongSet> map = Maps.newHashMap();
-      CompoundTag compoundtag = p_63473_.getCompound("References");
+   private static Map<ConfiguredStructureFeature<?, ?>, LongSet> unpackStructureReferences(RegistryAccess p_208155_, ChunkPos p_208156_, CompoundTag p_208157_) {
+      Map<ConfiguredStructureFeature<?, ?>, LongSet> map = Maps.newHashMap();
+      Registry<ConfiguredStructureFeature<?, ?>> registry = p_208155_.registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY);
+      CompoundTag compoundtag = p_208157_.getCompound("References");
 
       for(String s : compoundtag.getAllKeys()) {
-         String s1 = s.toLowerCase(Locale.ROOT);
-         StructureFeature<?> structurefeature = StructureFeature.STRUCTURES_REGISTRY.get(s1);
-         if (structurefeature == null) {
-            LOGGER.warn("Found reference to unknown structure '{}' in chunk {}, discarding", s1, p_63472_);
+         ResourceLocation resourcelocation = ResourceLocation.tryParse(s);
+         ConfiguredStructureFeature<?, ?> configuredstructurefeature = registry.get(resourcelocation);
+         if (configuredstructurefeature == null) {
+            LOGGER.warn("Found reference to unknown structure '{}' in chunk {}, discarding", resourcelocation, p_208156_);
          } else {
-            map.put(structurefeature, new LongOpenHashSet(Arrays.stream(compoundtag.getLongArray(s)).filter((p_188246_) -> {
-               ChunkPos chunkpos = new ChunkPos(p_188246_);
-               if (chunkpos.getChessboardDistance(p_63472_) > 8) {
-                  LOGGER.warn("Found invalid structure reference [ {} @ {} ] for chunk {}.", s1, chunkpos, p_63472_);
-                  return false;
-               } else {
-                  return true;
-               }
-            }).toArray()));
+            long[] along = compoundtag.getLongArray(s);
+            if (along.length != 0) {
+               map.put(configuredstructurefeature, new LongOpenHashSet(Arrays.stream(along).filter((p_208153_) -> {
+                  ChunkPos chunkpos = new ChunkPos(p_208153_);
+                  if (chunkpos.getChessboardDistance(p_208156_) > 8) {
+                     LOGGER.warn("Found invalid structure reference [ {} @ {} ] for chunk {}.", resourcelocation, chunkpos, p_208156_);
+                     return false;
+                  } else {
+                     return true;
+                  }
+               }).toArray()));
+            }
          }
       }
 

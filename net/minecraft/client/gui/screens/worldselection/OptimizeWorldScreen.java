@@ -2,6 +2,7 @@ package net.minecraft.client.gui.screens.worldselection;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.datafixers.DataFixer;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenCustomHashMap;
@@ -10,10 +11,10 @@ import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.WorldStem;
 import net.minecraft.util.Mth;
 import net.minecraft.util.worldupdate.WorldUpgrader;
 import net.minecraft.world.level.Level;
@@ -23,12 +24,11 @@ import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraft.world.level.storage.WorldData;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class OptimizeWorldScreen extends Screen {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Object2IntMap<ResourceKey<Level>> DIMENSION_COLORS = Util.make(new Object2IntOpenCustomHashMap<>(Util.identityStrategy()), (p_101324_) -> {
       p_101324_.put(Level.OVERWORLD, -13408734);
       p_101324_.put(Level.NETHER, -10075085);
@@ -40,20 +40,18 @@ public class OptimizeWorldScreen extends Screen {
 
    @Nullable
    public static OptimizeWorldScreen create(Minecraft p_101316_, BooleanConsumer p_101317_, DataFixer p_101318_, LevelStorageSource.LevelStorageAccess p_101319_, boolean p_101320_) {
-      RegistryAccess.RegistryHolder registryaccess$registryholder = RegistryAccess.builtin();
-
       try {
-         Minecraft.ServerStem minecraft$serverstem = p_101316_.makeServerStem(registryaccess$registryholder, Minecraft::loadDataPacks, Minecraft::loadWorldData, false, p_101319_);
+         WorldStem worldstem = p_101316_.makeWorldStem(p_101319_, false);
 
          OptimizeWorldScreen optimizeworldscreen;
          try {
-            WorldData worlddata = minecraft$serverstem.worldData();
-            p_101319_.saveDataTag(registryaccess$registryholder, worlddata);
+            WorldData worlddata = worldstem.worldData();
+            p_101319_.saveDataTag(worldstem.registryAccess(), worlddata);
             optimizeworldscreen = new OptimizeWorldScreen(p_101317_, p_101318_, p_101319_, worlddata.getLevelSettings(), p_101320_, worlddata.worldGenSettings());
          } catch (Throwable throwable1) {
-            if (minecraft$serverstem != null) {
+            if (worldstem != null) {
                try {
-                  minecraft$serverstem.close();
+                  worldstem.close();
                } catch (Throwable throwable) {
                   throwable1.addSuppressed(throwable);
                }
@@ -62,8 +60,8 @@ public class OptimizeWorldScreen extends Screen {
             throw throwable1;
          }
 
-         if (minecraft$serverstem != null) {
-            minecraft$serverstem.close();
+         if (worldstem != null) {
+            worldstem.close();
          }
 
          return optimizeworldscreen;

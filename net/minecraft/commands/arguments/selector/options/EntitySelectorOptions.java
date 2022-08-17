@@ -32,7 +32,7 @@ import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.ServerAdvancementManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.EntityTypeTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -296,10 +296,10 @@ public class EntitySelectorOptions {
          register("type", (p_121534_) -> {
             p_121534_.setSuggestions((p_175161_, p_175162_) -> {
                SharedSuggestionProvider.suggestResource(Registry.ENTITY_TYPE.keySet(), p_175161_, String.valueOf('!'));
-               SharedSuggestionProvider.suggestResource(EntityTypeTags.getAllTags().getAvailableTags(), p_175161_, "!#");
+               SharedSuggestionProvider.suggestResource(Registry.ENTITY_TYPE.getTagNames().map(TagKey::location), p_175161_, "!#");
                if (!p_121534_.isTypeLimitedInversely()) {
                   SharedSuggestionProvider.suggestResource(Registry.ENTITY_TYPE.keySet(), p_175161_);
-                  SharedSuggestionProvider.suggestResource(EntityTypeTags.getAllTags().getAvailableTags(), p_175161_, String.valueOf('#'));
+                  SharedSuggestionProvider.suggestResource(Registry.ENTITY_TYPE.getTagNames().map(TagKey::location), p_175161_, String.valueOf('#'));
                }
 
                return p_175161_.buildFuture();
@@ -315,15 +315,15 @@ public class EntitySelectorOptions {
                }
 
                if (p_121534_.isTag()) {
-                  ResourceLocation resourcelocation = ResourceLocation.read(p_121534_.getReader());
-                  p_121534_.addPredicate((p_175205_) -> {
-                     return p_175205_.getType().is(p_175205_.getServer().getTags().getOrEmpty(Registry.ENTITY_TYPE_REGISTRY).getTagOrEmpty(resourcelocation)) != flag;
+                  TagKey<EntityType<?>> tagkey = TagKey.create(Registry.ENTITY_TYPE_REGISTRY, ResourceLocation.read(p_121534_.getReader()));
+                  p_121534_.addPredicate((p_205691_) -> {
+                     return p_205691_.getType().is(tagkey) != flag;
                   });
                } else {
-                  ResourceLocation resourcelocation1 = ResourceLocation.read(p_121534_.getReader());
-                  EntityType<?> entitytype = Registry.ENTITY_TYPE.getOptional(resourcelocation1).orElseThrow(() -> {
+                  ResourceLocation resourcelocation = ResourceLocation.read(p_121534_.getReader());
+                  EntityType<?> entitytype = Registry.ENTITY_TYPE.getOptional(resourcelocation).orElseThrow(() -> {
                      p_121534_.getReader().setCursor(i);
-                     return ERROR_ENTITY_TYPE_INVALID.createWithContext(p_121534_.getReader(), resourcelocation1.toString());
+                     return ERROR_ENTITY_TYPE_INVALID.createWithContext(p_121534_.getReader(), resourcelocation.toString());
                   });
                   if (Objects.equals(EntityType.PLAYER, entitytype) && !flag) {
                      p_121534_.setIncludesEntities(false);

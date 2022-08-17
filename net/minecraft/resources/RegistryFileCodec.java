@@ -1,35 +1,21 @@
 package net.minecraft.resources;
 
-import com.mojang.datafixers.util.Either;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
-import java.util.List;
-import java.util.function.Supplier;
+import com.mojang.serialization.Lifecycle;
+import java.util.Optional;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 
-public final class RegistryFileCodec<E> implements Codec<Supplier<E>> {
+public final class RegistryFileCodec<E> implements Codec<Holder<E>> {
    private final ResourceKey<? extends Registry<E>> registryKey;
    private final Codec<E> elementCodec;
    private final boolean allowInline;
 
    public static <E> RegistryFileCodec<E> create(ResourceKey<? extends Registry<E>> p_135590_, Codec<E> p_135591_) {
       return create(p_135590_, p_135591_, true);
-   }
-
-   public static <E> Codec<List<Supplier<E>>> homogeneousList(ResourceKey<? extends Registry<E>> p_135601_, Codec<E> p_135602_) {
-      return Codec.either(create(p_135601_, p_135602_, false).listOf(), p_135602_.<Supplier<E>>xmap((p_135604_) -> {
-         return () -> {
-            return p_135604_;
-         };
-      }, Supplier::get).listOf()).xmap((p_135578_) -> {
-         return p_135578_.map((p_179856_) -> {
-            return p_179856_;
-         }, (p_179852_) -> {
-            return p_179852_;
-         });
-      }, Either::left);
    }
 
    private static <E> RegistryFileCodec<E> create(ResourceKey<? extends Registry<E>> p_135593_, Codec<E> p_135594_, boolean p_135595_) {
@@ -42,18 +28,58 @@ public final class RegistryFileCodec<E> implements Codec<Supplier<E>> {
       this.allowInline = p_135576_;
    }
 
-   public <T> DataResult<T> encode(Supplier<E> p_135586_, DynamicOps<T> p_135587_, T p_135588_) {
-      return p_135587_ instanceof RegistryWriteOps ? ((RegistryWriteOps)p_135587_).encode(p_135586_.get(), p_135588_, this.registryKey, this.elementCodec) : this.elementCodec.encode(p_135586_.get(), p_135587_, p_135588_);
+   public <T> DataResult<T> encode(Holder<E> p_206716_, DynamicOps<T> p_206717_, T p_206718_) {
+      if (p_206717_ instanceof RegistryOps) {
+         RegistryOps<?> registryops = (RegistryOps)p_206717_;
+         Optional<? extends Registry<E>> optional = registryops.registry(this.registryKey);
+         if (optional.isPresent()) {
+            if (!p_206716_.isValidInRegistry(optional.get())) {
+               return DataResult.error("Element " + p_206716_ + " is not valid in current registry set");
+            }
+
+            return p_206716_.unwrap().map((p_206714_) -> {
+               return ResourceLocation.CODEC.encode(p_206714_.location(), p_206717_, p_206718_);
+            }, (p_206710_) -> {
+               return this.elementCodec.encode(p_206710_, p_206717_, p_206718_);
+            });
+         }
+      }
+
+      return this.elementCodec.encode(p_206716_.value(), p_206717_, p_206718_);
    }
 
-   public <T> DataResult<Pair<Supplier<E>, T>> decode(DynamicOps<T> p_135608_, T p_135609_) {
-      return p_135608_ instanceof RegistryReadOps ? ((RegistryReadOps)p_135608_).decodeElement(p_135609_, this.registryKey, this.elementCodec, this.allowInline) : this.elementCodec.decode(p_135608_, p_135609_).map((p_135580_) -> {
-         return p_135580_.mapFirst((p_179850_) -> {
-            return () -> {
-               return p_179850_;
-            };
+   public <T> DataResult<Pair<Holder<E>, T>> decode(DynamicOps<T> p_135608_, T p_135609_) {
+      if (p_135608_ instanceof RegistryOps) {
+         RegistryOps<?> registryops = (RegistryOps)p_135608_;
+         Optional<? extends Registry<E>> optional = registryops.registry(this.registryKey);
+         if (optional.isEmpty()) {
+            return DataResult.error("Registry does not exist: " + this.registryKey);
+         } else {
+            Registry<E> registry = optional.get();
+            DataResult<Pair<ResourceLocation, T>> dataresult = ResourceLocation.CODEC.decode(p_135608_, p_135609_);
+            if (dataresult.result().isEmpty()) {
+               return !this.allowInline ? DataResult.error("Inline definitions not allowed here") : this.elementCodec.decode(p_135608_, p_135609_).map((p_206720_) -> {
+                  return p_206720_.mapFirst(Holder::direct);
+               });
+            } else {
+               Pair<ResourceLocation, T> pair = dataresult.result().get();
+               ResourceKey<E> resourcekey = ResourceKey.create(this.registryKey, pair.getFirst());
+               Optional<RegistryLoader.Bound> optional1 = registryops.registryLoader();
+               if (optional1.isPresent()) {
+                  return optional1.get().overrideElementFromResources(this.registryKey, this.elementCodec, resourcekey, registryops.getAsJson()).map((p_206706_) -> {
+                     return Pair.of(p_206706_, pair.getSecond());
+                  });
+               } else {
+                  Holder<E> holder = registry.getOrCreateHolder(resourcekey);
+                  return DataResult.success(Pair.of(holder, pair.getSecond()), Lifecycle.stable());
+               }
+            }
+         }
+      } else {
+         return this.elementCodec.decode(p_135608_, p_135609_).map((p_206703_) -> {
+            return p_206703_.mapFirst(Holder::direct);
          });
-      });
+      }
    }
 
    public String toString() {

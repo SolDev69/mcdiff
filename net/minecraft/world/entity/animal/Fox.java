@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ItemParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -53,6 +54,7 @@ import net.minecraft.world.entity.ai.control.LookControl;
 import net.minecraft.world.entity.ai.control.MoveControl;
 import net.minecraft.world.entity.ai.goal.AvoidEntityGoal;
 import net.minecraft.world.entity.ai.goal.BreedGoal;
+import net.minecraft.world.entity.ai.goal.ClimbOnTopOfPowderSnowGoal;
 import net.minecraft.world.entity.ai.goal.FleeSunGoal;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.entity.ai.goal.FollowParentGoal;
@@ -152,6 +154,7 @@ public class Fox extends Animal {
          return p_28600_ instanceof AbstractSchoolingFish;
       });
       this.goalSelector.addGoal(0, new Fox.FoxFloatGoal());
+      this.goalSelector.addGoal(0, new ClimbOnTopOfPowderSnowGoal(this, this.level));
       this.goalSelector.addGoal(1, new Fox.FaceplantGoal());
       this.goalSelector.addGoal(2, new Fox.FoxPanicGoal(2.2D));
       this.goalSelector.addGoal(3, new Fox.FoxBreedGoal(1.0D));
@@ -286,8 +289,8 @@ public class Fox extends Animal {
 
    @Nullable
    public SpawnGroupData finalizeSpawn(ServerLevelAccessor p_28487_, DifficultyInstance p_28488_, MobSpawnType p_28489_, @Nullable SpawnGroupData p_28490_, @Nullable CompoundTag p_28491_) {
-      Biome biome = p_28487_.getBiome(this.blockPosition());
-      Fox.Type fox$type = Fox.Type.byBiome(biome);
+      Holder<Biome> holder = p_28487_.getBiome(this.blockPosition());
+      Fox.Type fox$type = Fox.Type.byBiome(holder);
       boolean flag = false;
       if (p_28490_ instanceof Fox.FoxGroupData) {
          fox$type = ((Fox.FoxGroupData)p_28490_).type;
@@ -1037,8 +1040,8 @@ public class Fox extends Animal {
          super(Fox.this, p_28734_);
       }
 
-      public boolean canUse() {
-         return !Fox.this.isDefending() && super.canUse();
+      public boolean shouldPanic() {
+         return !Fox.this.isDefending() && super.shouldPanic();
       }
    }
 
@@ -1403,8 +1406,8 @@ public class Fox extends Animal {
          return BY_ID[p_28813_];
       }
 
-      public static Fox.Type byBiome(Biome p_196661_) {
-         return p_196661_.getPrecipitation() == Biome.Precipitation.SNOW ? SNOW : RED;
+      public static Fox.Type byBiome(Holder<Biome> p_204063_) {
+         return p_204063_.value().getPrecipitation() == Biome.Precipitation.SNOW ? SNOW : RED;
       }
    }
 }

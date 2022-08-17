@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 import net.minecraft.SharedConstants;
 import net.minecraft.data.worldgen.TerrainProvider;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.util.VisibleForDebug;
 
 public final class OverworldBiomeBuilder {
    private static final float VALLEY_SIZE = 0.05F;
@@ -39,7 +40,7 @@ public final class OverworldBiomeBuilder {
    private final ResourceKey<Biome>[][] MIDDLE_BIOMES_VARIANT = new ResourceKey[][]{{Biomes.ICE_SPIKES, null, Biomes.SNOWY_TAIGA, null, null}, {null, null, null, null, Biomes.OLD_GROWTH_PINE_TAIGA}, {Biomes.SUNFLOWER_PLAINS, null, null, Biomes.OLD_GROWTH_BIRCH_FOREST, null}, {null, null, Biomes.PLAINS, Biomes.SPARSE_JUNGLE, Biomes.BAMBOO_JUNGLE}, {null, null, null, null, null}};
    private final ResourceKey<Biome>[][] PLATEAU_BIOMES = new ResourceKey[][]{{Biomes.SNOWY_PLAINS, Biomes.SNOWY_PLAINS, Biomes.SNOWY_PLAINS, Biomes.SNOWY_TAIGA, Biomes.SNOWY_TAIGA}, {Biomes.MEADOW, Biomes.MEADOW, Biomes.FOREST, Biomes.TAIGA, Biomes.OLD_GROWTH_SPRUCE_TAIGA}, {Biomes.MEADOW, Biomes.MEADOW, Biomes.MEADOW, Biomes.MEADOW, Biomes.DARK_FOREST}, {Biomes.SAVANNA_PLATEAU, Biomes.SAVANNA_PLATEAU, Biomes.FOREST, Biomes.FOREST, Biomes.JUNGLE}, {Biomes.BADLANDS, Biomes.BADLANDS, Biomes.BADLANDS, Biomes.WOODED_BADLANDS, Biomes.WOODED_BADLANDS}};
    private final ResourceKey<Biome>[][] PLATEAU_BIOMES_VARIANT = new ResourceKey[][]{{Biomes.ICE_SPIKES, null, null, null, null}, {null, null, Biomes.MEADOW, Biomes.MEADOW, Biomes.OLD_GROWTH_PINE_TAIGA}, {null, null, Biomes.FOREST, Biomes.BIRCH_FOREST, null}, {null, null, null, null, null}, {Biomes.ERODED_BADLANDS, Biomes.ERODED_BADLANDS, null, null, null}};
-   private final ResourceKey<Biome>[][] EXTREME_HILLS = new ResourceKey[][]{{Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_FOREST, Biomes.WINDSWEPT_FOREST}, {Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_FOREST, Biomes.WINDSWEPT_FOREST}, {Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_FOREST, Biomes.WINDSWEPT_FOREST}, {null, null, null, null, null}, {null, null, null, null, null}};
+   private final ResourceKey<Biome>[][] SHATTERED_BIOMES = new ResourceKey[][]{{Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_FOREST, Biomes.WINDSWEPT_FOREST}, {Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_GRAVELLY_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_FOREST, Biomes.WINDSWEPT_FOREST}, {Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_HILLS, Biomes.WINDSWEPT_FOREST, Biomes.WINDSWEPT_FOREST}, {null, null, null, null, null}, {null, null, null, null, null}};
 
    public List<Climate.ParameterPoint> spawnTarget() {
       Climate.Parameter climate$parameter = Climate.Parameter.point(0.0F);
@@ -94,8 +95,8 @@ public final class OverworldBiomeBuilder {
             ResourceKey<Biome> resourcekey1 = this.pickMiddleBiomeOrBadlandsIfHot(i, j, p_187179_);
             ResourceKey<Biome> resourcekey2 = this.pickMiddleBiomeOrBadlandsIfHotOrSlopeIfCold(i, j, p_187179_);
             ResourceKey<Biome> resourcekey3 = this.pickPlateauBiome(i, j, p_187179_);
-            ResourceKey<Biome> resourcekey4 = this.pickExtremeHillsBiome(i, j, p_187179_);
-            ResourceKey<Biome> resourcekey5 = this.maybePickShatteredBiome(i, j, p_187179_, resourcekey4);
+            ResourceKey<Biome> resourcekey4 = this.pickShatteredBiome(i, j, p_187179_);
+            ResourceKey<Biome> resourcekey5 = this.maybePickWindsweptSavannaBiome(i, j, p_187179_, resourcekey4);
             ResourceKey<Biome> resourcekey6 = this.pickPeakBiome(i, j, p_187179_);
             this.addSurfaceBiome(p_187178_, climate$parameter, climate$parameter1, Climate.Parameter.span(this.coastContinentalness, this.farInlandContinentalness), this.erosions[0], p_187179_, 0.0F, resourcekey6);
             this.addSurfaceBiome(p_187178_, climate$parameter, climate$parameter1, Climate.Parameter.span(this.coastContinentalness, this.nearInlandContinentalness), this.erosions[1], p_187179_, 0.0F, resourcekey2);
@@ -123,8 +124,8 @@ public final class OverworldBiomeBuilder {
             ResourceKey<Biome> resourcekey1 = this.pickMiddleBiomeOrBadlandsIfHot(i, j, p_187199_);
             ResourceKey<Biome> resourcekey2 = this.pickMiddleBiomeOrBadlandsIfHotOrSlopeIfCold(i, j, p_187199_);
             ResourceKey<Biome> resourcekey3 = this.pickPlateauBiome(i, j, p_187199_);
-            ResourceKey<Biome> resourcekey4 = this.pickExtremeHillsBiome(i, j, p_187199_);
-            ResourceKey<Biome> resourcekey5 = this.maybePickShatteredBiome(i, j, p_187199_, resourcekey);
+            ResourceKey<Biome> resourcekey4 = this.pickShatteredBiome(i, j, p_187199_);
+            ResourceKey<Biome> resourcekey5 = this.maybePickWindsweptSavannaBiome(i, j, p_187199_, resourcekey);
             ResourceKey<Biome> resourcekey6 = this.pickSlopeBiome(i, j, p_187199_);
             ResourceKey<Biome> resourcekey7 = this.pickPeakBiome(i, j, p_187199_);
             this.addSurfaceBiome(p_187198_, climate$parameter, climate$parameter1, this.coastContinentalness, Climate.Parameter.span(this.erosions[0], this.erosions[1]), p_187199_, 0.0F, resourcekey);
@@ -157,10 +158,10 @@ public final class OverworldBiomeBuilder {
             ResourceKey<Biome> resourcekey = this.pickMiddleBiome(i, j, p_187219_);
             ResourceKey<Biome> resourcekey1 = this.pickMiddleBiomeOrBadlandsIfHot(i, j, p_187219_);
             ResourceKey<Biome> resourcekey2 = this.pickMiddleBiomeOrBadlandsIfHotOrSlopeIfCold(i, j, p_187219_);
-            ResourceKey<Biome> resourcekey3 = this.pickExtremeHillsBiome(i, j, p_187219_);
+            ResourceKey<Biome> resourcekey3 = this.pickShatteredBiome(i, j, p_187219_);
             ResourceKey<Biome> resourcekey4 = this.pickPlateauBiome(i, j, p_187219_);
             ResourceKey<Biome> resourcekey5 = this.pickBeachBiome(i, j);
-            ResourceKey<Biome> resourcekey6 = this.maybePickShatteredBiome(i, j, p_187219_, resourcekey);
+            ResourceKey<Biome> resourcekey6 = this.maybePickWindsweptSavannaBiome(i, j, p_187219_, resourcekey);
             ResourceKey<Biome> resourcekey7 = this.pickShatteredCoastBiome(i, j, p_187219_);
             ResourceKey<Biome> resourcekey8 = this.pickSlopeBiome(i, j, p_187219_);
             this.addSurfaceBiome(p_187218_, climate$parameter, climate$parameter1, Climate.Parameter.span(this.nearInlandContinentalness, this.farInlandContinentalness), this.erosions[0], p_187219_, 0.0F, resourcekey8);
@@ -208,7 +209,7 @@ public final class OverworldBiomeBuilder {
             ResourceKey<Biome> resourcekey1 = this.pickMiddleBiomeOrBadlandsIfHot(i, j, p_187230_);
             ResourceKey<Biome> resourcekey2 = this.pickMiddleBiomeOrBadlandsIfHotOrSlopeIfCold(i, j, p_187230_);
             ResourceKey<Biome> resourcekey3 = this.pickBeachBiome(i, j);
-            ResourceKey<Biome> resourcekey4 = this.maybePickShatteredBiome(i, j, p_187230_, resourcekey);
+            ResourceKey<Biome> resourcekey4 = this.maybePickWindsweptSavannaBiome(i, j, p_187230_, resourcekey);
             ResourceKey<Biome> resourcekey5 = this.pickShatteredCoastBiome(i, j, p_187230_);
             this.addSurfaceBiome(p_187229_, climate$parameter, climate$parameter1, this.nearInlandContinentalness, Climate.Parameter.span(this.erosions[0], this.erosions[1]), p_187230_, 0.0F, resourcekey1);
             this.addSurfaceBiome(p_187229_, climate$parameter, climate$parameter1, Climate.Parameter.span(this.midInlandContinentalness, this.farInlandContinentalness), Climate.Parameter.span(this.erosions[0], this.erosions[1]), p_187230_, 0.0F, resourcekey2);
@@ -274,13 +275,13 @@ public final class OverworldBiomeBuilder {
       return p_187212_ == 0 ? this.pickSlopeBiome(p_187212_, p_187213_, p_187214_) : this.pickMiddleBiomeOrBadlandsIfHot(p_187212_, p_187213_, p_187214_);
    }
 
-   private ResourceKey<Biome> maybePickShatteredBiome(int p_187168_, int p_187169_, Climate.Parameter p_187170_, ResourceKey<Biome> p_187171_) {
-      return p_187168_ > 1 && p_187169_ < 4 && p_187170_.max() >= 0L ? Biomes.WINDSWEPT_SAVANNA : p_187171_;
+   private ResourceKey<Biome> maybePickWindsweptSavannaBiome(int p_201991_, int p_201992_, Climate.Parameter p_201993_, ResourceKey<Biome> p_201994_) {
+      return p_201991_ > 1 && p_201992_ < 4 && p_201993_.max() >= 0L ? Biomes.WINDSWEPT_SAVANNA : p_201994_;
    }
 
    private ResourceKey<Biome> pickShatteredCoastBiome(int p_187223_, int p_187224_, Climate.Parameter p_187225_) {
       ResourceKey<Biome> resourcekey = p_187225_.max() >= 0L ? this.pickMiddleBiome(p_187223_, p_187224_, p_187225_) : this.pickBeachBiome(p_187223_, p_187224_);
-      return this.maybePickShatteredBiome(p_187223_, p_187224_, p_187225_, resourcekey);
+      return this.maybePickWindsweptSavannaBiome(p_187223_, p_187224_, p_187225_, resourcekey);
    }
 
    private ResourceKey<Biome> pickBeachBiome(int p_187161_, int p_187162_) {
@@ -324,9 +325,9 @@ public final class OverworldBiomeBuilder {
       }
    }
 
-   private ResourceKey<Biome> pickExtremeHillsBiome(int p_187249_, int p_187250_, Climate.Parameter p_187251_) {
-      ResourceKey<Biome> resourcekey = this.EXTREME_HILLS[p_187249_][p_187250_];
-      return resourcekey == null ? this.pickMiddleBiome(p_187249_, p_187250_, p_187251_) : resourcekey;
+   private ResourceKey<Biome> pickShatteredBiome(int p_202002_, int p_202003_, Climate.Parameter p_202004_) {
+      ResourceKey<Biome> resourcekey = this.SHATTERED_BIOMES[p_202002_][p_202003_];
+      return resourcekey == null ? this.pickMiddleBiome(p_202002_, p_202003_, p_202004_) : resourcekey;
    }
 
    private void addSurfaceBiome(Consumer<Pair<Climate.ParameterPoint, ResourceKey<Biome>>> p_187181_, Climate.Parameter p_187182_, Climate.Parameter p_187183_, Climate.Parameter p_187184_, Climate.Parameter p_187185_, Climate.Parameter p_187186_, float p_187187_, ResourceKey<Biome> p_187188_) {
@@ -389,5 +390,35 @@ public final class OverworldBiomeBuilder {
       }
 
       return "?";
+   }
+
+   @VisibleForDebug
+   public Climate.Parameter[] getTemperatureThresholds() {
+      return this.temperatures;
+   }
+
+   @VisibleForDebug
+   public Climate.Parameter[] getHumidityThresholds() {
+      return this.humidities;
+   }
+
+   @VisibleForDebug
+   public Climate.Parameter[] getErosionThresholds() {
+      return this.erosions;
+   }
+
+   @VisibleForDebug
+   public Climate.Parameter[] getContinentalnessThresholds() {
+      return new Climate.Parameter[]{this.mushroomFieldsContinentalness, this.deepOceanContinentalness, this.oceanContinentalness, this.coastContinentalness, this.nearInlandContinentalness, this.midInlandContinentalness, this.farInlandContinentalness};
+   }
+
+   @VisibleForDebug
+   public Climate.Parameter[] getPeaksAndValleysThresholds() {
+      return new Climate.Parameter[]{Climate.Parameter.span(-2.0F, TerrainShaper.peaksAndValleys(0.05F)), Climate.Parameter.span(TerrainShaper.peaksAndValleys(0.05F), TerrainShaper.peaksAndValleys(0.26666668F)), Climate.Parameter.span(TerrainShaper.peaksAndValleys(0.26666668F), TerrainShaper.peaksAndValleys(0.4F)), Climate.Parameter.span(TerrainShaper.peaksAndValleys(0.4F), TerrainShaper.peaksAndValleys(0.56666666F)), Climate.Parameter.span(TerrainShaper.peaksAndValleys(0.56666666F), 2.0F)};
+   }
+
+   @VisibleForDebug
+   public Climate.Parameter[] getWeirdnessThresholds() {
+      return new Climate.Parameter[]{Climate.Parameter.span(-2.0F, 0.0F), Climate.Parameter.span(0.0F, 2.0F)};
    }
 }

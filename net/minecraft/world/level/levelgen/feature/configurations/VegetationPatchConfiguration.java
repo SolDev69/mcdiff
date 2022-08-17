@@ -2,21 +2,23 @@ package net.minecraft.world.level.levelgen.feature.configurations;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.function.Supplier;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.valueproviders.IntProvider;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 import net.minecraft.world.level.levelgen.placement.CaveSurface;
 import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 public class VegetationPatchConfiguration implements FeatureConfiguration {
    public static final Codec<VegetationPatchConfiguration> CODEC = RecordCodecBuilder.create((p_161304_) -> {
-      return p_161304_.group(ResourceLocation.CODEC.fieldOf("replaceable").forGetter((p_161324_) -> {
-         return p_161324_.replaceable;
+      return p_161304_.group(TagKey.hashedCodec(Registry.BLOCK_REGISTRY).fieldOf("replaceable").forGetter((p_204869_) -> {
+         return p_204869_.replaceable;
       }), BlockStateProvider.CODEC.fieldOf("ground_state").forGetter((p_161322_) -> {
          return p_161322_.groundState;
-      }), PlacedFeature.CODEC.fieldOf("vegetation_feature").forGetter((p_161320_) -> {
-         return p_161320_.vegetationFeature;
+      }), PlacedFeature.CODEC.fieldOf("vegetation_feature").forGetter((p_204867_) -> {
+         return p_204867_.vegetationFeature;
       }), CaveSurface.CODEC.fieldOf("surface").forGetter((p_161318_) -> {
          return p_161318_.surface;
       }), IntProvider.codec(1, 128).fieldOf("depth").forGetter((p_161316_) -> {
@@ -33,9 +35,9 @@ public class VegetationPatchConfiguration implements FeatureConfiguration {
          return p_161306_.extraEdgeColumnChance;
       })).apply(p_161304_, VegetationPatchConfiguration::new);
    });
-   public final ResourceLocation replaceable;
+   public final TagKey<Block> replaceable;
    public final BlockStateProvider groundState;
-   public final Supplier<PlacedFeature> vegetationFeature;
+   public final Holder<PlacedFeature> vegetationFeature;
    public final CaveSurface surface;
    public final IntProvider depth;
    public final float extraBottomBlockChance;
@@ -44,16 +46,16 @@ public class VegetationPatchConfiguration implements FeatureConfiguration {
    public final IntProvider xzRadius;
    public final float extraEdgeColumnChance;
 
-   public VegetationPatchConfiguration(ResourceLocation p_161293_, BlockStateProvider p_161294_, Supplier<PlacedFeature> p_161295_, CaveSurface p_161296_, IntProvider p_161297_, float p_161298_, int p_161299_, float p_161300_, IntProvider p_161301_, float p_161302_) {
-      this.replaceable = p_161293_;
-      this.groundState = p_161294_;
-      this.vegetationFeature = p_161295_;
-      this.surface = p_161296_;
-      this.depth = p_161297_;
-      this.extraBottomBlockChance = p_161298_;
-      this.verticalRange = p_161299_;
-      this.vegetationChance = p_161300_;
-      this.xzRadius = p_161301_;
-      this.extraEdgeColumnChance = p_161302_;
+   public VegetationPatchConfiguration(TagKey<Block> p_204856_, BlockStateProvider p_204857_, Holder<PlacedFeature> p_204858_, CaveSurface p_204859_, IntProvider p_204860_, float p_204861_, int p_204862_, float p_204863_, IntProvider p_204864_, float p_204865_) {
+      this.replaceable = p_204856_;
+      this.groundState = p_204857_;
+      this.vegetationFeature = p_204858_;
+      this.surface = p_204859_;
+      this.depth = p_204860_;
+      this.extraBottomBlockChance = p_204861_;
+      this.verticalRange = p_204862_;
+      this.vegetationChance = p_204863_;
+      this.xzRadius = p_204864_;
+      this.extraEdgeColumnChance = p_204865_;
    }
 }

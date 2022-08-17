@@ -8,7 +8,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EntityType;
@@ -74,13 +74,13 @@ public class MagmaCube extends Slime {
       this.hasImpulse = true;
    }
 
-   protected void jumpInLiquid(Tag<Fluid> p_32988_) {
-      if (p_32988_ == FluidTags.LAVA) {
+   protected void jumpInLiquid(TagKey<Fluid> p_204065_) {
+      if (p_204065_ == FluidTags.LAVA) {
          Vec3 vec3 = this.getDeltaMovement();
          this.setDeltaMovement(vec3.x, (double)(0.22F + (float)this.getSize() * 0.05F), vec3.z);
          this.hasImpulse = true;
       } else {
-         super.jumpInLiquid(p_32988_);
+         super.jumpInLiquid(p_204065_);
       }
 
    }

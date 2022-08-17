@@ -4,6 +4,7 @@ import com.google.common.primitives.Doubles;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -16,12 +17,14 @@ import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction8;
+import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.LevelHeightAccessor;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -55,6 +58,7 @@ public class BlendingData {
    private final boolean oldNoise;
    private boolean hasCalculatedData;
    private final double[] heights;
+   private final List<Holder<Biome>> biomes;
    private final transient double[][] densities;
    private final transient double[] floorDensities;
    private static final Codec<double[]> DOUBLE_ARRAY_CODEC = Codec.DOUBLE.listOf().xmap(Doubles::toArray, Doubles::asList);
@@ -77,6 +81,9 @@ public class BlendingData {
       }));
       this.densities = new double[CELL_COLUMN_COUNT][];
       this.floorDensities = new double[CELL_HORIZONTAL_FLOOR_COUNT * CELL_HORIZONTAL_FLOOR_COUNT];
+      ObjectArrayList<Holder<Biome>> objectarraylist = new ObjectArrayList<>(CELL_COLUMN_COUNT);
+      objectarraylist.size(CELL_COLUMN_COUNT);
+      this.biomes = objectarraylist;
    }
 
    public boolean oldNoise() {
@@ -164,6 +171,7 @@ public class BlendingData {
       }
 
       this.densities[p_190300_] = getDensityColumn(p_190301_, p_190302_, p_190303_, Mth.floor(this.heights[p_190300_]));
+      this.biomes.set(p_190300_, p_190301_.getNoiseBiome(QuartPos.fromBlock(p_190302_), QuartPos.fromBlock(Mth.floor(this.heights[p_190300_])), QuartPos.fromBlock(p_190303_)));
    }
 
    private static int getHeightAtXZ(ChunkAccess p_190311_, int p_190312_, int p_190313_) {
@@ -268,8 +276,18 @@ public class BlendingData {
       }
    }
 
+   protected void iterateBiomes(int p_202278_, int p_202279_, BlendingData.BiomeConsumer p_202280_) {
+      for(int i = 0; i < this.biomes.size(); ++i) {
+         Holder<Biome> holder = this.biomes.get(i);
+         if (holder != null) {
+            p_202280_.consume(p_202278_ + getX(i), p_202279_ + getZ(i), holder);
+         }
+      }
+
+   }
+
    protected void iterateHeights(int p_190296_, int p_190297_, BlendingData.HeightConsumer p_190298_) {
-      for(int i = 0; i < this.densities.length; ++i) {
+      for(int i = 0; i < this.heights.length; ++i) {
          double d0 = this.heights[i];
          if (d0 != Double.MAX_VALUE) {
             p_190298_.consume(p_190296_ + getX(i), p_190297_ + getZ(i), d0);
@@ -295,26 +313,10 @@ public class BlendingData {
          }
       }
 
-      if (i >= p_190292_ && i <= p_190293_) {
-         for(int l1 = 0; l1 < this.floorDensities.length; ++l1) {
-            int i2 = this.getFloorX(l1);
-            int j2 = this.getFloorZ(l1);
-            p_190294_.consume(i2, i, j2, this.floorDensities[l1] * 0.1D);
-         }
-      }
-
    }
 
    private int getFloorIndex(int p_190283_, int p_190284_) {
       return p_190283_ * CELL_HORIZONTAL_FLOOR_COUNT + p_190284_;
-   }
-
-   private int getFloorX(int p_190281_) {
-      return p_190281_ / CELL_HORIZONTAL_FLOOR_COUNT;
-   }
-
-   private int getFloorZ(int p_190329_) {
-      return p_190329_ % CELL_HORIZONTAL_FLOOR_COUNT;
    }
 
    private static int cellCountPerColumn() {
@@ -357,6 +359,10 @@ public class BlendingData {
 
    private static int zeroIfNegative(int p_190357_) {
       return p_190357_ & ~(p_190357_ >> 31);
+   }
+
+   protected interface BiomeConsumer {
+      void consume(int p_204674_, int p_204675_, Holder<Biome> p_204676_);
    }
 
    protected interface DensityConsumer {

@@ -44,11 +44,8 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureMana
 import net.minecraft.world.level.storage.DimensionDataStorage;
 import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.LevelStorageSource;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class ServerChunkCache extends ChunkSource {
-   private static final Logger LOGGER = LogManager.getLogger();
    private static final List<ChunkStatus> CHUNK_STATUSES = ChunkStatus.getStatusList();
    private final DistanceManager distanceManager;
    final ServerLevel level;
@@ -302,14 +299,17 @@ public class ServerChunkCache extends ChunkSource {
       this.chunkMap.close();
    }
 
-   public void tick(BooleanSupplier p_8415_) {
+   public void tick(BooleanSupplier p_201913_, boolean p_201914_) {
       this.level.getProfiler().push("purge");
       this.distanceManager.purgeStaleTickets();
       this.runDistanceManagerUpdates();
       this.level.getProfiler().popPush("chunks");
-      this.tickChunks();
+      if (p_201914_) {
+         this.tickChunks();
+      }
+
       this.level.getProfiler().popPush("unload");
-      this.chunkMap.tick(p_8415_);
+      this.chunkMap.tick(p_201913_);
       this.level.getProfiler().pop();
       this.clearCache();
    }
@@ -348,7 +348,7 @@ public class ServerChunkCache extends ChunkSource {
          for(ServerChunkCache.ChunkAndHolder serverchunkcache$chunkandholder : list) {
             LevelChunk levelchunk1 = serverchunkcache$chunkandholder.chunk;
             ChunkPos chunkpos = levelchunk1.getPos();
-            if (this.level.isPositionEntityTicking(chunkpos) && this.chunkMap.anyPlayerCloseEnoughForSpawning(chunkpos)) {
+            if (this.level.isNaturalSpawningAllowed(chunkpos) && this.chunkMap.anyPlayerCloseEnoughForSpawning(chunkpos)) {
                levelchunk1.incrementInhabitedTime(j);
                if (flag2 && (this.spawnEnemies || this.spawnFriendlies) && this.level.getWorldBorder().isWithinBounds(chunkpos)) {
                   NaturalSpawner.spawnForChunk(this.level, levelchunk1, naturalspawner$spawnstate, this.spawnFriendlies, this.spawnEnemies, flag1);
@@ -433,9 +433,7 @@ public class ServerChunkCache extends ChunkSource {
    }
 
    public void move(ServerPlayer p_8386_) {
-      if (p_8386_.isRemoved()) {
-         LOGGER.info("Skipping update from removed player '{}'", (Object)p_8386_);
-      } else {
+      if (!p_8386_.isRemoved()) {
          this.chunkMap.move(p_8386_);
       }
 
@@ -490,6 +488,10 @@ public class ServerChunkCache extends ChunkSource {
    @VisibleForDebug
    public NaturalSpawner.SpawnState getLastSpawnState() {
       return this.lastSpawnState;
+   }
+
+   public void removeTicketsOnClosing() {
+      this.distanceManager.removeTicketsOnClosing();
    }
 
    static record ChunkAndHolder(LevelChunk chunk, ChunkHolder holder) {

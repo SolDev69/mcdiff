@@ -389,15 +389,15 @@ public class StructureTemplate {
             listtag.add(DoubleTag.valueOf(vec31.z));
             compoundtag.put("Pos", listtag);
             compoundtag.remove("UUID");
-            createEntityIgnoreException(p_74524_, compoundtag).ifPresent((p_74553_) -> {
-               float f = p_74553_.mirror(p_74526_);
-               f += p_74553_.getYRot() - p_74553_.rotate(p_74527_);
-               p_74553_.moveTo(vec31.x, vec31.y, vec31.z, f, p_74553_.getXRot());
-               if (p_74530_ && p_74553_ instanceof Mob) {
-                  ((Mob)p_74553_).finalizeSpawn(p_74524_, p_74524_.getCurrentDifficultyAt(new BlockPos(vec31)), MobSpawnType.STRUCTURE, (SpawnGroupData)null, compoundtag);
+            createEntityIgnoreException(p_74524_, compoundtag).ifPresent((p_205061_) -> {
+               float f = p_205061_.rotate(p_74527_);
+               f += p_205061_.mirror(p_74526_) - p_205061_.getYRot();
+               p_205061_.moveTo(vec31.x, vec31.y, vec31.z, f, p_205061_.getXRot());
+               if (p_74530_ && p_205061_ instanceof Mob) {
+                  ((Mob)p_205061_).finalizeSpawn(p_74524_, p_74524_.getCurrentDifficultyAt(new BlockPos(vec31)), MobSpawnType.STRUCTURE, (SpawnGroupData)null, compoundtag);
                }
 
-               p_74524_.addFreshEntityWithPassengers(p_74553_);
+               p_74524_.addFreshEntityWithPassengers(p_205061_);
             });
          }
       }

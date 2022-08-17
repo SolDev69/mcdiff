@@ -72,7 +72,7 @@ public class ResourceLocation implements Comparable<ResourceLocation> {
       return astring;
    }
 
-   private static DataResult<ResourceLocation> read(String p_135838_) {
+   public static DataResult<ResourceLocation> read(String p_135838_) {
       try {
          return DataResult.success(new ResourceLocation(p_135838_));
       } catch (ResourceLocationException resourcelocationexception) {

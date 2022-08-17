@@ -90,7 +90,7 @@ public class HarvestFarmland extends Behavior<Villager> {
    }
 
    protected void tick(ServerLevel p_23196_, Villager p_23197_, long p_23198_) {
-      if (this.aboveFarmlandPos == null || this.aboveFarmlandPos.closerThan(p_23197_.position(), 1.0D)) {
+      if (this.aboveFarmlandPos == null || this.aboveFarmlandPos.closerToCenterThan(p_23197_.position(), 1.0D)) {
          if (this.aboveFarmlandPos != null && p_23198_ > this.nextOkStartTime) {
             BlockState blockstate = p_23196_.getBlockState(this.aboveFarmlandPos);
             Block block = blockstate.getBlock();

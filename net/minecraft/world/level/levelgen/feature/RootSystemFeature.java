@@ -5,11 +5,8 @@ import java.util.Random;
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.tags.Tag;
 import net.minecraft.world.level.WorldGenLevel;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.configurations.RootSystemConfiguration;
@@ -69,7 +66,7 @@ public class RootSystemFeature extends Feature<RootSystemConfiguration> {
                return false;
             }
 
-            if (p_160225_.treeFeature.get().place(p_160223_, p_160224_, p_160226_, p_160227_)) {
+            if (p_160225_.treeFeature.value().place(p_160223_, p_160224_, p_160226_, p_160227_)) {
                placeDirt(p_160228_, p_160228_.getY() + i, p_160223_, p_160225_, p_160226_);
                return true;
             }
@@ -92,11 +89,8 @@ public class RootSystemFeature extends Feature<RootSystemConfiguration> {
 
    private static void placeRootedDirt(WorldGenLevel p_160240_, RootSystemConfiguration p_160241_, Random p_160242_, int p_160243_, int p_160244_, BlockPos.MutableBlockPos p_160245_) {
       int i = p_160241_.rootRadius;
-      Tag<Block> tag = BlockTags.getAllTags().getTag(p_160241_.rootReplaceable);
-      Predicate<BlockState> predicate = tag == null ? (p_160259_) -> {
-         return true;
-      } : (p_160221_) -> {
-         return p_160221_.is(tag);
+      Predicate<BlockState> predicate = (p_204762_) -> {
+         return p_204762_.is(p_160241_.rootReplaceable);
       };
 
       for(int j = 0; j < p_160241_.rootPlacementAttempts; ++j) {

@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -115,11 +116,8 @@ public class SurfaceSystem {
             int j1 = j + l;
             int k1 = p_189949_.getHeight(Heightmap.Types.WORLD_SURFACE_WG, k, l) + 1;
             blockpos$mutableblockpos.setX(i1).setZ(j1);
-            Biome biome = p_189945_.getBiome(blockpos$mutableblockpos1.set(i1, p_189947_ ? 0 : k1, j1));
-            ResourceKey<Biome> resourcekey = p_189946_.getResourceKey(biome).orElseThrow(() -> {
-               return new IllegalStateException("Unregistered biome: " + biome);
-            });
-            if (resourcekey == Biomes.ERODED_BADLANDS) {
+            Holder<Biome> holder = p_189945_.getBiome(blockpos$mutableblockpos1.set(i1, p_189947_ ? 0 : k1, j1));
+            if (holder.is(Biomes.ERODED_BADLANDS)) {
                this.erodedBadlandsExtension(blockcolumn, i1, j1, k1, p_189949_);
             }
 
@@ -164,8 +162,8 @@ public class SurfaceSystem {
                }
             }
 
-            if (resourcekey == Biomes.FROZEN_OCEAN || resourcekey == Biomes.DEEP_FROZEN_OCEAN) {
-               this.frozenOceanExtension(surfacerules$context.getMinSurfaceLevel(), biome, blockcolumn, blockpos$mutableblockpos1, i1, j1, k1);
+            if (holder.is(Biomes.FROZEN_OCEAN) || holder.is(Biomes.DEEP_FROZEN_OCEAN)) {
+               this.frozenOceanExtension(surfacerules$context.getMinSurfaceLevel(), holder.value(), blockcolumn, blockpos$mutableblockpos1, i1, j1, k1);
             }
          }
       }
@@ -173,15 +171,12 @@ public class SurfaceSystem {
    }
 
    protected int getSurfaceDepth(int p_189928_, int p_189929_) {
-      return this.getSurfaceDepth(this.surfaceNoise, p_189928_, p_189929_);
+      double d0 = this.surfaceNoise.getValue((double)p_189928_, 0.0D, (double)p_189929_);
+      return (int)(d0 * 2.75D + 3.0D + this.randomFactory.at(p_189928_, 0, p_189929_).nextDouble() * 0.25D);
    }
 
-   protected int getSurfaceSecondaryDepth(int p_189994_, int p_189995_) {
-      return this.getSurfaceDepth(this.surfaceSecondaryNoise, p_189994_, p_189995_);
-   }
-
-   private int getSurfaceDepth(NormalNoise p_189980_, int p_189981_, int p_189982_) {
-      return (int)(p_189980_.getValue((double)p_189981_, 0.0D, (double)p_189982_) * 2.75D + 3.0D + this.randomFactory.at(p_189981_, 0, p_189982_).nextDouble() * 0.25D);
+   protected double getSurfaceSecondary(int p_202190_, int p_202191_) {
+      return this.surfaceSecondaryNoise.getValue((double)p_202190_, 0.0D, (double)p_202191_);
    }
 
    private boolean isStone(BlockState p_189953_) {
@@ -190,7 +185,7 @@ public class SurfaceSystem {
 
    /** @deprecated */
    @Deprecated
-   public Optional<BlockState> topMaterial(SurfaceRules.RuleSource p_189972_, CarvingContext p_189973_, Function<BlockPos, Biome> p_189974_, ChunkAccess p_189975_, NoiseChunk p_189976_, BlockPos p_189977_, boolean p_189978_) {
+   public Optional<BlockState> topMaterial(SurfaceRules.RuleSource p_189972_, CarvingContext p_189973_, Function<BlockPos, Holder<Biome>> p_189974_, ChunkAccess p_189975_, NoiseChunk p_189976_, BlockPos p_189977_, boolean p_189978_) {
       SurfaceRules.Context surfacerules$context = new SurfaceRules.Context(this, p_189975_, p_189976_, p_189974_, p_189973_.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY), p_189973_);
       SurfaceRules.SurfaceRule surfacerules$surfacerule = p_189972_.apply(surfacerules$context);
       int i = p_189977_.getX();

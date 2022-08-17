@@ -20,7 +20,9 @@ import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.structures.NbtToSnbt;
 import net.minecraft.data.structures.SnbtToNbt;
 import net.minecraft.data.structures.StructureUpdater;
+import net.minecraft.data.tags.BiomeTagsProvider;
 import net.minecraft.data.tags.BlockTagsProvider;
+import net.minecraft.data.tags.ConfiguredStructureTagsProvider;
 import net.minecraft.data.tags.EntityTypeTagsProvider;
 import net.minecraft.data.tags.FluidTagsProvider;
 import net.minecraft.data.tags.GameEventTagsProvider;
@@ -79,6 +81,8 @@ public class Main {
          datagenerator.addProvider(new AdvancementProvider(datagenerator));
          datagenerator.addProvider(new LootTableProvider(datagenerator));
          datagenerator.addProvider(new GameEventTagsProvider(datagenerator));
+         datagenerator.addProvider(new BiomeTagsProvider(datagenerator));
+         datagenerator.addProvider(new ConfiguredStructureTagsProvider(datagenerator));
       }
 
       if (p_129665_) {

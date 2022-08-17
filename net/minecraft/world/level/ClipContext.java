@@ -2,6 +2,8 @@ package net.minecraft.world.level;
 
 import java.util.function.Predicate;
 import net.minecraft.core.BlockPos;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
@@ -45,7 +47,10 @@ public class ClipContext {
    public static enum Block implements ClipContext.ShapeGetter {
       COLLIDER(BlockBehaviour.BlockStateBase::getCollisionShape),
       OUTLINE(BlockBehaviour.BlockStateBase::getShape),
-      VISUAL(BlockBehaviour.BlockStateBase::getVisualShape);
+      VISUAL(BlockBehaviour.BlockStateBase::getVisualShape),
+      FALLDAMAGE_RESETTING((p_201982_, p_201983_, p_201984_, p_201985_) -> {
+         return p_201982_.is(BlockTags.FALL_DAMAGE_RESETTING) ? Shapes.block() : Shapes.empty();
+      });
 
       private final ClipContext.ShapeGetter shapeGetter;
 
@@ -65,6 +70,9 @@ public class ClipContext {
       SOURCE_ONLY(FluidState::isSource),
       ANY((p_45734_) -> {
          return !p_45734_.isEmpty();
+      }),
+      WATER((p_201988_) -> {
+         return p_201988_.is(FluidTags.WATER);
       });
 
       private final Predicate<FluidState> canPick;

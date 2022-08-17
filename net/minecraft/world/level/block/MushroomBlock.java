@@ -3,6 +3,7 @@ package net.minecraft.world.level.block;
 import java.util.Random;
 import java.util.function.Supplier;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.world.level.BlockGetter;
@@ -17,9 +18,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class MushroomBlock extends BushBlock implements BonemealableBlock {
    protected static final float AABB_OFFSET = 3.0F;
    protected static final VoxelShape SHAPE = Block.box(5.0D, 0.0D, 5.0D, 11.0D, 6.0D, 11.0D);
-   private final Supplier<ConfiguredFeature<?, ?>> featureSupplier;
+   private final Supplier<Holder<? extends ConfiguredFeature<?, ?>>> featureSupplier;
 
-   public MushroomBlock(BlockBehaviour.Properties p_153983_, Supplier<ConfiguredFeature<?, ?>> p_153984_) {
+   public MushroomBlock(BlockBehaviour.Properties p_153983_, Supplier<Holder<? extends ConfiguredFeature<?, ?>>> p_153984_) {
       super(p_153983_);
       this.featureSupplier = p_153984_;
    }
@@ -75,7 +76,7 @@ public class MushroomBlock extends BushBlock implements BonemealableBlock {
 
    public boolean growMushroom(ServerLevel p_54860_, BlockPos p_54861_, BlockState p_54862_, Random p_54863_) {
       p_54860_.removeBlock(p_54861_, false);
-      if (this.featureSupplier.get().place(p_54860_, p_54860_.getChunkSource().getGenerator(), p_54863_, p_54861_)) {
+      if (this.featureSupplier.get().value().place(p_54860_, p_54860_.getChunkSource().getGenerator(), p_54863_, p_54861_)) {
          return true;
       } else {
          p_54860_.setBlock(p_54861_, p_54862_, 3);

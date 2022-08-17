@@ -8,7 +8,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 public class LavaSubmergedBlockProcessor extends StructureProcessor {
-   public static final Codec<LavaSubmergedBlockProcessor> CODEC;
+   public static final Codec<LavaSubmergedBlockProcessor> CODEC = Codec.unit(() -> {
+      return LavaSubmergedBlockProcessor.INSTANCE;
+   });
    public static final LavaSubmergedBlockProcessor INSTANCE = new LavaSubmergedBlockProcessor();
 
    @Nullable
@@ -20,11 +22,5 @@ public class LavaSubmergedBlockProcessor extends StructureProcessor {
 
    protected StructureProcessorType<?> getType() {
       return StructureProcessorType.LAVA_SUBMERGED_BLOCK;
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
-      });
    }
 }

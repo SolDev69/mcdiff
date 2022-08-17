@@ -32,7 +32,7 @@ public record InclusiveRange<T extends Comparable<T>>(T minInclusive, T maxInclu
    }
 
    public static <T extends Comparable<T>> DataResult<InclusiveRange<T>> create(T p_184581_, T p_184582_) {
-      return p_184581_.compareTo(p_184582_) <= 0 ? DataResult.success(new InclusiveRange<>(p_184581_, p_184582_)) : DataResult.error("min_inclusive must be less than or equal to max_inclusive");
+      return p_184581_.compareTo(p_184582_) <= 0 ? DataResult.success(new InclusiveRange<T>(p_184581_, p_184582_)) : DataResult.error("min_inclusive must be less than or equal to max_inclusive");
    }
 
    public boolean isValueInRange(T p_184579_) {

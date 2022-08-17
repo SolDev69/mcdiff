@@ -20,7 +20,7 @@ public class SuggestionProviders {
    private static final Map<ResourceLocation, SuggestionProvider<SharedSuggestionProvider>> PROVIDERS_BY_NAME = Maps.newHashMap();
    private static final ResourceLocation DEFAULT_NAME = new ResourceLocation("ask_server");
    public static final SuggestionProvider<SharedSuggestionProvider> ASK_SERVER = register(DEFAULT_NAME, (p_121673_, p_121674_) -> {
-      return p_121673_.getSource().customSuggestion(p_121673_, p_121674_);
+      return p_121673_.getSource().customSuggestion(p_121673_);
    });
    public static final SuggestionProvider<CommandSourceStack> ALL_RECIPES = register(new ResourceLocation("all_recipes"), (p_121670_, p_121671_) -> {
       return SharedSuggestionProvider.suggestResource(p_121670_.getSource().getRecipeNames(), p_121671_);
@@ -28,12 +28,9 @@ public class SuggestionProviders {
    public static final SuggestionProvider<CommandSourceStack> AVAILABLE_SOUNDS = register(new ResourceLocation("available_sounds"), (p_121667_, p_121668_) -> {
       return SharedSuggestionProvider.suggestResource(p_121667_.getSource().getAvailableSoundEvents(), p_121668_);
    });
-   public static final SuggestionProvider<CommandSourceStack> AVAILABLE_BIOMES = register(new ResourceLocation("available_biomes"), (p_121662_, p_121663_) -> {
-      return SharedSuggestionProvider.suggestResource(p_121662_.getSource().registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).keySet(), p_121663_);
-   });
-   public static final SuggestionProvider<CommandSourceStack> SUMMONABLE_ENTITIES = register(new ResourceLocation("summonable_entities"), (p_121652_, p_121653_) -> {
-      return SharedSuggestionProvider.suggestResource(Registry.ENTITY_TYPE.stream().filter(EntityType::canSummon), p_121653_, EntityType::getKey, (p_175213_) -> {
-         return new TranslatableComponent(Util.makeDescriptionId("entity", EntityType.getKey(p_175213_)));
+   public static final SuggestionProvider<CommandSourceStack> SUMMONABLE_ENTITIES = register(new ResourceLocation("summonable_entities"), (p_212438_, p_212439_) -> {
+      return SharedSuggestionProvider.suggestResource(Registry.ENTITY_TYPE.stream().filter(EntityType::canSummon), p_212439_, EntityType::getKey, (p_212436_) -> {
+         return new TranslatableComponent(Util.makeDescriptionId("entity", EntityType.getKey(p_212436_)));
       });
    });
 

@@ -10,14 +10,13 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.StructureFeatureManager;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.levelgen.feature.NoiseEffect;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
-import net.minecraft.world.level.levelgen.feature.structures.JigsawJunction;
-import net.minecraft.world.level.levelgen.feature.structures.StructureTemplatePool;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.PoolElementStructurePiece;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import net.minecraft.world.level.levelgen.structure.pools.JigsawJunction;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 
-public class Beardifier implements NoiseChunk.NoiseFiller {
+public class Beardifier implements DensityFunctions.BeardifierOrMarker {
    public static final int BEARD_KERNEL_RADIUS = 12;
    private static final int BEARD_KERNEL_SIZE = 24;
    private static final float[] BEARD_KERNEL = Util.make(new float[13824], (p_158082_) -> {
@@ -41,52 +40,53 @@ public class Beardifier implements NoiseChunk.NoiseFiller {
       int j = chunkpos.getMinBlockZ();
       this.junctions = new ObjectArrayList<>(32);
       this.rigids = new ObjectArrayList<>(10);
-
-      for(StructureFeature<?> structurefeature : StructureFeature.NOISE_AFFECTING_FEATURES) {
-         p_158070_.startsForFeature(SectionPos.bottomOf(p_158071_), structurefeature).forEach((p_158080_) -> {
-            for(StructurePiece structurepiece : p_158080_.getPieces()) {
-               if (structurepiece.isCloseToChunk(chunkpos, 12)) {
-                  if (structurepiece instanceof PoolElementStructurePiece) {
-                     PoolElementStructurePiece poolelementstructurepiece = (PoolElementStructurePiece)structurepiece;
-                     StructureTemplatePool.Projection structuretemplatepool$projection = poolelementstructurepiece.getElement().getProjection();
-                     if (structuretemplatepool$projection == StructureTemplatePool.Projection.RIGID) {
-                        this.rigids.add(poolelementstructurepiece);
-                     }
-
-                     for(JigsawJunction jigsawjunction : poolelementstructurepiece.getJunctions()) {
-                        int k = jigsawjunction.getSourceX();
-                        int l = jigsawjunction.getSourceZ();
-                        if (k > i - 12 && l > j - 12 && k < i + 15 + 12 && l < j + 15 + 12) {
-                           this.junctions.add(jigsawjunction);
-                        }
-                     }
-                  } else {
-                     this.rigids.add(structurepiece);
+      p_158070_.startsForFeature(SectionPos.bottomOf(p_158071_), (p_208202_) -> {
+         return p_208202_.adaptNoise;
+      }).forEach((p_208198_) -> {
+         for(StructurePiece structurepiece : p_208198_.getPieces()) {
+            if (structurepiece.isCloseToChunk(chunkpos, 12)) {
+               if (structurepiece instanceof PoolElementStructurePiece) {
+                  PoolElementStructurePiece poolelementstructurepiece = (PoolElementStructurePiece)structurepiece;
+                  StructureTemplatePool.Projection structuretemplatepool$projection = poolelementstructurepiece.getElement().getProjection();
+                  if (structuretemplatepool$projection == StructureTemplatePool.Projection.RIGID) {
+                     this.rigids.add(poolelementstructurepiece);
                   }
+
+                  for(JigsawJunction jigsawjunction : poolelementstructurepiece.getJunctions()) {
+                     int k = jigsawjunction.getSourceX();
+                     int l = jigsawjunction.getSourceZ();
+                     if (k > i - 12 && l > j - 12 && k < i + 15 + 12 && l < j + 15 + 12) {
+                        this.junctions.add(jigsawjunction);
+                     }
+                  }
+               } else {
+                  this.rigids.add(structurepiece);
                }
             }
+         }
 
-         });
-      }
-
+      });
       this.pieceIterator = this.rigids.iterator();
       this.junctionIterator = this.junctions.iterator();
    }
 
-   public double calculateNoise(int p_188452_, int p_188453_, int p_188454_) {
+   public double compute(DensityFunction.FunctionContext p_208200_) {
+      int i = p_208200_.blockX();
+      int j = p_208200_.blockY();
+      int k = p_208200_.blockZ();
       double d0 = 0.0D;
 
       while(this.pieceIterator.hasNext()) {
          StructurePiece structurepiece = this.pieceIterator.next();
          BoundingBox boundingbox = structurepiece.getBoundingBox();
-         int i = Math.max(0, Math.max(boundingbox.minX() - p_188452_, p_188452_ - boundingbox.maxX()));
-         int j = p_188453_ - (boundingbox.minY() + (structurepiece instanceof PoolElementStructurePiece ? ((PoolElementStructurePiece)structurepiece).getGroundLevelDelta() : 0));
-         int k = Math.max(0, Math.max(boundingbox.minZ() - p_188454_, p_188454_ - boundingbox.maxZ()));
+         int l = Math.max(0, Math.max(boundingbox.minX() - i, i - boundingbox.maxX()));
+         int i1 = j - (boundingbox.minY() + (structurepiece instanceof PoolElementStructurePiece ? ((PoolElementStructurePiece)structurepiece).getGroundLevelDelta() : 0));
+         int j1 = Math.max(0, Math.max(boundingbox.minZ() - k, k - boundingbox.maxZ()));
          NoiseEffect noiseeffect = structurepiece.getNoiseEffect();
          if (noiseeffect == NoiseEffect.BURY) {
-            d0 += getBuryContribution(i, j, k);
+            d0 += getBuryContribution(l, i1, j1);
          } else if (noiseeffect == NoiseEffect.BEARD) {
-            d0 += getBeardContribution(i, j, k) * 0.8D;
+            d0 += getBeardContribution(l, i1, j1) * 0.8D;
          }
       }
 
@@ -94,14 +94,22 @@ public class Beardifier implements NoiseChunk.NoiseFiller {
 
       while(this.junctionIterator.hasNext()) {
          JigsawJunction jigsawjunction = this.junctionIterator.next();
-         int l = p_188452_ - jigsawjunction.getSourceX();
-         int i1 = p_188453_ - jigsawjunction.getSourceGroundY();
-         int j1 = p_188454_ - jigsawjunction.getSourceZ();
-         d0 += getBeardContribution(l, i1, j1) * 0.4D;
+         int k1 = i - jigsawjunction.getSourceX();
+         int l1 = j - jigsawjunction.getSourceGroundY();
+         int i2 = k - jigsawjunction.getSourceZ();
+         d0 += getBeardContribution(k1, l1, i2) * 0.4D;
       }
 
       this.junctionIterator.back(this.junctions.size());
       return d0;
+   }
+
+   public double minValue() {
+      return Double.NEGATIVE_INFINITY;
+   }
+
+   public double maxValue() {
+      return Double.POSITIVE_INFINITY;
    }
 
    private static double getBuryContribution(int p_158084_, int p_158085_, int p_158086_) {

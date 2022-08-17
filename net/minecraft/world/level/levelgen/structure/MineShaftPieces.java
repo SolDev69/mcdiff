@@ -1,6 +1,7 @@
 package net.minecraft.world.level.levelgen.structure;
 
 import com.google.common.collect.Lists;
+import com.mojang.logging.LogUtils;
 import java.util.List;
 import java.util.Random;
 import javax.annotation.Nullable;
@@ -28,14 +29,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.MineshaftFeature;
-import net.minecraft.world.level.levelgen.feature.StructurePieceType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class MineShaftPieces {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final int DEFAULT_SHAFT_WIDTH = 3;
    private static final int DEFAULT_SHAFT_HEIGHT = 3;
    private static final int DEFAULT_SHAFT_LENGTH = 5;
@@ -328,7 +328,7 @@ public class MineShaftPieces {
                blockpos$mutableblockpos.move(Direction.DOWN);
             }
 
-            if (this.canPlaceColumnOnTopOf(p_162500_.getBlockState(blockpos$mutableblockpos))) {
+            if (this.canPlaceColumnOnTopOf(p_162500_, blockpos$mutableblockpos, p_162500_.getBlockState(blockpos$mutableblockpos))) {
                while(blockpos$mutableblockpos.getY() < i) {
                   blockpos$mutableblockpos.move(Direction.UP);
                   p_162500_.setBlock(blockpos$mutableblockpos, p_162501_, 2);
@@ -350,7 +350,7 @@ public class MineShaftPieces {
                   blockpos$mutableblockpos.setY(i - j);
                   BlockState blockstate = p_162545_.getBlockState(blockpos$mutableblockpos);
                   boolean flag2 = this.isReplaceableByStructures(blockstate) && !blockstate.is(Blocks.LAVA);
-                  if (!flag2 && this.canPlaceColumnOnTopOf(blockstate)) {
+                  if (!flag2 && this.canPlaceColumnOnTopOf(p_162545_, blockpos$mutableblockpos, blockstate)) {
                      fillColumnBetween(p_162545_, p_162546_, blockpos$mutableblockpos, i - j + 1, i);
                      return;
                   }
@@ -382,8 +382,8 @@ public class MineShaftPieces {
 
       }
 
-      private boolean canPlaceColumnOnTopOf(BlockState p_162552_) {
-         return !p_162552_.is(Blocks.RAIL) && !p_162552_.is(Blocks.LAVA);
+      private boolean canPlaceColumnOnTopOf(LevelReader p_203133_, BlockPos p_203134_, BlockState p_203135_) {
+         return p_203135_.isFaceSturdy(p_203133_, p_203134_, Direction.UP);
       }
 
       private boolean canHangChainBelow(LevelReader p_162496_, BlockPos p_162497_, BlockState p_162498_) {
@@ -571,14 +571,14 @@ public class MineShaftPieces {
    abstract static class MineShaftPiece extends StructurePiece {
       protected MineshaftFeature.Type type;
 
-      public MineShaftPiece(StructurePieceType p_162571_, int p_162572_, MineshaftFeature.Type p_162573_, BoundingBox p_162574_) {
-         super(p_162571_, p_162572_, p_162574_);
-         this.type = p_162573_;
+      public MineShaftPiece(StructurePieceType p_209876_, int p_209877_, MineshaftFeature.Type p_209878_, BoundingBox p_209879_) {
+         super(p_209876_, p_209877_, p_209879_);
+         this.type = p_209878_;
       }
 
-      public MineShaftPiece(StructurePieceType p_71471_, CompoundTag p_71472_) {
-         super(p_71471_, p_71472_);
-         this.type = MineshaftFeature.Type.byId(p_71472_.getInt("MST"));
+      public MineShaftPiece(StructurePieceType p_209881_, CompoundTag p_209882_) {
+         super(p_209881_, p_209882_);
+         this.type = MineshaftFeature.Type.byId(p_209882_.getInt("MST"));
       }
 
       protected boolean canBeReplaced(LevelReader p_162582_, int p_162583_, int p_162584_, int p_162585_, BoundingBox p_162586_) {
@@ -652,7 +652,7 @@ public class MineShaftPieces {
          if (this.isInterior(p_162588_, p_162591_, p_162592_, p_162593_, p_162589_)) {
             BlockPos blockpos = this.getWorldPos(p_162591_, p_162592_, p_162593_);
             BlockState blockstate = p_162588_.getBlockState(blockpos);
-            if (blockstate.isAir() || blockstate.is(Blocks.CHAIN)) {
+            if (!blockstate.isFaceSturdy(p_162588_, blockpos, Direction.UP)) {
                p_162588_.setBlock(blockpos, p_162590_, 2);
             }
 

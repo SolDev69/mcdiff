@@ -472,7 +472,8 @@ public class KeyboardHandler {
                Blaze3D.youJustLostTheGame();
             }
 
-            CrashReport crashreport = new CrashReport("Manually triggered debug crash", new Throwable());
+            String s = "Manually triggered debug crash";
+            CrashReport crashreport = new CrashReport("Manually triggered debug crash", new Throwable("Manually triggered debug crash"));
             CrashReportCategory crashreportcategory = crashreport.addCategory("Manual crash details");
             NativeModuleLister.addCrashSection(crashreportcategory);
             throw new ReportedException(crashreport);

@@ -4,16 +4,20 @@ import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSerializationContext;
+import com.mojang.logging.LogUtils;
 import java.util.Locale;
 import java.util.Set;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.TranslatableComponent;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.ConfiguredStructureTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.MapItem;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.saveddata.maps.MapDecoration;
 import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -21,30 +25,29 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParam;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
 import net.minecraft.world.phys.Vec3;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ExplorationMapFunction extends LootItemConditionalFunction {
-   static final Logger LOGGER = LogManager.getLogger();
-   public static final StructureFeature<?> DEFAULT_FEATURE = StructureFeature.BURIED_TREASURE;
+   static final Logger LOGGER = LogUtils.getLogger();
+   public static final TagKey<ConfiguredStructureFeature<?, ?>> DEFAULT_FEATURE = ConfiguredStructureTags.ON_TREASURE_MAPS;
    public static final String DEFAULT_DECORATION_NAME = "mansion";
    public static final MapDecoration.Type DEFAULT_DECORATION = MapDecoration.Type.MANSION;
    public static final byte DEFAULT_ZOOM = 2;
    public static final int DEFAULT_SEARCH_RADIUS = 50;
    public static final boolean DEFAULT_SKIP_EXISTING = true;
-   final StructureFeature<?> destination;
+   final TagKey<ConfiguredStructureFeature<?, ?>> destination;
    final MapDecoration.Type mapDecoration;
    final byte zoom;
    final int searchRadius;
    final boolean skipKnownStructures;
 
-   ExplorationMapFunction(LootItemCondition[] p_80531_, StructureFeature<?> p_80532_, MapDecoration.Type p_80533_, byte p_80534_, int p_80535_, boolean p_80536_) {
-      super(p_80531_);
-      this.destination = p_80532_;
-      this.mapDecoration = p_80533_;
-      this.zoom = p_80534_;
-      this.searchRadius = p_80535_;
-      this.skipKnownStructures = p_80536_;
+   ExplorationMapFunction(LootItemCondition[] p_210652_, TagKey<ConfiguredStructureFeature<?, ?>> p_210653_, MapDecoration.Type p_210654_, byte p_210655_, int p_210656_, boolean p_210657_) {
+      super(p_210652_);
+      this.destination = p_210653_;
+      this.mapDecoration = p_210654_;
+      this.zoom = p_210655_;
+      this.searchRadius = p_210656_;
+      this.skipKnownStructures = p_210657_;
    }
 
    public LootItemFunctionType getType() {
@@ -67,7 +70,6 @@ public class ExplorationMapFunction extends LootItemConditionalFunction {
                ItemStack itemstack = MapItem.create(serverlevel, blockpos.getX(), blockpos.getZ(), this.zoom, true, true);
                MapItem.renderBiomePreviewMap(serverlevel, itemstack);
                MapItemSavedData.addTargetDecoration(itemstack, blockpos, "+", this.mapDecoration);
-               itemstack.setHoverName(new TranslatableComponent("filled_map." + this.destination.getFeatureName().toLowerCase(Locale.ROOT)));
                return itemstack;
             }
          }
@@ -81,7 +83,7 @@ public class ExplorationMapFunction extends LootItemConditionalFunction {
    }
 
    public static class Builder extends LootItemConditionalFunction.Builder<ExplorationMapFunction.Builder> {
-      private StructureFeature<?> destination = ExplorationMapFunction.DEFAULT_FEATURE;
+      private TagKey<ConfiguredStructureFeature<?, ?>> destination = ExplorationMapFunction.DEFAULT_FEATURE;
       private MapDecoration.Type mapDecoration = ExplorationMapFunction.DEFAULT_DECORATION;
       private byte zoom = 2;
       private int searchRadius = 50;
@@ -91,8 +93,8 @@ public class ExplorationMapFunction extends LootItemConditionalFunction {
          return this;
       }
 
-      public ExplorationMapFunction.Builder setDestination(StructureFeature<?> p_80572_) {
-         this.destination = p_80572_;
+      public ExplorationMapFunction.Builder setDestination(TagKey<ConfiguredStructureFeature<?, ?>> p_210659_) {
+         this.destination = p_210659_;
          return this;
       }
 
@@ -125,7 +127,7 @@ public class ExplorationMapFunction extends LootItemConditionalFunction {
       public void serialize(JsonObject p_80587_, ExplorationMapFunction p_80588_, JsonSerializationContext p_80589_) {
          super.serialize(p_80587_, p_80588_, p_80589_);
          if (!p_80588_.destination.equals(ExplorationMapFunction.DEFAULT_FEATURE)) {
-            p_80587_.add("destination", p_80589_.serialize(p_80588_.destination.getFeatureName()));
+            p_80587_.addProperty("destination", p_80588_.destination.location().toString());
          }
 
          if (p_80588_.mapDecoration != ExplorationMapFunction.DEFAULT_DECORATION) {
@@ -147,7 +149,7 @@ public class ExplorationMapFunction extends LootItemConditionalFunction {
       }
 
       public ExplorationMapFunction deserialize(JsonObject p_80583_, JsonDeserializationContext p_80584_, LootItemCondition[] p_80585_) {
-         StructureFeature<?> structurefeature = readStructure(p_80583_);
+         TagKey<ConfiguredStructureFeature<?, ?>> tagkey = readStructure(p_80583_);
          String s = p_80583_.has("decoration") ? GsonHelper.getAsString(p_80583_, "decoration") : "mansion";
          MapDecoration.Type mapdecoration$type = ExplorationMapFunction.DEFAULT_DECORATION;
 
@@ -160,19 +162,16 @@ public class ExplorationMapFunction extends LootItemConditionalFunction {
          byte b0 = GsonHelper.getAsByte(p_80583_, "zoom", (byte)2);
          int i = GsonHelper.getAsInt(p_80583_, "search_radius", 50);
          boolean flag = GsonHelper.getAsBoolean(p_80583_, "skip_existing_chunks", true);
-         return new ExplorationMapFunction(p_80585_, structurefeature, mapdecoration$type, b0, i, flag);
+         return new ExplorationMapFunction(p_80585_, tagkey, mapdecoration$type, b0, i, flag);
       }
 
-      private static StructureFeature<?> readStructure(JsonObject p_80581_) {
-         if (p_80581_.has("destination")) {
-            String s = GsonHelper.getAsString(p_80581_, "destination");
-            StructureFeature<?> structurefeature = StructureFeature.STRUCTURES_REGISTRY.get(s.toLowerCase(Locale.ROOT));
-            if (structurefeature != null) {
-               return structurefeature;
-            }
+      private static TagKey<ConfiguredStructureFeature<?, ?>> readStructure(JsonObject p_210661_) {
+         if (p_210661_.has("destination")) {
+            String s = GsonHelper.getAsString(p_210661_, "destination");
+            return TagKey.create(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY, new ResourceLocation(s));
+         } else {
+            return ExplorationMapFunction.DEFAULT_FEATURE;
          }
-
-         return ExplorationMapFunction.DEFAULT_FEATURE;
       }
    }
 }

@@ -3,6 +3,7 @@ package net.minecraft.world.entity.ai.village.poi;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectMap;
@@ -19,11 +20,10 @@ import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.VisibleForDebug;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class PoiSection {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final Short2ObjectMap<PoiRecord> records = new Short2ObjectOpenHashMap<>();
    private final Map<PoiType, Set<PoiRecord>> byType = Maps.newHashMap();
    private final Runnable setDirty;
@@ -61,11 +61,7 @@ public class PoiSection {
 
    public void add(BlockPos p_27282_, PoiType p_27283_) {
       if (this.add(new PoiRecord(p_27282_, p_27283_, this.setDirty))) {
-         LOGGER.debug("Added POI of type {} @ {}", () -> {
-            return p_27283_;
-         }, () -> {
-            return p_27282_;
-         });
+         LOGGER.debug("Added POI of type {} @ {}", p_27283_, p_27282_);
          this.setDirty.run();
       }
 
@@ -85,7 +81,7 @@ public class PoiSection {
       }
 
       this.records.put(short1, p_27274_);
-      this.byType.computeIfAbsent(poitype, (p_27278_) -> {
+      this.byType.computeIfAbsent(poitype, (p_201961_) -> {
          return Sets.newHashSet();
       }).add(p_27274_);
       return true;
@@ -97,7 +93,7 @@ public class PoiSection {
          LOGGER.error("POI data mismatch: never registered at {}", (Object)p_27280_);
       } else {
          this.byType.get(poirecord.getPoiType()).remove(poirecord);
-         LOGGER.debug("Removed POI of type {} @ {}", poirecord::getPoiType, poirecord::getPos);
+         LOGGER.debug("Removed POI of type {} @ {}", LogUtils.defer(poirecord::getPoiType), LogUtils.defer(poirecord::getPos));
          this.setDirty.run();
       }
    }
@@ -136,10 +132,10 @@ public class PoiSection {
       if (!this.isValid) {
          Short2ObjectMap<PoiRecord> short2objectmap = new Short2ObjectOpenHashMap<>(this.records);
          this.clear();
-         p_27303_.accept((p_27293_, p_27294_) -> {
-            short short1 = SectionPos.sectionRelativePos(p_27293_);
-            PoiRecord poirecord = short2objectmap.computeIfAbsent(short1, (p_186208_) -> {
-               return new PoiRecord(p_27293_, p_27294_, this.setDirty);
+         p_27303_.accept((p_201968_, p_201969_) -> {
+            short short1 = SectionPos.sectionRelativePos(p_201968_);
+            PoiRecord poirecord = short2objectmap.computeIfAbsent(short1, (p_201965_) -> {
+               return new PoiRecord(p_201968_, p_201969_, this.setDirty);
             });
             this.add(poirecord);
          });

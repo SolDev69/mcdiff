@@ -4,14 +4,21 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableList.Builder;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.level.chunk.ChunkStatus;
 import net.minecraft.world.level.chunk.FeatureAccess;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.structure.StructureCheck;
 import net.minecraft.world.level.levelgen.structure.StructureCheckResult;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
@@ -36,41 +43,58 @@ public class StructureFeatureManager {
       }
    }
 
-   public List<? extends StructureStart<?>> startsForFeature(SectionPos p_186611_, StructureFeature<?> p_186612_) {
-      LongSet longset = this.level.getChunk(p_186611_.x(), p_186611_.z(), ChunkStatus.STRUCTURE_REFERENCES).getReferencesForFeature(p_186612_);
-      Builder<StructureStart<?>> builder = ImmutableList.builder();
+   public List<StructureStart> startsForFeature(SectionPos p_207812_, Predicate<ConfiguredStructureFeature<?, ?>> p_207813_) {
+      Map<ConfiguredStructureFeature<?, ?>, LongSet> map = this.level.getChunk(p_207812_.x(), p_207812_.z(), ChunkStatus.STRUCTURE_REFERENCES).getAllReferences();
+      Builder<StructureStart> builder = ImmutableList.builder();
 
-      for(long i : longset) {
-         SectionPos sectionpos = SectionPos.of(new ChunkPos(i), this.level.getMinSection());
-         StructureStart<?> structurestart = this.getStartForFeature(sectionpos, p_186612_, this.level.getChunk(sectionpos.x(), sectionpos.z(), ChunkStatus.STRUCTURE_STARTS));
-         if (structurestart != null && structurestart.isValid()) {
-            builder.add(structurestart);
+      for(Entry<ConfiguredStructureFeature<?, ?>, LongSet> entry : map.entrySet()) {
+         ConfiguredStructureFeature<?, ?> configuredstructurefeature = entry.getKey();
+         if (p_207813_.test(configuredstructurefeature)) {
+            this.fillStartsForFeature(configuredstructurefeature, entry.getValue(), builder::add);
          }
       }
 
       return builder.build();
    }
 
+   public List<StructureStart> startsForFeature(SectionPos p_207795_, ConfiguredStructureFeature<?, ?> p_207796_) {
+      LongSet longset = this.level.getChunk(p_207795_.x(), p_207795_.z(), ChunkStatus.STRUCTURE_REFERENCES).getReferencesForFeature(p_207796_);
+      Builder<StructureStart> builder = ImmutableList.builder();
+      this.fillStartsForFeature(p_207796_, longset, builder::add);
+      return builder.build();
+   }
+
+   public void fillStartsForFeature(ConfiguredStructureFeature<?, ?> p_207782_, LongSet p_207783_, Consumer<StructureStart> p_207784_) {
+      for(long i : p_207783_) {
+         SectionPos sectionpos = SectionPos.of(new ChunkPos(i), this.level.getMinSection());
+         StructureStart structurestart = this.getStartForFeature(sectionpos, p_207782_, this.level.getChunk(sectionpos.x(), sectionpos.z(), ChunkStatus.STRUCTURE_STARTS));
+         if (structurestart != null && structurestart.isValid()) {
+            p_207784_.accept(structurestart);
+         }
+      }
+
+   }
+
    @Nullable
-   public StructureStart<?> getStartForFeature(SectionPos p_47298_, StructureFeature<?> p_47299_, FeatureAccess p_47300_) {
-      return p_47300_.getStartForFeature(p_47299_);
+   public StructureStart getStartForFeature(SectionPos p_207803_, ConfiguredStructureFeature<?, ?> p_207804_, FeatureAccess p_207805_) {
+      return p_207805_.getStartForFeature(p_207804_);
    }
 
-   public void setStartForFeature(SectionPos p_47302_, StructureFeature<?> p_47303_, StructureStart<?> p_47304_, FeatureAccess p_47305_) {
-      p_47305_.setStartForFeature(p_47303_, p_47304_);
+   public void setStartForFeature(SectionPos p_207807_, ConfiguredStructureFeature<?, ?> p_207808_, StructureStart p_207809_, FeatureAccess p_207810_) {
+      p_207810_.setStartForFeature(p_207808_, p_207809_);
    }
 
-   public void addReferenceForFeature(SectionPos p_47293_, StructureFeature<?> p_47294_, long p_47295_, FeatureAccess p_47296_) {
-      p_47296_.addReferenceForFeature(p_47294_, p_47295_);
+   public void addReferenceForFeature(SectionPos p_207798_, ConfiguredStructureFeature<?, ?> p_207799_, long p_207800_, FeatureAccess p_207801_) {
+      p_207801_.addReferenceForFeature(p_207799_, p_207800_);
    }
 
    public boolean shouldGenerateFeatures() {
       return this.worldGenSettings.generateFeatures();
    }
 
-   public StructureStart<?> getStructureAt(BlockPos p_186608_, StructureFeature<?> p_186609_) {
-      for(StructureStart<?> structurestart : this.startsForFeature(SectionPos.of(p_186608_), p_186609_)) {
-         if (structurestart.getBoundingBox().isInside(p_186608_)) {
+   public StructureStart getStructureAt(BlockPos p_207786_, ConfiguredStructureFeature<?, ?> p_207787_) {
+      for(StructureStart structurestart : this.startsForFeature(SectionPos.of(p_207786_), p_207787_)) {
+         if (structurestart.getBoundingBox().isInside(p_207786_)) {
             return structurestart;
          }
       }
@@ -78,16 +102,29 @@ public class StructureFeatureManager {
       return StructureStart.INVALID_START;
    }
 
-   public StructureStart<?> getStructureWithPieceAt(BlockPos p_186614_, StructureFeature<?> p_186615_) {
-      for(StructureStart<?> structurestart : this.startsForFeature(SectionPos.of(p_186614_), p_186615_)) {
-         for(StructurePiece structurepiece : structurestart.getPieces()) {
-            if (structurepiece.getBoundingBox().isInside(p_186614_)) {
-               return structurestart;
-            }
+   public StructureStart getStructureWithPieceAt(BlockPos p_207792_, ResourceKey<ConfiguredStructureFeature<?, ?>> p_207793_) {
+      ConfiguredStructureFeature<?, ?> configuredstructurefeature = this.registryAccess().registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY).get(p_207793_);
+      return configuredstructurefeature == null ? StructureStart.INVALID_START : this.getStructureWithPieceAt(p_207792_, configuredstructurefeature);
+   }
+
+   public StructureStart getStructureWithPieceAt(BlockPos p_207818_, ConfiguredStructureFeature<?, ?> p_207819_) {
+      for(StructureStart structurestart : this.startsForFeature(SectionPos.of(p_207818_), p_207819_)) {
+         if (this.structureHasPieceAt(p_207818_, structurestart)) {
+            return structurestart;
          }
       }
 
       return StructureStart.INVALID_START;
+   }
+
+   public boolean structureHasPieceAt(BlockPos p_207789_, StructureStart p_207790_) {
+      for(StructurePiece structurepiece : p_207790_.getPieces()) {
+         if (structurepiece.getBoundingBox().isInside(p_207789_)) {
+            return true;
+         }
+      }
+
+      return false;
    }
 
    public boolean hasAnyStructureAt(BlockPos p_186606_) {
@@ -95,12 +132,21 @@ public class StructureFeatureManager {
       return this.level.getChunk(sectionpos.x(), sectionpos.z(), ChunkStatus.STRUCTURE_REFERENCES).hasAnyStructureReferences();
    }
 
-   public StructureCheckResult checkStructurePresence(ChunkPos p_196671_, StructureFeature<?> p_196672_, boolean p_196673_) {
-      return this.structureCheck.checkStart(p_196671_, p_196672_, p_196673_);
+   public Map<ConfiguredStructureFeature<?, ?>, LongSet> getAllStructuresAt(BlockPos p_207816_) {
+      SectionPos sectionpos = SectionPos.of(p_207816_);
+      return this.level.getChunk(sectionpos.x(), sectionpos.z(), ChunkStatus.STRUCTURE_REFERENCES).getAllReferences();
    }
 
-   public void addReference(StructureStart<?> p_196675_) {
+   public StructureCheckResult checkStructurePresence(ChunkPos p_207778_, ConfiguredStructureFeature<?, ?> p_207779_, boolean p_207780_) {
+      return this.structureCheck.checkStart(p_207778_, p_207779_, p_207780_);
+   }
+
+   public void addReference(StructureStart p_196675_) {
       p_196675_.addReference();
       this.structureCheck.incrementReference(p_196675_.getChunkPos(), p_196675_.getFeature());
+   }
+
+   public RegistryAccess registryAccess() {
+      return this.level.registryAccess();
    }
 }

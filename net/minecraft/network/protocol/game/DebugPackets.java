@@ -1,6 +1,7 @@
 package net.minecraft.network.protocol.game;
 
 import com.google.common.collect.Lists;
+import com.mojang.logging.LogUtils;
 import io.netty.buffer.Unpooled;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import java.util.Collection;
@@ -13,7 +14,6 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
-import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Registry;
@@ -52,11 +52,10 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.gameevent.GameEventListener;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.pathfinder.Path;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class DebugPackets {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
 
    public static void sendGameTestAddMarker(ServerLevel p_133683_, BlockPos p_133684_, String p_133685_, int p_133686_, int p_133687_) {
       FriendlyByteBuf friendlybytebuf = new FriendlyByteBuf(Unpooled.buffer());
@@ -96,7 +95,7 @@ public class DebugPackets {
    public static void sendNeighborsUpdatePacket(Level p_133709_, BlockPos p_133710_) {
    }
 
-   public static void sendStructurePacket(WorldGenLevel p_133712_, StructureStart<?> p_133713_) {
+   public static void sendStructurePacket(WorldGenLevel p_133712_, StructureStart p_133713_) {
    }
 
    public static void sendGoalSelector(Level p_133700_, Mob p_133701_, GoalSelector p_133702_) {
@@ -159,14 +158,14 @@ public class DebugPackets {
          p_179534_.writeUtf(s);
       });
       if (p_179499_ instanceof Villager) {
-         Set<BlockPos> set1 = Stream.of(MemoryModuleType.JOB_SITE, MemoryModuleType.HOME, MemoryModuleType.MEETING_POINT).map(brain::getMemory).flatMap(Util::toStream).map(GlobalPos::pos).collect(Collectors.toSet());
+         Set<BlockPos> set1 = Stream.of(MemoryModuleType.JOB_SITE, MemoryModuleType.HOME, MemoryModuleType.MEETING_POINT).map(brain::getMemory).flatMap(Optional::stream).map(GlobalPos::pos).collect(Collectors.toSet());
          p_179500_.writeCollection(set1, FriendlyByteBuf::writeBlockPos);
       } else {
          p_179500_.writeVarInt(0);
       }
 
       if (p_179499_ instanceof Villager) {
-         Set<BlockPos> set2 = Stream.of(MemoryModuleType.POTENTIAL_JOB_SITE).map(brain::getMemory).flatMap(Util::toStream).map(GlobalPos::pos).collect(Collectors.toSet());
+         Set<BlockPos> set2 = Stream.of(MemoryModuleType.POTENTIAL_JOB_SITE).map(brain::getMemory).flatMap(Optional::stream).map(GlobalPos::pos).collect(Collectors.toSet());
          p_179500_.writeCollection(set2, FriendlyByteBuf::writeBlockPos);
       } else {
          p_179500_.writeVarInt(0);

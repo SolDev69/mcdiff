@@ -11,7 +11,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.feature.Feature;
 
 public class TrunkVineDecorator extends TreeDecorator {
-   public static final Codec<TrunkVineDecorator> CODEC;
+   public static final Codec<TrunkVineDecorator> CODEC = Codec.unit(() -> {
+      return TrunkVineDecorator.INSTANCE;
+   });
    public static final TrunkVineDecorator INSTANCE = new TrunkVineDecorator();
 
    protected TreeDecoratorType<?> type() {
@@ -48,12 +50,6 @@ public class TrunkVineDecorator extends TreeDecorator {
             }
          }
 
-      });
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
       });
    }
 }

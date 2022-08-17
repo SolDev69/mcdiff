@@ -17,11 +17,11 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.SerializationTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.player.StackedContents;
 import net.minecraft.world.item.Item;
@@ -138,8 +138,8 @@ public final class Ingredient implements Predicate<ItemStack> {
       }).map(Ingredient.ItemValue::new));
    }
 
-   public static Ingredient of(Tag<Item> p_43912_) {
-      return fromValues(Stream.of(new Ingredient.TagValue(p_43912_)));
+   public static Ingredient of(TagKey<Item> p_204133_) {
+      return fromValues(Stream.of(new Ingredient.TagValue(p_204133_)));
    }
 
    public static Ingredient fromNetwork(FriendlyByteBuf p_43941_) {
@@ -175,10 +175,8 @@ public final class Ingredient implements Predicate<ItemStack> {
          return new Ingredient.ItemValue(new ItemStack(item));
       } else if (p_43920_.has("tag")) {
          ResourceLocation resourcelocation = new ResourceLocation(GsonHelper.getAsString(p_43920_, "tag"));
-         Tag<Item> tag = SerializationTags.getInstance().getTagOrThrow(Registry.ITEM_REGISTRY, resourcelocation, (p_151262_) -> {
-            return new JsonSyntaxException("Unknown item tag '" + p_151262_ + "'");
-         });
-         return new Ingredient.TagValue(tag);
+         TagKey<Item> tagkey = TagKey.create(Registry.ITEM_REGISTRY, resourcelocation);
+         return new Ingredient.TagValue(tagkey);
       } else {
          throw new JsonParseException("An ingredient entry needs either a tag or an item");
       }
@@ -203,17 +201,17 @@ public final class Ingredient implements Predicate<ItemStack> {
    }
 
    static class TagValue implements Ingredient.Value {
-      private final Tag<Item> tag;
+      private final TagKey<Item> tag;
 
-      TagValue(Tag<Item> p_43961_) {
-         this.tag = p_43961_;
+      TagValue(TagKey<Item> p_204135_) {
+         this.tag = p_204135_;
       }
 
       public Collection<ItemStack> getItems() {
          List<ItemStack> list = Lists.newArrayList();
 
-         for(Item item : this.tag.getValues()) {
-            list.add(new ItemStack(item));
+         for(Holder<Item> holder : Registry.ITEM.getTagOrEmpty(this.tag)) {
+            list.add(new ItemStack(holder));
          }
 
          return list;
@@ -221,9 +219,7 @@ public final class Ingredient implements Predicate<ItemStack> {
 
       public JsonObject serialize() {
          JsonObject jsonobject = new JsonObject();
-         jsonobject.addProperty("tag", SerializationTags.getInstance().getIdOrThrow(Registry.ITEM_REGISTRY, this.tag, () -> {
-            return new IllegalStateException("Unknown item tag");
-         }).toString());
+         jsonobject.addProperty("tag", this.tag.location().toString());
          return jsonobject;
       }
    }

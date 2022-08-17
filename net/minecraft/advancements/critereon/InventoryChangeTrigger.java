@@ -7,7 +7,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.util.List;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
@@ -79,7 +79,7 @@ public class InventoryChangeTrigger extends SimpleCriterionTrigger<InventoryChan
          ItemPredicate[] aitempredicate = new ItemPredicate[p_43200_.length];
 
          for(int i = 0; i < p_43200_.length; ++i) {
-            aitempredicate[i] = new ItemPredicate((Tag<Item>)null, ImmutableSet.of(p_43200_[i].asItem()), MinMaxBounds.Ints.ANY, MinMaxBounds.Ints.ANY, EnchantmentPredicate.NONE, EnchantmentPredicate.NONE, (Potion)null, NbtPredicate.ANY);
+            aitempredicate[i] = new ItemPredicate((TagKey<Item>)null, ImmutableSet.of(p_43200_[i].asItem()), MinMaxBounds.Ints.ANY, MinMaxBounds.Ints.ANY, EnchantmentPredicate.NONE, EnchantmentPredicate.NONE, (Potion)null, NbtPredicate.ANY);
          }
 
          return hasItems(aitempredicate);

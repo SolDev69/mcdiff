@@ -1,21 +1,19 @@
 package net.minecraft.util.profiling.jfr;
 
+import com.mojang.logging.LogUtils;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.util.profiling.jfr.parse.JfrStatsParser;
 import net.minecraft.util.profiling.jfr.parse.JfrStatsResult;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.LifeCycle;
-import org.apache.logging.log4j.spi.LoggerContext;
-import org.apache.logging.log4j.util.Supplier;
+import org.slf4j.Logger;
 
 public class SummaryReporter {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final Runnable onDeregistration;
 
    protected SummaryReporter(Runnable p_185398_) {
@@ -55,32 +53,22 @@ public class SummaryReporter {
       }
    }
 
-   private static void infoWithFallback(Supplier<String> p_185403_) {
-      if (log4jIsActive()) {
-         LOGGER.info(p_185403_);
+   private static void infoWithFallback(Supplier<String> p_201933_) {
+      if (LogUtils.isLoggerActive()) {
+         LOGGER.info(p_201933_.get());
       } else {
-         Bootstrap.realStdoutPrintln(p_185403_.get());
+         Bootstrap.realStdoutPrintln(p_201933_.get());
       }
 
    }
 
-   private static void warnWithFallback(Supplier<String> p_185405_, Throwable p_185406_) {
-      if (log4jIsActive()) {
-         LOGGER.warn(p_185405_, p_185406_);
+   private static void warnWithFallback(Supplier<String> p_201935_, Throwable p_201936_) {
+      if (LogUtils.isLoggerActive()) {
+         LOGGER.warn(p_201935_.get(), p_201936_);
       } else {
-         Bootstrap.realStdoutPrintln(p_185405_.get());
-         p_185406_.printStackTrace(Bootstrap.STDOUT);
+         Bootstrap.realStdoutPrintln(p_201935_.get());
+         p_201936_.printStackTrace(Bootstrap.STDOUT);
       }
 
-   }
-
-   private static boolean log4jIsActive() {
-      LoggerContext loggercontext = LogManager.getContext();
-      if (loggercontext instanceof LifeCycle) {
-         LifeCycle lifecycle = (LifeCycle)loggercontext;
-         return !lifecycle.isStopped();
-      } else {
-         return true;
-      }
    }
 }

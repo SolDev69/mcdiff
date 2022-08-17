@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
+import net.minecraft.tags.ConfiguredStructureTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -20,7 +21,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EndPortalFrameBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.pattern.BlockPattern;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 
@@ -71,7 +71,8 @@ public class EnderEyeItem extends Item {
       } else {
          p_41185_.startUsingItem(p_41186_);
          if (p_41184_ instanceof ServerLevel) {
-            BlockPos blockpos = ((ServerLevel)p_41184_).getChunkSource().getGenerator().findNearestMapFeature((ServerLevel)p_41184_, StructureFeature.STRONGHOLD, p_41185_.blockPosition(), 100, false);
+            ServerLevel serverlevel = (ServerLevel)p_41184_;
+            BlockPos blockpos = serverlevel.findNearestMapFeature(ConfiguredStructureTags.EYE_OF_ENDER_LOCATED, p_41185_.blockPosition(), 100, false);
             if (blockpos != null) {
                EyeOfEnder eyeofender = new EyeOfEnder(p_41184_, p_41185_.getX(), p_41185_.getY(0.5D), p_41185_.getZ());
                eyeofender.setItem(itemstack);

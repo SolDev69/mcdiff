@@ -3,8 +3,8 @@ package net.minecraft.advancements.critereon;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
-import java.util.Optional;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
@@ -15,20 +15,19 @@ import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.CampfireBlock;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
+import org.slf4j.Logger;
 
 public class LocationPredicate {
-   private static final Logger LOGGER = LogManager.getLogger();
-   public static final LocationPredicate ANY = new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, (StructureFeature<?>)null, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
+   private static final Logger LOGGER = LogUtils.getLogger();
+   public static final LocationPredicate ANY = new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, (ResourceKey<ConfiguredStructureFeature<?, ?>>)null, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
    private final MinMaxBounds.Doubles x;
    private final MinMaxBounds.Doubles y;
    private final MinMaxBounds.Doubles z;
    @Nullable
    private final ResourceKey<Biome> biome;
    @Nullable
-   private final StructureFeature<?> feature;
+   private final ResourceKey<ConfiguredStructureFeature<?, ?>> feature;
    @Nullable
    private final ResourceKey<Level> dimension;
    @Nullable
@@ -37,33 +36,33 @@ public class LocationPredicate {
    private final BlockPredicate block;
    private final FluidPredicate fluid;
 
-   public LocationPredicate(MinMaxBounds.Doubles p_52606_, MinMaxBounds.Doubles p_52607_, MinMaxBounds.Doubles p_52608_, @Nullable ResourceKey<Biome> p_52609_, @Nullable StructureFeature<?> p_52610_, @Nullable ResourceKey<Level> p_52611_, @Nullable Boolean p_52612_, LightPredicate p_52613_, BlockPredicate p_52614_, FluidPredicate p_52615_) {
-      this.x = p_52606_;
-      this.y = p_52607_;
-      this.z = p_52608_;
-      this.biome = p_52609_;
-      this.feature = p_52610_;
-      this.dimension = p_52611_;
-      this.smokey = p_52612_;
-      this.light = p_52613_;
-      this.block = p_52614_;
-      this.fluid = p_52615_;
+   public LocationPredicate(MinMaxBounds.Doubles p_207916_, MinMaxBounds.Doubles p_207917_, MinMaxBounds.Doubles p_207918_, @Nullable ResourceKey<Biome> p_207919_, @Nullable ResourceKey<ConfiguredStructureFeature<?, ?>> p_207920_, @Nullable ResourceKey<Level> p_207921_, @Nullable Boolean p_207922_, LightPredicate p_207923_, BlockPredicate p_207924_, FluidPredicate p_207925_) {
+      this.x = p_207916_;
+      this.y = p_207917_;
+      this.z = p_207918_;
+      this.biome = p_207919_;
+      this.feature = p_207920_;
+      this.dimension = p_207921_;
+      this.smokey = p_207922_;
+      this.light = p_207923_;
+      this.block = p_207924_;
+      this.fluid = p_207925_;
    }
 
    public static LocationPredicate inBiome(ResourceKey<Biome> p_52635_) {
-      return new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, p_52635_, (StructureFeature<?>)null, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
+      return new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, p_52635_, (ResourceKey<ConfiguredStructureFeature<?, ?>>)null, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
    }
 
    public static LocationPredicate inDimension(ResourceKey<Level> p_52639_) {
-      return new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, (StructureFeature<?>)null, p_52639_, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
+      return new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, (ResourceKey<ConfiguredStructureFeature<?, ?>>)null, p_52639_, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
    }
 
-   public static LocationPredicate inFeature(StructureFeature<?> p_52628_) {
-      return new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, p_52628_, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
+   public static LocationPredicate inFeature(ResourceKey<ConfiguredStructureFeature<?, ?>> p_207929_) {
+      return new LocationPredicate(MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, p_207929_, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
    }
 
    public static LocationPredicate atYLocation(MinMaxBounds.Doubles p_187443_) {
-      return new LocationPredicate(MinMaxBounds.Doubles.ANY, p_187443_, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, (StructureFeature<?>)null, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
+      return new LocationPredicate(MinMaxBounds.Doubles.ANY, p_187443_, MinMaxBounds.Doubles.ANY, (ResourceKey<Biome>)null, (ResourceKey<ConfiguredStructureFeature<?, ?>>)null, (ResourceKey<Level>)null, (Boolean)null, LightPredicate.ANY, BlockPredicate.ANY, FluidPredicate.ANY);
    }
 
    public boolean matches(ServerLevel p_52618_, double p_52619_, double p_52620_, double p_52621_) {
@@ -78,10 +77,7 @@ public class LocationPredicate {
       } else {
          BlockPos blockpos = new BlockPos(p_52619_, p_52620_, p_52621_);
          boolean flag = p_52618_.isLoaded(blockpos);
-         Optional<ResourceKey<Biome>> optional = p_52618_.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).getResourceKey(p_52618_.getBiome(blockpos));
-         if (!optional.isPresent()) {
-            return false;
-         } else if (this.biome == null || flag && this.biome == optional.get()) {
+         if (this.biome == null || flag && p_52618_.getBiome(blockpos).is(this.biome)) {
             if (this.feature == null || flag && p_52618_.structureFeatureManager().getStructureWithPieceAt(blockpos, this.feature).isValid()) {
                if (this.smokey == null || flag && this.smokey == CampfireBlock.isSmokeyPos(p_52618_, blockpos)) {
                   if (!this.light.matches(p_52618_, blockpos)) {
@@ -123,7 +119,7 @@ public class LocationPredicate {
          }
 
          if (this.feature != null) {
-            jsonobject.addProperty("feature", this.feature.getFeatureName());
+            jsonobject.addProperty("feature", this.feature.location().toString());
          }
 
          if (this.biome != null) {
@@ -151,18 +147,20 @@ public class LocationPredicate {
          ResourceKey<Level> resourcekey = jsonobject.has("dimension") ? ResourceLocation.CODEC.parse(JsonOps.INSTANCE, jsonobject.get("dimension")).resultOrPartial(LOGGER::error).map((p_52637_) -> {
             return ResourceKey.create(Registry.DIMENSION_REGISTRY, p_52637_);
          }).orElse((ResourceKey<Level>)null) : null;
-         StructureFeature<?> structurefeature = jsonobject.has("feature") ? StructureFeature.STRUCTURES_REGISTRY.get(GsonHelper.getAsString(jsonobject, "feature")) : null;
-         ResourceKey<Biome> resourcekey1 = null;
+         ResourceKey<ConfiguredStructureFeature<?, ?>> resourcekey1 = jsonobject.has("feature") ? ResourceLocation.CODEC.parse(JsonOps.INSTANCE, jsonobject.get("feature")).resultOrPartial(LOGGER::error).map((p_207927_) -> {
+            return ResourceKey.create(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY, p_207927_);
+         }).orElse((ResourceKey<ConfiguredStructureFeature<?, ?>>)null) : null;
+         ResourceKey<Biome> resourcekey2 = null;
          if (jsonobject.has("biome")) {
             ResourceLocation resourcelocation = new ResourceLocation(GsonHelper.getAsString(jsonobject, "biome"));
-            resourcekey1 = ResourceKey.create(Registry.BIOME_REGISTRY, resourcelocation);
+            resourcekey2 = ResourceKey.create(Registry.BIOME_REGISTRY, resourcelocation);
          }
 
          Boolean obool = jsonobject.has("smokey") ? jsonobject.get("smokey").getAsBoolean() : null;
          LightPredicate lightpredicate = LightPredicate.fromJson(jsonobject.get("light"));
          BlockPredicate blockpredicate = BlockPredicate.fromJson(jsonobject.get("block"));
          FluidPredicate fluidpredicate = FluidPredicate.fromJson(jsonobject.get("fluid"));
-         return new LocationPredicate(minmaxbounds$doubles, minmaxbounds$doubles1, minmaxbounds$doubles2, resourcekey1, structurefeature, resourcekey, obool, lightpredicate, blockpredicate, fluidpredicate);
+         return new LocationPredicate(minmaxbounds$doubles, minmaxbounds$doubles1, minmaxbounds$doubles2, resourcekey2, resourcekey1, resourcekey, obool, lightpredicate, blockpredicate, fluidpredicate);
       } else {
          return ANY;
       }
@@ -175,7 +173,7 @@ public class LocationPredicate {
       @Nullable
       private ResourceKey<Biome> biome;
       @Nullable
-      private StructureFeature<?> feature;
+      private ResourceKey<ConfiguredStructureFeature<?, ?>> feature;
       @Nullable
       private ResourceKey<Level> dimension;
       @Nullable
@@ -208,8 +206,8 @@ public class LocationPredicate {
          return this;
       }
 
-      public LocationPredicate.Builder setFeature(@Nullable StructureFeature<?> p_153973_) {
-         this.feature = p_153973_;
+      public LocationPredicate.Builder setFeature(@Nullable ResourceKey<ConfiguredStructureFeature<?, ?>> p_207931_) {
+         this.feature = p_207931_;
          return this;
       }
 

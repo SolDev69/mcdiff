@@ -2,7 +2,6 @@ package net.minecraft.world.level.levelgen.feature;
 
 import com.mojang.serialization.Codec;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
@@ -28,9 +27,5 @@ public class BuriedTreasureFeature extends StructureFeature<ProbabilityFeatureCo
    private static void generatePieces(StructurePiecesBuilder p_197075_, PieceGenerator.Context<ProbabilityFeatureConfiguration> p_197076_) {
       BlockPos blockpos = new BlockPos(p_197076_.chunkPos().getBlockX(9), 90, p_197076_.chunkPos().getBlockZ(9));
       p_197075_.addPiece(new BuriedTreasurePieces.BuriedTreasurePiece(blockpos));
-   }
-
-   public BlockPos getLocatePos(ChunkPos p_190798_) {
-      return new BlockPos(p_190798_.getBlockX(9), 0, p_190798_.getBlockZ(9));
    }
 }

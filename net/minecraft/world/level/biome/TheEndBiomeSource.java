@@ -3,8 +3,9 @@ package net.minecraft.world.level.biome;
 import com.google.common.collect.ImmutableList;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
-import net.minecraft.resources.RegistryLookupCodec;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
@@ -12,8 +13,8 @@ import net.minecraft.world.level.levelgen.synth.SimplexNoise;
 
 public class TheEndBiomeSource extends BiomeSource {
    public static final Codec<TheEndBiomeSource> CODEC = RecordCodecBuilder.create((p_48644_) -> {
-      return p_48644_.group(RegistryLookupCodec.create(Registry.BIOME_REGISTRY).forGetter((p_151890_) -> {
-         return p_151890_.biomes;
+      return p_48644_.group(RegistryOps.retrieveRegistry(Registry.BIOME_REGISTRY).forGetter((p_151890_) -> {
+         return null;
       }), Codec.LONG.fieldOf("seed").stable().forGetter((p_151888_) -> {
          return p_151888_.seed;
       })).apply(p_48644_, p_48644_.stable(TheEndBiomeSource::new));
@@ -22,28 +23,26 @@ public class TheEndBiomeSource extends BiomeSource {
    public static final int ISLAND_CHUNK_DISTANCE = 64;
    private static final long ISLAND_CHUNK_DISTANCE_SQR = 4096L;
    private final SimplexNoise islandNoise;
-   private final Registry<Biome> biomes;
    private final long seed;
-   private final Biome end;
-   private final Biome highlands;
-   private final Biome midlands;
-   private final Biome islands;
-   private final Biome barrens;
+   private final Holder<Biome> end;
+   private final Holder<Biome> highlands;
+   private final Holder<Biome> midlands;
+   private final Holder<Biome> islands;
+   private final Holder<Biome> barrens;
 
    public TheEndBiomeSource(Registry<Biome> p_48628_, long p_48629_) {
-      this(p_48628_, p_48629_, p_48628_.getOrThrow(Biomes.THE_END), p_48628_.getOrThrow(Biomes.END_HIGHLANDS), p_48628_.getOrThrow(Biomes.END_MIDLANDS), p_48628_.getOrThrow(Biomes.SMALL_END_ISLANDS), p_48628_.getOrThrow(Biomes.END_BARRENS));
+      this(p_48629_, p_48628_.getOrCreateHolder(Biomes.THE_END), p_48628_.getOrCreateHolder(Biomes.END_HIGHLANDS), p_48628_.getOrCreateHolder(Biomes.END_MIDLANDS), p_48628_.getOrCreateHolder(Biomes.SMALL_END_ISLANDS), p_48628_.getOrCreateHolder(Biomes.END_BARRENS));
    }
 
-   private TheEndBiomeSource(Registry<Biome> p_48631_, long p_48632_, Biome p_48633_, Biome p_48634_, Biome p_48635_, Biome p_48636_, Biome p_48637_) {
-      super(ImmutableList.of(p_48633_, p_48634_, p_48635_, p_48636_, p_48637_));
-      this.biomes = p_48631_;
-      this.seed = p_48632_;
-      this.end = p_48633_;
-      this.highlands = p_48634_;
-      this.midlands = p_48635_;
-      this.islands = p_48636_;
-      this.barrens = p_48637_;
-      WorldgenRandom worldgenrandom = new WorldgenRandom(new LegacyRandomSource(p_48632_));
+   private TheEndBiomeSource(long p_204285_, Holder<Biome> p_204286_, Holder<Biome> p_204287_, Holder<Biome> p_204288_, Holder<Biome> p_204289_, Holder<Biome> p_204290_) {
+      super(ImmutableList.of(p_204286_, p_204287_, p_204288_, p_204289_, p_204290_));
+      this.seed = p_204285_;
+      this.end = p_204286_;
+      this.highlands = p_204287_;
+      this.midlands = p_204288_;
+      this.islands = p_204289_;
+      this.barrens = p_204290_;
+      WorldgenRandom worldgenrandom = new WorldgenRandom(new LegacyRandomSource(p_204285_));
       worldgenrandom.consumeCount(17292);
       this.islandNoise = new SimplexNoise(worldgenrandom);
    }
@@ -53,12 +52,12 @@ public class TheEndBiomeSource extends BiomeSource {
    }
 
    public BiomeSource withSeed(long p_48640_) {
-      return new TheEndBiomeSource(this.biomes, p_48640_, this.end, this.highlands, this.midlands, this.islands, this.barrens);
+      return new TheEndBiomeSource(p_48640_, this.end, this.highlands, this.midlands, this.islands, this.barrens);
    }
 
-   public Biome getNoiseBiome(int p_187395_, int p_187396_, int p_187397_, Climate.Sampler p_187398_) {
-      int i = p_187395_ >> 2;
-      int j = p_187397_ >> 2;
+   public Holder<Biome> getNoiseBiome(int p_204292_, int p_204293_, int p_204294_, Climate.Sampler p_204295_) {
+      int i = p_204292_ >> 2;
+      int j = p_204294_ >> 2;
       if ((long)i * (long)i + (long)j * (long)j <= 4096L) {
          return this.end;
       } else {

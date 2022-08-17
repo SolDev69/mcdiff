@@ -8,8 +8,7 @@ import com.google.gson.JsonSyntaxException;
 import javax.annotation.Nullable;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.SerializationTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.entity.EntityType;
 
@@ -34,9 +33,7 @@ public abstract class EntityTypePredicate {
          String s = GsonHelper.convertToString(p_37644_, "type");
          if (s.startsWith("#")) {
             ResourceLocation resourcelocation1 = new ResourceLocation(s.substring(1));
-            return new EntityTypePredicate.TagPredicate(SerializationTags.getInstance().getTagOrThrow(Registry.ENTITY_TYPE_REGISTRY, resourcelocation1, (p_37646_) -> {
-               return new JsonSyntaxException("Unknown entity tag '" + p_37646_ + "'");
-            }));
+            return new EntityTypePredicate.TagPredicate(TagKey.create(Registry.ENTITY_TYPE_REGISTRY, resourcelocation1));
          } else {
             ResourceLocation resourcelocation = new ResourceLocation(s);
             EntityType<?> entitytype = Registry.ENTITY_TYPE.getOptional(resourcelocation).orElseThrow(() -> {
@@ -53,15 +50,15 @@ public abstract class EntityTypePredicate {
       return new EntityTypePredicate.TypePredicate(p_37648_);
    }
 
-   public static EntityTypePredicate of(Tag<EntityType<?>> p_37641_) {
-      return new EntityTypePredicate.TagPredicate(p_37641_);
+   public static EntityTypePredicate of(TagKey<EntityType<?>> p_204082_) {
+      return new EntityTypePredicate.TagPredicate(p_204082_);
    }
 
    static class TagPredicate extends EntityTypePredicate {
-      private final Tag<EntityType<?>> tag;
+      private final TagKey<EntityType<?>> tag;
 
-      public TagPredicate(Tag<EntityType<?>> p_37655_) {
-         this.tag = p_37655_;
+      public TagPredicate(TagKey<EntityType<?>> p_204084_) {
+         this.tag = p_204084_;
       }
 
       public boolean matches(EntityType<?> p_37658_) {
@@ -69,9 +66,7 @@ public abstract class EntityTypePredicate {
       }
 
       public JsonElement serializeToJson() {
-         return new JsonPrimitive("#" + SerializationTags.getInstance().<EntityType<?>, IllegalStateException>getIdOrThrow(Registry.ENTITY_TYPE_REGISTRY, this.tag, () -> {
-            return new IllegalStateException("Unknown entity type tag");
-         }));
+         return new JsonPrimitive("#" + this.tag.location());
       }
    }
 

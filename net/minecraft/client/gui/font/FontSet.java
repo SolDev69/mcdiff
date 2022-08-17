@@ -14,6 +14,7 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import javax.annotation.Nullable;
 import net.minecraft.client.gui.font.glyphs.BakedGlyph;
 import net.minecraft.client.gui.font.glyphs.EmptyGlyph;
 import net.minecraft.client.gui.font.glyphs.MissingGlyph;
@@ -30,6 +31,10 @@ public class FontSet implements AutoCloseable {
    private static final GlyphInfo SPACE_INFO = () -> {
       return 4.0F;
    };
+   private static final GlyphInfo ZERO_WIDTH_NO_JOIN_INFO = () -> {
+      return 0.0F;
+   };
+   private static final int ZERO_WIDTH_NO_JOIN_CODEPOINT = 8204;
    private static final Random RANDOM = new Random();
    private final TextureManager textureManager;
    private final ResourceLocation name;
@@ -63,7 +68,11 @@ public class FontSet implements AutoCloseable {
       Set<GlyphProvider> set = Sets.newHashSet();
       intset.forEach((int p_95076_) -> {
          for(GlyphProvider glyphprovider1 : p_95072_) {
-            GlyphInfo glyphinfo = (GlyphInfo)(p_95076_ == 32 ? SPACE_INFO : glyphprovider1.getGlyph(p_95076_));
+            GlyphInfo glyphinfo = this.getGlyphInfoForSpace(p_95076_);
+            if (glyphinfo == null) {
+               glyphinfo = glyphprovider1.getGlyph(p_95076_);
+            }
+
             if (glyphinfo != null) {
                set.add(glyphprovider1);
                if (glyphinfo != MissingGlyph.INSTANCE) {
@@ -100,9 +109,27 @@ public class FontSet implements AutoCloseable {
       this.textures.clear();
    }
 
+   @Nullable
+   private GlyphInfo getGlyphInfoForSpace(int p_202362_) {
+      GlyphInfo glyphinfo;
+      switch(p_202362_) {
+      case 32:
+         glyphinfo = SPACE_INFO;
+         break;
+      case 8204:
+         glyphinfo = ZERO_WIDTH_NO_JOIN_INFO;
+         break;
+      default:
+         glyphinfo = null;
+      }
+
+      return glyphinfo;
+   }
+
    public GlyphInfo getGlyphInfo(int p_95066_) {
       return this.glyphInfos.computeIfAbsent(p_95066_, (p_95088_) -> {
-         return (GlyphInfo)(p_95088_ == 32 ? SPACE_INFO : this.getRaw(p_95088_));
+         GlyphInfo glyphinfo = this.getGlyphInfoForSpace(p_95088_);
+         return (GlyphInfo)(glyphinfo == null ? this.getRaw(p_95088_) : glyphinfo);
       });
    }
 
@@ -119,7 +146,17 @@ public class FontSet implements AutoCloseable {
 
    public BakedGlyph getGlyph(int p_95079_) {
       return this.glyphs.computeIfAbsent(p_95079_, (p_95086_) -> {
-         return (BakedGlyph)(p_95086_ == 32 ? SPACE_GLYPH : this.stitch(this.getRaw(p_95086_)));
+         Object object;
+         switch(p_95086_) {
+         case 32:
+         case 8204:
+            object = SPACE_GLYPH;
+            break;
+         default:
+            object = this.stitch(this.getRaw(p_95086_));
+         }
+
+         return (BakedGlyph)object;
       });
    }
 

@@ -2,6 +2,7 @@ package net.minecraft.network;
 
 import com.google.common.collect.Queues;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.mojang.logging.LogUtils;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelException;
@@ -29,8 +30,10 @@ import io.netty.util.concurrent.GenericFutureListener;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.util.Queue;
+import java.util.concurrent.RejectedExecutionException;
 import javax.annotation.Nullable;
 import javax.crypto.Cipher;
+import net.minecraft.Util;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.network.protocol.Packet;
@@ -43,16 +46,23 @@ import net.minecraft.server.network.ServerLoginPacketListenerImpl;
 import net.minecraft.util.LazyLoadedValue;
 import net.minecraft.util.Mth;
 import org.apache.commons.lang3.Validate;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
+import org.slf4j.Logger;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
    private static final float AVERAGE_PACKETS_SMOOTHING = 0.75F;
-   private static final Logger LOGGER = LogManager.getLogger();
-   public static final Marker ROOT_MARKER = MarkerManager.getMarker("NETWORK");
-   public static final Marker PACKET_MARKER = MarkerManager.getMarker("NETWORK_PACKETS", ROOT_MARKER);
+   private static final Logger LOGGER = LogUtils.getLogger();
+   public static final Marker ROOT_MARKER = MarkerFactory.getMarker("NETWORK");
+   public static final Marker PACKET_MARKER = Util.make(MarkerFactory.getMarker("NETWORK_PACKETS"), (p_202569_) -> {
+      p_202569_.add(ROOT_MARKER);
+   });
+   public static final Marker PACKET_RECEIVED_MARKER = Util.make(MarkerFactory.getMarker("PACKET_RECEIVED"), (p_202562_) -> {
+      p_202562_.add(PACKET_MARKER);
+   });
+   public static final Marker PACKET_SENT_MARKER = Util.make(MarkerFactory.getMarker("PACKET_SENT"), (p_202557_) -> {
+      p_202557_.add(PACKET_MARKER);
+   });
    public static final AttributeKey<ConnectionProtocol> ATTRIBUTE_PROTOCOL = AttributeKey.valueOf("protocol");
    public static final LazyLoadedValue<NioEventLoopGroup> NETWORK_WORKER_GROUP = new LazyLoadedValue<>(() -> {
       return new NioEventLoopGroup(0, (new ThreadFactoryBuilder()).setNameFormat("Netty Client IO #%d").setDaemon(true).build());
@@ -90,7 +100,7 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
       try {
          this.setProtocol(ConnectionProtocol.HANDSHAKING);
       } catch (Throwable throwable) {
-         LOGGER.fatal(throwable);
+         LOGGER.error(LogUtils.FATAL_MARKER, "Failed to change protocol to handshake", throwable);
       }
 
    }
@@ -121,7 +131,7 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
                   LOGGER.debug("Failed to sent packet", p_129534_);
                   ConnectionProtocol connectionprotocol = this.getCurrentProtocol();
                   Packet<?> packet = (Packet<?>)(connectionprotocol == ConnectionProtocol.LOGIN ? new ClientboundLoginDisconnectPacket(component) : new ClientboundDisconnectPacket(component));
-                  this.send(packet, (p_129511_) -> {
+                  this.send(packet, (p_202560_) -> {
                      this.disconnect(component);
                   });
                   this.setReadOnly();
@@ -140,6 +150,8 @@ public class Connection extends SimpleChannelInboundHandler<Packet<?>> {
          try {
             genericsFtw(p_129488_, this.packetListener);
          } catch (RunningOnDifferentThreadException runningondifferentthreadexception) {
+         } catch (RejectedExecutionException rejectedexecutionexception) {
+            this.disconnect(new TranslatableComponent("multiplayer.disconnect.server_shutdown"));
          } catch (ClassCastException classcastexception) {
             LOGGER.error("Received {} that couldn't be processed", p_129488_.getClass(), classcastexception);
             this.disconnect(new TranslatableComponent("multiplayer.disconnect.invalid_packet"));

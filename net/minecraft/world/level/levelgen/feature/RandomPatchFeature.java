@@ -23,7 +23,7 @@ public class RandomPatchFeature extends Feature<RandomPatchConfiguration> {
 
       for(int l = 0; l < randompatchconfiguration.tries(); ++l) {
          blockpos$mutableblockpos.setWithOffset(blockpos, random.nextInt(j) - random.nextInt(j), random.nextInt(k) - random.nextInt(k), random.nextInt(j) - random.nextInt(j));
-         if (randompatchconfiguration.feature().get().place(worldgenlevel, p_160210_.chunkGenerator(), random, blockpos$mutableblockpos)) {
+         if (randompatchconfiguration.feature().value().place(worldgenlevel, p_160210_.chunkGenerator(), random, blockpos$mutableblockpos)) {
             ++i;
          }
       }

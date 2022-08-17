@@ -1,5 +1,6 @@
 package net.minecraft.server.level;
 
+import com.mojang.logging.LogUtils;
 import java.util.Objects;
 import javax.annotation.Nullable;
 import net.minecraft.advancements.CriteriaTriggers;
@@ -14,18 +15,19 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.GameMasterBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ServerPlayerGameMode {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    protected ServerLevel level;
    protected final ServerPlayer player;
    private GameType gameModeForPlayer = GameType.DEFAULT_MODE;
@@ -124,7 +126,14 @@ public class ServerPlayerGameMode {
       double d2 = this.player.getZ() - ((double)p_9282_.getZ() + 0.5D);
       double d3 = d0 * d0 + d1 * d1 + d2 * d2;
       if (d3 > 36.0D) {
-         this.player.connection.send(new ClientboundBlockBreakAckPacket(p_9282_, this.level.getBlockState(p_9282_), p_9283_, false, "too far"));
+         BlockState blockstate1;
+         if (this.player.level.getServer() != null && this.player.chunkPosition().getChessboardDistance(new ChunkPos(p_9282_)) < this.player.level.getServer().getPlayerList().getViewDistance()) {
+            blockstate1 = this.level.getBlockState(p_9282_);
+         } else {
+            blockstate1 = Blocks.AIR.defaultBlockState();
+         }
+
+         this.player.connection.send(new ClientboundBlockBreakAckPacket(p_9282_, blockstate1, p_9283_, false, "too far"));
       } else if (p_9282_.getY() >= p_9285_) {
          this.player.connection.send(new ClientboundBlockBreakAckPacket(p_9282_, this.level.getBlockState(p_9282_), p_9283_, false, "too high"));
       } else {
@@ -169,9 +178,9 @@ public class ServerPlayerGameMode {
          } else if (p_9283_ == ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK) {
             if (p_9282_.equals(this.destroyPos)) {
                int j = this.gameTicks - this.destroyProgressStart;
-               BlockState blockstate1 = this.level.getBlockState(p_9282_);
-               if (!blockstate1.isAir()) {
-                  float f1 = blockstate1.getDestroyProgress(this.player, this.player.level, p_9282_) * (float)(j + 1);
+               BlockState blockstate2 = this.level.getBlockState(p_9282_);
+               if (!blockstate2.isAir()) {
+                  float f1 = blockstate2.getDestroyProgress(this.player, this.player.level, p_9282_) * (float)(j + 1);
                   if (f1 >= 0.7F) {
                      this.isDestroyingBlock = false;
                      this.level.destroyBlockProgress(this.player.getId(), p_9282_, -1);

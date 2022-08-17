@@ -13,7 +13,9 @@ import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class BlackstoneReplaceProcessor extends StructureProcessor {
-   public static final Codec<BlackstoneReplaceProcessor> CODEC;
+   public static final Codec<BlackstoneReplaceProcessor> CODEC = Codec.unit(() -> {
+      return BlackstoneReplaceProcessor.INSTANCE;
+   });
    public static final BlackstoneReplaceProcessor INSTANCE = new BlackstoneReplaceProcessor();
    private final Map<Block, Block> replacements = Util.make(Maps.newHashMap(), (p_74007_) -> {
       p_74007_.put(Blocks.COBBLESTONE, Blocks.BLACKSTONE);
@@ -69,11 +71,5 @@ public class BlackstoneReplaceProcessor extends StructureProcessor {
 
    protected StructureProcessorType<?> getType() {
       return StructureProcessorType.BLACKSTONE_REPLACE;
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
-      });
    }
 }

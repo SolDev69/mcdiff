@@ -1,5 +1,6 @@
 package net.minecraft.world.entity.projectile;
 
+import com.mojang.logging.LogUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -41,8 +42,10 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
 
 public class FishingHook extends Projectile {
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final Random syncronizedRandom = new Random();
    private boolean biting;
    private int outOfWaterTime;
@@ -284,7 +287,7 @@ public class FishingHook extends Projectile {
       } else if (this.timeUntilHooked > 0) {
          this.timeUntilHooked -= i;
          if (this.timeUntilHooked > 0) {
-            this.fishAngle = (float)((double)this.fishAngle + this.random.nextGaussian() * 4.0D);
+            this.fishAngle += (float)(this.random.nextGaussian() * 4.0D);
             float f = this.fishAngle * ((float)Math.PI / 180F);
             float f1 = Mth.sin(f);
             float f2 = Mth.cos(f);
@@ -314,19 +317,19 @@ public class FishingHook extends Projectile {
          this.timeUntilLured -= i;
          float f5 = 0.15F;
          if (this.timeUntilLured < 20) {
-            f5 = (float)((double)f5 + (double)(20 - this.timeUntilLured) * 0.05D);
+            f5 += (float)(20 - this.timeUntilLured) * 0.05F;
          } else if (this.timeUntilLured < 40) {
-            f5 = (float)((double)f5 + (double)(40 - this.timeUntilLured) * 0.02D);
+            f5 += (float)(40 - this.timeUntilLured) * 0.02F;
          } else if (this.timeUntilLured < 60) {
-            f5 = (float)((double)f5 + (double)(60 - this.timeUntilLured) * 0.01D);
+            f5 += (float)(60 - this.timeUntilLured) * 0.01F;
          }
 
          if (this.random.nextFloat() < f5) {
             float f6 = Mth.nextFloat(this.random, 0.0F, 360.0F) * ((float)Math.PI / 180F);
             float f7 = Mth.nextFloat(this.random, 25.0F, 60.0F);
-            double d4 = this.getX() + (double)(Mth.sin(f6) * f7 * 0.1F);
+            double d4 = this.getX() + (double)(Mth.sin(f6) * f7) * 0.1D;
             double d5 = (double)((float)Mth.floor(this.getY()) + 1.0F);
-            double d6 = this.getZ() + (double)(Mth.cos(f6) * f7 * 0.1F);
+            double d6 = this.getZ() + (double)(Mth.cos(f6) * f7) * 0.1D;
             BlockState blockstate1 = serverlevel.getBlockState(new BlockPos(d4, d5 - 1.0D, d6));
             if (blockstate1.is(Blocks.WATER)) {
                serverlevel.sendParticles(ParticleTypes.SPLASH, d4, d5, d6, 2 + this.random.nextInt(2), (double)0.1F, 0.0D, (double)0.1F, 0.0D);

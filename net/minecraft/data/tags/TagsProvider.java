@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,13 +19,15 @@ import net.minecraft.core.Registry;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.HashCache;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.Tag;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.tags.TagKey;
+import net.minecraft.tags.TagManager;
+import org.slf4j.Logger;
 
 public abstract class TagsProvider<T> implements DataProvider {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Gson GSON = (new GsonBuilder()).setPrettyPrinting().create();
    protected final DataGenerator generator;
    protected final Registry<T> registry;
@@ -42,8 +45,8 @@ public abstract class TagsProvider<T> implements DataProvider {
       this.addTags();
       this.builders.forEach((p_176835_, p_176836_) -> {
          List<Tag.BuilderEntry> list = p_176836_.getEntries().filter((p_176832_) -> {
-            return !p_176832_.getEntry().verifyIfPresent(this.registry::containsKey, this.builders::containsKey);
-         }).collect(Collectors.toList());
+            return !p_176832_.entry().verifyIfPresent(this.registry::containsKey, this.builders::containsKey);
+         }).toList();
          if (!list.isEmpty()) {
             throw new IllegalArgumentException(String.format("Couldn't define tag %s as it is missing following references: %s", p_176835_, list.stream().map(Objects::toString).collect(Collectors.joining(","))));
          } else {
@@ -85,15 +88,18 @@ public abstract class TagsProvider<T> implements DataProvider {
       });
    }
 
-   protected abstract Path getPath(ResourceLocation p_126561_);
+   private Path getPath(ResourceLocation p_126561_) {
+      ResourceKey<? extends Registry<T>> resourcekey = this.registry.key();
+      return this.generator.getOutputFolder().resolve("data/" + p_126561_.getNamespace() + "/" + TagManager.getTagDir(resourcekey) + "/" + p_126561_.getPath() + ".json");
+   }
 
-   protected TagsProvider.TagAppender<T> tag(Tag.Named<T> p_126549_) {
-      Tag.Builder tag$builder = this.getOrCreateRawBuilder(p_126549_);
+   protected TagsProvider.TagAppender<T> tag(TagKey<T> p_206425_) {
+      Tag.Builder tag$builder = this.getOrCreateRawBuilder(p_206425_);
       return new TagsProvider.TagAppender<>(tag$builder, this.registry, "vanilla");
    }
 
-   protected Tag.Builder getOrCreateRawBuilder(Tag.Named<T> p_126563_) {
-      return this.builders.computeIfAbsent(p_126563_.getName(), (p_176838_) -> {
+   protected Tag.Builder getOrCreateRawBuilder(TagKey<T> p_206427_) {
+      return this.builders.computeIfAbsent(p_206427_.location(), (p_176838_) -> {
          return new Tag.Builder();
       });
    }
@@ -114,13 +120,22 @@ public abstract class TagsProvider<T> implements DataProvider {
          return this;
       }
 
+      @SafeVarargs
+      public final TagsProvider.TagAppender<T> add(ResourceKey<T>... p_211102_) {
+         for(ResourceKey<T> resourcekey : p_211102_) {
+            this.builder.addElement(resourcekey.location(), this.source);
+         }
+
+         return this;
+      }
+
       public TagsProvider.TagAppender<T> addOptional(ResourceLocation p_176840_) {
          this.builder.addOptionalElement(p_176840_, this.source);
          return this;
       }
 
-      public TagsProvider.TagAppender<T> addTag(Tag.Named<T> p_126581_) {
-         this.builder.addTag(p_126581_.getName(), this.source);
+      public TagsProvider.TagAppender<T> addTag(TagKey<T> p_206429_) {
+         this.builder.addTag(p_206429_.location(), this.source);
          return this;
       }
 

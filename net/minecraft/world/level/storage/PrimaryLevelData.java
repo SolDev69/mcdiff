@@ -3,7 +3,9 @@ package net.minecraft.world.level.storage;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.mojang.datafixers.DataFixer;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.Dynamic;
+import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.Lifecycle;
 import java.util.Set;
 import java.util.UUID;
@@ -21,7 +23,7 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.RegistryWriteOps;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.datafix.DataFixTypes;
 import net.minecraft.world.Difficulty;
@@ -34,11 +36,11 @@ import net.minecraft.world.level.border.WorldBorder;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraft.world.level.timers.TimerCallbacks;
 import net.minecraft.world.level.timers.TimerQueue;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class PrimaryLevelData implements ServerLevelData, WorldData {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
+   protected static final String PLAYER = "Player";
    protected static final String WORLD_GEN_SETTINGS = "WorldGenSettings";
    private LevelSettings settings;
    private final WorldGenSettings worldGenSettings;
@@ -117,7 +119,7 @@ public class PrimaryLevelData implements ServerLevelData, WorldData {
          return p_78531_.get("DimensionData").get("1").get("DragonFight").orElseEmptyMap().getValue();
       });
       return new PrimaryLevelData(p_78532_, p_78533_, p_78534_, p_78531_.get("WasModded").asBoolean(false), p_78531_.get("SpawnX").asInt(0), p_78531_.get("SpawnY").asInt(0), p_78531_.get("SpawnZ").asInt(0), p_78531_.get("SpawnAngle").asFloat(0.0F), i, p_78531_.get("DayTime").asLong(i), p_78536_.levelDataVersion(), p_78531_.get("clearWeatherTime").asInt(0), p_78531_.get("rainTime").asInt(0), p_78531_.get("raining").asBoolean(false), p_78531_.get("thunderTime").asInt(0), p_78531_.get("thundering").asBoolean(false), p_78531_.get("initialized").asBoolean(true), p_78531_.get("DifficultyLocked").asBoolean(false), WorldBorder.Settings.read(p_78531_, WorldBorder.DEFAULT_SETTINGS), p_78531_.get("WanderingTraderSpawnDelay").asInt(0), p_78531_.get("WanderingTraderSpawnChance").asInt(0), p_78531_.get("WanderingTraderId").read(SerializableUUID.CODEC).result().orElse((UUID)null), p_78531_.get("ServerBrands").asStream().flatMap((p_78529_) -> {
-         return Util.toStream(p_78529_.asString().result());
+         return p_78529_.asString().result().stream();
       }).collect(Collectors.toCollection(Sets::newLinkedHashSet)), new TimerQueue<>(TimerCallbacks.SERVER_CALLBACKS, p_78531_.get("ScheduledEvents").asStream()), (CompoundTag)p_78531_.get("CustomBossEvents").orElseEmptyMap().getValue(), compoundtag, p_78535_, p_78537_, p_78538_);
    }
 
@@ -144,8 +146,8 @@ public class PrimaryLevelData implements ServerLevelData, WorldData {
       compoundtag.putString("Series", SharedConstants.getCurrentVersion().getDataVersion().getSeries());
       p_78547_.put("Version", compoundtag);
       p_78547_.putInt("DataVersion", SharedConstants.getCurrentVersion().getWorldVersion());
-      RegistryWriteOps<Tag> registrywriteops = RegistryWriteOps.create(NbtOps.INSTANCE, p_78546_);
-      WorldGenSettings.CODEC.encodeStart(registrywriteops, this.worldGenSettings).resultOrPartial(Util.prefix("WorldGenSettings: ", LOGGER::error)).ifPresent((p_78574_) -> {
+      DynamicOps<Tag> dynamicops = RegistryOps.create(NbtOps.INSTANCE, p_78546_);
+      WorldGenSettings.CODEC.encodeStart(dynamicops, this.worldGenSettings).resultOrPartial(Util.prefix("WorldGenSettings: ", LOGGER::error)).ifPresent((p_78574_) -> {
          p_78547_.put("WorldGenSettings", p_78574_);
       });
       p_78547_.putInt("GameType", this.settings.gameType().getId());

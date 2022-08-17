@@ -2,18 +2,25 @@ package net.minecraft.world.level.chunk;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Direction8;
+import net.minecraft.core.Registry;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.Level;
@@ -30,15 +37,19 @@ import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.ChestType;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraft.world.ticks.SavedTick;
+import org.slf4j.Logger;
 
 public class UpgradeData {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    public static final UpgradeData EMPTY = new UpgradeData(EmptyBlockGetter.INSTANCE);
    private static final String TAG_INDICES = "Indices";
    private static final Direction8[] DIRECTIONS = Direction8.values();
    private final EnumSet<Direction8> sides = EnumSet.noneOf(Direction8.class);
+   private final List<SavedTick<Block>> neighborBlockTicks = Lists.newArrayList();
+   private final List<SavedTick<Fluid>> neighborFluidTicks = Lists.newArrayList();
    private final int[][] index;
    static final Map<Block, UpgradeData.BlockFixer> MAP = new IdentityHashMap<>();
    static final Set<UpgradeData.BlockFixer> CHUNKY_FIXERS = Sets.newHashSet();
@@ -68,6 +79,25 @@ public class UpgradeData {
          }
       }
 
+      loadTicks(p_156508_, "neighbor_block_ticks", (p_208144_) -> {
+         return Registry.BLOCK.getOptional(ResourceLocation.tryParse(p_208144_)).or(() -> {
+            return Optional.of(Blocks.AIR);
+         });
+      }, this.neighborBlockTicks);
+      loadTicks(p_156508_, "neighbor_fluid_ticks", (p_208131_) -> {
+         return Registry.FLUID.getOptional(ResourceLocation.tryParse(p_208131_)).or(() -> {
+            return Optional.of(Fluids.EMPTY);
+         });
+      }, this.neighborFluidTicks);
+   }
+
+   private static <T> void loadTicks(CompoundTag p_208133_, String p_208134_, Function<String, Optional<T>> p_208135_, List<SavedTick<T>> p_208136_) {
+      if (p_208133_.contains(p_208134_, 9)) {
+         for(Tag tag : p_208133_.getList(p_208134_, 10)) {
+            SavedTick.loadTick((CompoundTag)tag, p_208135_).ifPresent(p_208136_::add);
+         }
+      }
+
    }
 
    public void upgrade(LevelChunk p_63342_) {
@@ -78,8 +108,16 @@ public class UpgradeData {
       }
 
       Level level = p_63342_.getLevel();
-      CHUNKY_FIXERS.forEach((p_63334_) -> {
-         p_63334_.processChunk(level);
+      this.neighborBlockTicks.forEach((p_208142_) -> {
+         Block block = p_208142_.type() == Blocks.AIR ? level.getBlockState(p_208142_.pos()).getBlock() : p_208142_.type();
+         level.scheduleTick(p_208142_.pos(), block, p_208142_.delay(), p_208142_.priority());
+      });
+      this.neighborFluidTicks.forEach((p_208125_) -> {
+         Fluid fluid = p_208125_.type() == Fluids.EMPTY ? level.getFluidState(p_208125_.pos()).getType() : p_208125_.type();
+         level.scheduleTick(p_208125_.pos(), fluid, p_208125_.delay(), p_208125_.priority());
+      });
+      CHUNKY_FIXERS.forEach((p_208122_) -> {
+         p_208122_.processChunk(level);
       });
    }
 
@@ -197,6 +235,26 @@ public class UpgradeData {
       }
 
       compoundtag.putByte("Sides", (byte)j);
+      if (!this.neighborBlockTicks.isEmpty()) {
+         ListTag listtag = new ListTag();
+         this.neighborBlockTicks.forEach((p_208147_) -> {
+            listtag.add(p_208147_.save((p_208127_) -> {
+               return Registry.BLOCK.getKey(p_208127_).toString();
+            }));
+         });
+         compoundtag.put("neighbor_block_ticks", listtag);
+      }
+
+      if (!this.neighborFluidTicks.isEmpty()) {
+         ListTag listtag1 = new ListTag();
+         this.neighborFluidTicks.forEach((p_208139_) -> {
+            listtag1.add(p_208139_.save((p_208129_) -> {
+               return Registry.FLUID.getKey(p_208129_).toString();
+            }));
+         });
+         compoundtag.put("neighbor_fluid_ticks", listtag1);
+      }
+
       return compoundtag;
    }
 

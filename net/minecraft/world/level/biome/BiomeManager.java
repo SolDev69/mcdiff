@@ -2,6 +2,7 @@ package net.minecraft.world.level.biome;
 
 import com.google.common.hash.Hashing;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.QuartPos;
 import net.minecraft.util.LinearCongruentialGenerator;
 import net.minecraft.util.Mth;
@@ -27,10 +28,10 @@ public class BiomeManager {
       return new BiomeManager(p_186688_, this.biomeZoomSeed);
    }
 
-   public Biome getBiome(BlockPos p_47882_) {
-      int i = p_47882_.getX() - 2;
-      int j = p_47882_.getY() - 2;
-      int k = p_47882_.getZ() - 2;
+   public Holder<Biome> getBiome(BlockPos p_204215_) {
+      int i = p_204215_.getX() - 2;
+      int j = p_204215_.getY() - 2;
+      int k = p_204215_.getZ() - 2;
       int l = i >> 2;
       int i1 = j >> 2;
       int j1 = k >> 2;
@@ -63,22 +64,22 @@ public class BiomeManager {
       return this.noiseBiomeSource.getNoiseBiome(l2, i3, j3);
    }
 
-   public Biome getNoiseBiomeAtPosition(double p_47870_, double p_47871_, double p_47872_) {
-      int i = QuartPos.fromBlock(Mth.floor(p_47870_));
-      int j = QuartPos.fromBlock(Mth.floor(p_47871_));
-      int k = QuartPos.fromBlock(Mth.floor(p_47872_));
+   public Holder<Biome> getNoiseBiomeAtPosition(double p_204207_, double p_204208_, double p_204209_) {
+      int i = QuartPos.fromBlock(Mth.floor(p_204207_));
+      int j = QuartPos.fromBlock(Mth.floor(p_204208_));
+      int k = QuartPos.fromBlock(Mth.floor(p_204209_));
       return this.getNoiseBiomeAtQuart(i, j, k);
    }
 
-   public Biome getNoiseBiomeAtPosition(BlockPos p_47884_) {
-      int i = QuartPos.fromBlock(p_47884_.getX());
-      int j = QuartPos.fromBlock(p_47884_.getY());
-      int k = QuartPos.fromBlock(p_47884_.getZ());
+   public Holder<Biome> getNoiseBiomeAtPosition(BlockPos p_204217_) {
+      int i = QuartPos.fromBlock(p_204217_.getX());
+      int j = QuartPos.fromBlock(p_204217_.getY());
+      int k = QuartPos.fromBlock(p_204217_.getZ());
       return this.getNoiseBiomeAtQuart(i, j, k);
    }
 
-   public Biome getNoiseBiomeAtQuart(int p_47874_, int p_47875_, int p_47876_) {
-      return this.noiseBiomeSource.getNoiseBiome(p_47874_, p_47875_, p_47876_);
+   public Holder<Biome> getNoiseBiomeAtQuart(int p_204211_, int p_204212_, int p_204213_) {
+      return this.noiseBiomeSource.getNoiseBiome(p_204211_, p_204212_, p_204213_);
    }
 
    private static double getFiddledDistance(long p_186680_, int p_186681_, int p_186682_, int p_186683_, double p_186684_, double p_186685_, double p_186686_) {
@@ -102,6 +103,6 @@ public class BiomeManager {
    }
 
    public interface NoiseBiomeSource {
-      Biome getNoiseBiome(int p_47885_, int p_47886_, int p_47887_);
+      Holder<Biome> getNoiseBiome(int p_204218_, int p_204219_, int p_204220_);
    }
 }

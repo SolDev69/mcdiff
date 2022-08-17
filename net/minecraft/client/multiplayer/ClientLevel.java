@@ -18,7 +18,6 @@ import net.minecraft.CrashReportCategory;
 import net.minecraft.ReportedException;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.PrioritizeChunkUpdates;
 import net.minecraft.client.color.block.BlockTintCache;
 import net.minecraft.client.particle.FireworkParticles;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -30,6 +29,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Cursor3D;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.particles.BlockParticleOption;
@@ -43,7 +43,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.TagContainer;
 import net.minecraft.util.CubicSampler;
 import net.minecraft.util.Mth;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -119,15 +118,15 @@ public class ClientLevel extends Level {
    private int serverSimulationDistance;
    private static final Set<Item> MARKER_PARTICLE_ITEMS = Set.of(Items.BARRIER, Items.LIGHT);
 
-   public ClientLevel(ClientPacketListener p_194129_, ClientLevel.ClientLevelData p_194130_, ResourceKey<Level> p_194131_, DimensionType p_194132_, int p_194133_, int p_194134_, Supplier<ProfilerFiller> p_194135_, LevelRenderer p_194136_, boolean p_194137_, long p_194138_) {
-      super(p_194130_, p_194131_, p_194132_, p_194135_, true, p_194137_, p_194138_);
-      this.connection = p_194129_;
-      this.chunkSource = new ClientChunkCache(this, p_194133_);
-      this.clientLevelData = p_194130_;
-      this.levelRenderer = p_194136_;
-      this.effects = DimensionSpecialEffects.forType(p_194132_);
+   public ClientLevel(ClientPacketListener p_205505_, ClientLevel.ClientLevelData p_205506_, ResourceKey<Level> p_205507_, Holder<DimensionType> p_205508_, int p_205509_, int p_205510_, Supplier<ProfilerFiller> p_205511_, LevelRenderer p_205512_, boolean p_205513_, long p_205514_) {
+      super(p_205506_, p_205507_, p_205508_, p_205511_, true, p_205513_, p_205514_);
+      this.connection = p_205505_;
+      this.chunkSource = new ClientChunkCache(this, p_205509_);
+      this.clientLevelData = p_205506_;
+      this.levelRenderer = p_205512_;
+      this.effects = DimensionSpecialEffects.forType(p_205508_.value());
       this.setDefaultSpawnPos(new BlockPos(8, 64, 8), 0.0F);
-      this.serverSimulationDistance = p_194134_;
+      this.serverSimulationDistance = p_205510_;
       this.updateSkyBrightness();
       this.prepareWeather();
    }
@@ -163,7 +162,7 @@ public class ClientLevel extends Level {
       this.getWorldBorder().tick();
       this.tickTime();
       this.getProfiler().push("blocks");
-      this.chunkSource.tick(p_104727_);
+      this.chunkSource.tick(p_104727_, true);
       this.getProfiler().pop();
    }
 
@@ -354,7 +353,7 @@ public class ClientLevel extends Level {
       }
 
       if (!blockstate.isCollisionShapeFullBlock(this, p_194149_)) {
-         this.getBiome(p_194149_).getAmbientParticle().ifPresent((p_194166_) -> {
+         this.getBiome(p_194149_).value().getAmbientParticle().ifPresent((p_194166_) -> {
             if (p_194166_.canSpawn(this.random)) {
                this.addParticle(p_194166_.getOptions(), (double)p_194149_.getX() + this.random.nextDouble(), (double)p_194149_.getY() + this.random.nextDouble(), (double)p_194149_.getZ() + this.random.nextDouble(), 0.0D, 0.0D, 0.0D);
             }
@@ -484,10 +483,6 @@ public class ClientLevel extends Level {
       return this.scoreboard;
    }
 
-   public TagContainer getTagManager() {
-      return this.connection.getTags();
-   }
-
    public RegistryAccess registryAccess() {
       return this.connection.registryAccess();
    }
@@ -554,8 +549,8 @@ public class ClientLevel extends Level {
       return this.players;
    }
 
-   public Biome getUncachedNoiseBiome(int p_104611_, int p_104612_, int p_104613_) {
-      return this.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).getOrThrow(Biomes.PLAINS);
+   public Holder<Biome> getUncachedNoiseBiome(int p_205516_, int p_205517_, int p_205518_) {
+      return this.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).getHolderOrThrow(Biomes.PLAINS);
    }
 
    public float getSkyDarken(float p_104806_) {
@@ -563,8 +558,8 @@ public class ClientLevel extends Level {
       float f1 = 1.0F - (Mth.cos(f * ((float)Math.PI * 2F)) * 2.0F + 0.2F);
       f1 = Mth.clamp(f1, 0.0F, 1.0F);
       f1 = 1.0F - f1;
-      f1 = (float)((double)f1 * (1.0D - (double)(this.getRainLevel(p_104806_) * 5.0F) / 16.0D));
-      f1 = (float)((double)f1 * (1.0D - (double)(this.getThunderLevel(p_104806_) * 5.0F) / 16.0D));
+      f1 *= 1.0F - this.getRainLevel(p_104806_) * 5.0F / 16.0F;
+      f1 *= 1.0F - this.getThunderLevel(p_104806_) * 5.0F / 16.0F;
       return f1 * 0.8F + 0.2F;
    }
 
@@ -573,7 +568,7 @@ public class ClientLevel extends Level {
       Vec3 vec3 = p_171661_.subtract(2.0D, 2.0D, 2.0D).scale(0.25D);
       BiomeManager biomemanager = this.getBiomeManager();
       Vec3 vec31 = CubicSampler.gaussianSampleVec3(vec3, (p_194161_, p_194162_, p_194163_) -> {
-         return Vec3.fromRGB24(biomemanager.getNoiseBiomeAtQuart(p_194161_, p_194162_, p_194163_).getSkyColor());
+         return Vec3.fromRGB24(biomemanager.getNoiseBiomeAtQuart(p_194161_, p_194162_, p_194163_).value().getSkyColor());
       });
       float f1 = Mth.cos(f * ((float)Math.PI * 2F)) * 2.0F + 0.5F;
       f1 = Mth.clamp(f1, 0.0F, 1.0F);
@@ -689,7 +684,7 @@ public class ClientLevel extends Level {
    public int calculateBlockTint(BlockPos p_104763_, ColorResolver p_104764_) {
       int i = Minecraft.getInstance().options.biomeBlendRadius;
       if (i == 0) {
-         return p_104764_.getColor(this.getBiome(p_104763_), (double)p_104763_.getX(), (double)p_104763_.getZ());
+         return p_104764_.getColor(this.getBiome(p_104763_).value(), (double)p_104763_.getX(), (double)p_104763_.getZ());
       } else {
          int j = (i * 2 + 1) * (i * 2 + 1);
          int k = 0;
@@ -700,7 +695,7 @@ public class ClientLevel extends Level {
          int j1;
          for(BlockPos.MutableBlockPos blockpos$mutableblockpos = new BlockPos.MutableBlockPos(); cursor3d.advance(); i1 += j1 & 255) {
             blockpos$mutableblockpos.set(cursor3d.nextX(), cursor3d.nextY(), cursor3d.nextZ());
-            j1 = p_104764_.getColor(this.getBiome(blockpos$mutableblockpos), (double)blockpos$mutableblockpos.getX(), (double)blockpos$mutableblockpos.getZ());
+            j1 = p_104764_.getColor(this.getBiome(blockpos$mutableblockpos).value(), (double)blockpos$mutableblockpos.getX(), (double)blockpos$mutableblockpos.getZ());
             k += (j1 & 16711680) >> 16;
             l += (j1 & '\uff00') >> 8;
          }
@@ -763,10 +758,6 @@ public class ClientLevel extends Level {
 
    public int getServerSimulationDistance() {
       return this.serverSimulationDistance;
-   }
-
-   public boolean shouldDelayFallingBlockEntityRemoval(Entity.RemovalReason p_194151_) {
-      return p_194151_ == Entity.RemovalReason.DISCARDED && this.minecraft.options.prioritizeChunkUpdates != PrioritizeChunkUpdates.NEARBY;
    }
 
    @OnlyIn(Dist.CLIENT)
@@ -890,8 +881,8 @@ public class ClientLevel extends Level {
          return this.isFlat ? (double)p_171688_.getMinBuildHeight() : 63.0D;
       }
 
-      public double getClearColorScale() {
-         return this.isFlat ? 1.0D : 0.03125D;
+      public float getClearColorScale() {
+         return this.isFlat ? 1.0F : 0.03125F;
       }
    }
 

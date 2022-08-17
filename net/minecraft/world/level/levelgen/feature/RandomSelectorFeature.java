@@ -25,6 +25,6 @@ public class RandomSelectorFeature extends Feature<RandomFeatureConfiguration> {
          }
       }
 
-      return randomfeatureconfiguration.defaultFeature.get().place(worldgenlevel, chunkgenerator, random, blockpos);
+      return randomfeatureconfiguration.defaultFeature.value().place(worldgenlevel, chunkgenerator, random, blockpos);
    }
 }

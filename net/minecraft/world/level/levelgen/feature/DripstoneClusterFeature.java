@@ -50,7 +50,7 @@ public class DripstoneClusterFeature extends Feature<DripstoneClusterConfigurati
    }
 
    private void placeColumn(WorldGenLevel p_159594_, Random p_159595_, BlockPos p_159596_, int p_159597_, int p_159598_, float p_159599_, double p_159600_, int p_159601_, float p_159602_, DripstoneClusterConfiguration p_159603_) {
-      Optional<Column> optional = Column.scan(p_159594_, p_159596_, p_159603_.floorToCeilingSearchRange, DripstoneUtils::isEmptyOrWater, DripstoneUtils::isDripstoneBaseOrLava);
+      Optional<Column> optional = Column.scan(p_159594_, p_159596_, p_159603_.floorToCeilingSearchRange, DripstoneUtils::isEmptyOrWater, DripstoneUtils::isNeitherEmptyNorWater);
       if (optional.isPresent()) {
          OptionalInt optionalint = optional.get().getCeiling();
          OptionalInt optionalint1 = optional.get().getFloor();
@@ -143,13 +143,17 @@ public class DripstoneClusterFeature extends Feature<DripstoneClusterConfigurati
    private boolean canPlacePool(WorldGenLevel p_159620_, BlockPos p_159621_) {
       BlockState blockstate = p_159620_.getBlockState(p_159621_);
       if (!blockstate.is(Blocks.WATER) && !blockstate.is(Blocks.DRIPSTONE_BLOCK) && !blockstate.is(Blocks.POINTED_DRIPSTONE)) {
-         for(Direction direction : Direction.Plane.HORIZONTAL) {
-            if (!this.canBeAdjacentToWater(p_159620_, p_159621_.relative(direction))) {
-               return false;
+         if (p_159620_.getBlockState(p_159621_.above()).getFluidState().is(FluidTags.WATER)) {
+            return false;
+         } else {
+            for(Direction direction : Direction.Plane.HORIZONTAL) {
+               if (!this.canBeAdjacentToWater(p_159620_, p_159621_.relative(direction))) {
+                  return false;
+               }
             }
-         }
 
-         return this.canBeAdjacentToWater(p_159620_, p_159621_.below());
+            return this.canBeAdjacentToWater(p_159620_, p_159621_.below());
+         }
       } else {
          return false;
       }

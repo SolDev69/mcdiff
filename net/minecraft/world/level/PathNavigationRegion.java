@@ -1,11 +1,17 @@
 package net.minecraft.world.level;
 
+import com.google.common.base.Suppliers;
 import java.util.List;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.Registry;
 import net.minecraft.core.SectionPos;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -24,9 +30,13 @@ public class PathNavigationRegion implements BlockGetter, CollisionGetter {
    protected final ChunkAccess[][] chunks;
    protected boolean allEmpty;
    protected final Level level;
+   private final Supplier<Holder<Biome>> plains;
 
    public PathNavigationRegion(Level p_47164_, BlockPos p_47165_, BlockPos p_47166_) {
       this.level = p_47164_;
+      this.plains = Suppliers.memoize(() -> {
+         return p_47164_.registryAccess().registryOrThrow(Registry.BIOME_REGISTRY).getHolderOrThrow(Biomes.PLAINS);
+      });
       this.centerX = SectionPos.blockToSectionCoord(p_47165_.getX());
       this.centerZ = SectionPos.blockToSectionCoord(p_47165_.getZ());
       int i = SectionPos.blockToSectionCoord(p_47166_.getX());
@@ -62,9 +72,9 @@ public class PathNavigationRegion implements BlockGetter, CollisionGetter {
       int j = p_47169_ - this.centerZ;
       if (i >= 0 && i < this.chunks.length && j >= 0 && j < this.chunks[i].length) {
          ChunkAccess chunkaccess = this.chunks[i][j];
-         return (ChunkAccess)(chunkaccess != null ? chunkaccess : new EmptyLevelChunk(this.level, new ChunkPos(p_47168_, p_47169_)));
+         return (ChunkAccess)(chunkaccess != null ? chunkaccess : new EmptyLevelChunk(this.level, new ChunkPos(p_47168_, p_47169_), this.plains.get()));
       } else {
-         return new EmptyLevelChunk(this.level, new ChunkPos(p_47168_, p_47169_));
+         return new EmptyLevelChunk(this.level, new ChunkPos(p_47168_, p_47169_), this.plains.get());
       }
    }
 

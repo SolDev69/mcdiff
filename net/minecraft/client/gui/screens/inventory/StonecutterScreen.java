@@ -156,8 +156,8 @@ public class StonecutterScreen extends AbstractContainerScreen<StonecutterMenu> 
    public boolean mouseScrolled(double p_99314_, double p_99315_, double p_99316_) {
       if (this.isScrollBarActive()) {
          int i = this.getOffscreenRows();
-         this.scrollOffs = (float)((double)this.scrollOffs - p_99316_ / (double)i);
-         this.scrollOffs = Mth.clamp(this.scrollOffs, 0.0F, 1.0F);
+         float f = (float)p_99316_ / (float)i;
+         this.scrollOffs = Mth.clamp(this.scrollOffs - f, 0.0F, 1.0F);
          this.startIndex = (int)((double)(this.scrollOffs * (float)i) + 0.5D) * 4;
       }
 

@@ -7,6 +7,7 @@ import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -60,6 +61,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkGenerator;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.feature.StructureFeature;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -368,9 +371,15 @@ public class Cat extends TamableAnimal {
       }
 
       Level level = p_28134_.getLevel();
-      if (level instanceof ServerLevel && ((ServerLevel)level).structureFeatureManager().getStructureWithPieceAt(this.blockPosition(), StructureFeature.SWAMP_HUT).isValid()) {
-         this.setCatType(10);
-         this.setPersistenceRequired();
+      if (level instanceof ServerLevel) {
+         ServerLevel serverlevel = (ServerLevel)level;
+         Registry<ConfiguredStructureFeature<?, ?>> registry = serverlevel.registryAccess().registryOrThrow(Registry.CONFIGURED_STRUCTURE_FEATURE_REGISTRY);
+         if (ChunkGenerator.allConfigurations(registry, StructureFeature.SWAMP_HUT).anyMatch((p_207760_) -> {
+            return serverlevel.structureFeatureManager().getStructureWithPieceAt(this.blockPosition(), p_207760_).isValid();
+         })) {
+            this.setCatType(10);
+            this.setPersistenceRequired();
+         }
       }
 
       return p_28137_;

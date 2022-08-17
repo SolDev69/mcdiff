@@ -1,6 +1,7 @@
 package net.minecraft.world.entity;
 
 import com.google.common.collect.ImmutableSet;
+import com.mojang.logging.LogUtils;
 import java.util.List;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -13,6 +14,7 @@ import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -22,6 +24,7 @@ import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.datafix.fixes.References;
 import net.minecraft.world.entity.ambient.Bat;
@@ -143,12 +146,12 @@ import net.minecraft.world.level.pathfinder.WalkNodeEvaluator;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T> {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    public static final String ENTITY_TAG = "EntityTag";
+   private final Holder.Reference<EntityType<?>> builtInRegistryHolder = Registry.ENTITY_TYPE.createIntrusiveHolder(this);
    private static final float MAGIC_HORSE_WIDTH = 1.3964844F;
    public static final EntityType<AreaEffectCloud> AREA_EFFECT_CLOUD = register("area_effect_cloud", EntityType.Builder.<AreaEffectCloud>of(AreaEffectCloud::new, MobCategory.MISC).fireImmune().sized(6.0F, 0.5F).clientTrackingRange(10).updateInterval(Integer.MAX_VALUE));
    public static final EntityType<ArmorStand> ARMOR_STAND = register("armor_stand", EntityType.Builder.<ArmorStand>of(ArmorStand::new, MobCategory.MISC).sized(0.5F, 1.975F).clientTrackingRange(10));
@@ -552,8 +555,8 @@ public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T> {
       return this != PLAYER && this != LLAMA_SPIT && this != WITHER && this != BAT && this != ITEM_FRAME && this != GLOW_ITEM_FRAME && this != LEASH_KNOT && this != PAINTING && this != END_CRYSTAL && this != EVOKER_FANGS;
    }
 
-   public boolean is(net.minecraft.tags.Tag<EntityType<?>> p_20610_) {
-      return p_20610_.contains(this);
+   public boolean is(TagKey<EntityType<?>> p_204040_) {
+      return this.builtInRegistryHolder.is(p_204040_);
    }
 
    @Nullable
@@ -563,6 +566,12 @@ public class EntityType<T extends Entity> implements EntityTypeTest<Entity, T> {
 
    public Class<? extends Entity> getBaseClass() {
       return Entity.class;
+   }
+
+   /** @deprecated */
+   @Deprecated
+   public Holder.Reference<EntityType<?>> builtInRegistryHolder() {
+      return this.builtInRegistryHolder;
    }
 
    public static class Builder<T extends Entity> {

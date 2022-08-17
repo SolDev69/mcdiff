@@ -1,13 +1,16 @@
 package net.minecraft.client.gui.screens;
 
+import com.ibm.icu.text.Collator;
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.Comparator;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ObjectSelectionList;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.locale.Language;
@@ -24,18 +27,18 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public class CreateBuffetWorldScreen extends Screen {
    private static final Component BIOME_SELECT_INFO = new TranslatableComponent("createWorld.customize.buffet.biome");
    private final Screen parent;
-   private final Consumer<Biome> applySettings;
+   private final Consumer<Holder<Biome>> applySettings;
    final Registry<Biome> biomes;
    private CreateBuffetWorldScreen.BiomeList list;
-   Biome biome;
+   Holder<Biome> biome;
    private Button doneButton;
 
-   public CreateBuffetWorldScreen(Screen p_95751_, RegistryAccess p_95752_, Consumer<Biome> p_95753_, Biome p_95754_) {
+   public CreateBuffetWorldScreen(Screen p_205384_, RegistryAccess p_205385_, Consumer<Holder<Biome>> p_205386_, Holder<Biome> p_205387_) {
       super(new TranslatableComponent("createWorld.customize.buffet.title"));
-      this.parent = p_95751_;
-      this.applySettings = p_95753_;
-      this.biome = p_95754_;
-      this.biomes = p_95752_.registryOrThrow(Registry.BIOME_REGISTRY);
+      this.parent = p_205384_;
+      this.applySettings = p_205386_;
+      this.biome = p_205387_;
+      this.biomes = p_205385_.registryOrThrow(Registry.BIOME_REGISTRY);
    }
 
    public void onClose() {
@@ -74,10 +77,13 @@ public class CreateBuffetWorldScreen extends Screen {
    class BiomeList extends ObjectSelectionList<CreateBuffetWorldScreen.BiomeList.Entry> {
       BiomeList() {
          super(CreateBuffetWorldScreen.this.minecraft, CreateBuffetWorldScreen.this.width, CreateBuffetWorldScreen.this.height, 40, CreateBuffetWorldScreen.this.height - 37, 16);
-         CreateBuffetWorldScreen.this.biomes.entrySet().stream().sorted(Comparator.comparing((p_95790_) -> {
-            return p_95790_.getKey().location().toString();
-         })).forEach((p_95787_) -> {
-            this.addEntry(new CreateBuffetWorldScreen.BiomeList.Entry(p_95787_.getValue()));
+         Collator collator = Collator.getInstance(Locale.getDefault());
+         CreateBuffetWorldScreen.this.biomes.holders().map((p_205389_) -> {
+            return new CreateBuffetWorldScreen.BiomeList.Entry(p_205389_);
+         }).sorted(Comparator.comparing((p_203142_) -> {
+            return p_203142_.name.getString();
+         }, collator)).forEach((p_203138_) -> {
+            this.addEntry(p_203138_);
          });
       }
 
@@ -96,12 +102,12 @@ public class CreateBuffetWorldScreen extends Screen {
 
       @OnlyIn(Dist.CLIENT)
       class Entry extends ObjectSelectionList.Entry<CreateBuffetWorldScreen.BiomeList.Entry> {
-         final Biome biome;
-         private final Component name;
+         final Holder.Reference<Biome> biome;
+         final Component name;
 
-         public Entry(Biome p_95796_) {
-            this.biome = p_95796_;
-            ResourceLocation resourcelocation = CreateBuffetWorldScreen.this.biomes.getKey(p_95796_);
+         public Entry(Holder.Reference<Biome> p_205392_) {
+            this.biome = p_205392_;
+            ResourceLocation resourcelocation = p_205392_.key().location();
             String s = "biome." + resourcelocation.getNamespace() + "." + resourcelocation.getPath();
             if (Language.getInstance().has(s)) {
                this.name = new TranslatableComponent(s);

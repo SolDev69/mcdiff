@@ -5,7 +5,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.ImmutableMultimap.Builder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -16,24 +16,24 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class DiggerItem extends TieredItem implements Vanishable {
-   private final Tag<Block> blocks;
+   private final TagKey<Block> blocks;
    protected final float speed;
    private final float attackDamageBaseline;
    private final Multimap<Attribute, AttributeModifier> defaultModifiers;
 
-   protected DiggerItem(float p_150810_, float p_150811_, Tier p_150812_, Tag<Block> p_150813_, Item.Properties p_150814_) {
-      super(p_150812_, p_150814_);
-      this.blocks = p_150813_;
-      this.speed = p_150812_.getSpeed();
-      this.attackDamageBaseline = p_150810_ + p_150812_.getAttackDamageBonus();
+   protected DiggerItem(float p_204108_, float p_204109_, Tier p_204110_, TagKey<Block> p_204111_, Item.Properties p_204112_) {
+      super(p_204110_, p_204112_);
+      this.blocks = p_204111_;
+      this.speed = p_204110_.getSpeed();
+      this.attackDamageBaseline = p_204108_ + p_204110_.getAttackDamageBonus();
       Builder<Attribute, AttributeModifier> builder = ImmutableMultimap.builder();
       builder.put(Attributes.ATTACK_DAMAGE, new AttributeModifier(BASE_ATTACK_DAMAGE_UUID, "Tool modifier", (double)this.attackDamageBaseline, AttributeModifier.Operation.ADDITION));
-      builder.put(Attributes.ATTACK_SPEED, new AttributeModifier(BASE_ATTACK_SPEED_UUID, "Tool modifier", (double)p_150811_, AttributeModifier.Operation.ADDITION));
+      builder.put(Attributes.ATTACK_SPEED, new AttributeModifier(BASE_ATTACK_SPEED_UUID, "Tool modifier", (double)p_204109_, AttributeModifier.Operation.ADDITION));
       this.defaultModifiers = builder.build();
    }
 
    public float getDestroySpeed(ItemStack p_41004_, BlockState p_41005_) {
-      return this.blocks.contains(p_41005_.getBlock()) ? this.speed : 1.0F;
+      return p_41005_.is(this.blocks) ? this.speed : 1.0F;
    }
 
    public boolean hurtEnemy(ItemStack p_40994_, LivingEntity p_40995_, LivingEntity p_40996_) {

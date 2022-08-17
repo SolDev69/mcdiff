@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.feature.configurations.RandomBooleanFeatureConfiguration;
+import net.minecraft.world.level.levelgen.placement.PlacedFeature;
 
 public class RandomBooleanSelectorFeature extends Feature<RandomBooleanFeatureConfiguration> {
    public RandomBooleanSelectorFeature(Codec<RandomBooleanFeatureConfiguration> p_66591_) {
@@ -19,6 +20,6 @@ public class RandomBooleanSelectorFeature extends Feature<RandomBooleanFeatureCo
       ChunkGenerator chunkgenerator = p_160208_.chunkGenerator();
       BlockPos blockpos = p_160208_.origin();
       boolean flag = random.nextBoolean();
-      return flag ? randombooleanfeatureconfiguration.featureTrue.get().place(worldgenlevel, chunkgenerator, random, blockpos) : randombooleanfeatureconfiguration.featureFalse.get().place(worldgenlevel, chunkgenerator, random, blockpos);
+      return ((PlacedFeature)(flag ? randombooleanfeatureconfiguration.featureTrue : randombooleanfeatureconfiguration.featureFalse).value()).place(worldgenlevel, chunkgenerator, random, blockpos);
    }
 }

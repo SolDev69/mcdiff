@@ -1,11 +1,10 @@
 package net.minecraft.world.level.levelgen.feature.configurations;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import java.util.Set;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryCodecs;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.material.FluidState;
 
@@ -19,21 +18,21 @@ public class SpringConfiguration implements FeatureConfiguration {
          return p_161201_.rockCount;
       }), Codec.INT.fieldOf("hole_count").orElse(1).forGetter((p_161199_) -> {
          return p_161199_.holeCount;
-      }), Registry.BLOCK.byNameCodec().listOf().fieldOf("valid_blocks").xmap(ImmutableSet::copyOf, ImmutableList::copyOf).forGetter((p_161197_) -> {
-         return (ImmutableSet<Block>)p_161197_.validBlocks;
+      }), RegistryCodecs.homogeneousList(Registry.BLOCK_REGISTRY).fieldOf("valid_blocks").forGetter((p_204854_) -> {
+         return p_204854_.validBlocks;
       })).apply(p_68139_, SpringConfiguration::new);
    });
    public final FluidState state;
    public final boolean requiresBlockBelow;
    public final int rockCount;
    public final int holeCount;
-   public final Set<Block> validBlocks;
+   public final HolderSet<Block> validBlocks;
 
-   public SpringConfiguration(FluidState p_68131_, boolean p_68132_, int p_68133_, int p_68134_, Set<Block> p_68135_) {
-      this.state = p_68131_;
-      this.requiresBlockBelow = p_68132_;
-      this.rockCount = p_68133_;
-      this.holeCount = p_68134_;
-      this.validBlocks = p_68135_;
+   public SpringConfiguration(FluidState p_204848_, boolean p_204849_, int p_204850_, int p_204851_, HolderSet<Block> p_204852_) {
+      this.state = p_204848_;
+      this.requiresBlockBelow = p_204849_;
+      this.rockCount = p_204850_;
+      this.holeCount = p_204851_;
+      this.validBlocks = p_204852_;
    }
 }

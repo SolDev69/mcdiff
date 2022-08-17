@@ -6,6 +6,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.GameProfileRepository;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.datafixers.DataFixer;
+import com.mojang.logging.LogUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -29,12 +30,11 @@ import net.minecraft.Util;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.ConsoleInput;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.ServerInterface;
-import net.minecraft.server.ServerResources;
+import net.minecraft.server.WorldStem;
 import net.minecraft.server.gui.MinecraftServerGui;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -57,12 +57,10 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.SkullBlockEntity;
 import net.minecraft.world.level.storage.LevelStorageSource;
-import net.minecraft.world.level.storage.WorldData;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class DedicatedServer extends MinecraftServer implements ServerInterface {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final int CONVERSION_RETRY_DELAY_MS = 5000;
    private static final int CONVERSION_RETRIES = 2;
    private static final Pattern SHA1 = Pattern.compile("^[a-fA-F0-9]{40}$");
@@ -80,12 +78,12 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface 
    @Nullable
    private final Component resourcePackPrompt;
 
-   public DedicatedServer(Thread p_139609_, RegistryAccess.RegistryHolder p_139610_, LevelStorageSource.LevelStorageAccess p_139611_, PackRepository p_139612_, ServerResources p_139613_, WorldData p_139614_, DedicatedServerSettings p_139615_, DataFixer p_139616_, MinecraftSessionService p_139617_, GameProfileRepository p_139618_, GameProfileCache p_139619_, ChunkProgressListenerFactory p_139620_) {
-      super(p_139609_, p_139610_, p_139611_, p_139614_, p_139612_, Proxy.NO_PROXY, p_139616_, p_139613_, p_139617_, p_139618_, p_139619_, p_139620_);
-      this.settings = p_139615_;
+   public DedicatedServer(Thread p_203713_, LevelStorageSource.LevelStorageAccess p_203714_, PackRepository p_203715_, WorldStem p_203716_, DedicatedServerSettings p_203717_, DataFixer p_203718_, MinecraftSessionService p_203719_, GameProfileRepository p_203720_, GameProfileCache p_203721_, ChunkProgressListenerFactory p_203722_) {
+      super(p_203713_, p_203714_, p_203715_, p_203716_, Proxy.NO_PROXY, p_203718_, p_203719_, p_203720_, p_203721_, p_203722_);
+      this.settings = p_203717_;
       this.rconConsoleSource = new RconConsoleSource(this);
-      this.textFilterClient = TextFilterClient.createFromConfig(p_139615_.getProperties().textFilteringConfig);
-      this.resourcePackPrompt = parseResourcePackPrompt(p_139615_);
+      this.textFilterClient = TextFilterClient.createFromConfig(p_203717_.getProperties().textFilteringConfig);
+      this.resourcePackPrompt = parseResourcePackPrompt(p_203717_);
    }
 
    public boolean initServer() throws IOException {
@@ -165,7 +163,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface 
       if (!OldUsersConverter.serverReadyAfterUserconversion(this)) {
          return false;
       } else {
-         this.setPlayerList(new DedicatedPlayerList(this, this.registryHolder, this.playerDataStorage));
+         this.setPlayerList(new DedicatedPlayerList(this, this.registryAccess(), this.playerDataStorage));
          long i = Util.getNanos();
          SkullBlockEntity.setup(this.getProfileCache(), this.getSessionService(), this);
          GameProfileCache.setUsesAuthentication(this.usesAuthentication());
@@ -280,7 +278,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface 
          writer.write(String.format("view-distance=%d%n", dedicatedserverproperties.viewDistance));
          writer.write(String.format("simulation-distance=%d%n", dedicatedserverproperties.simulationDistance));
          writer.write(String.format("spawn-animals=%s%n", dedicatedserverproperties.spawnAnimals));
-         writer.write(String.format("generate-structures=%s%n", dedicatedserverproperties.getWorldGenSettings(this.registryHolder).generateFeatures()));
+         writer.write(String.format("generate-structures=%s%n", dedicatedserverproperties.getWorldGenSettings(this.registryAccess()).generateFeatures()));
          writer.write(String.format("use-native=%s%n", dedicatedserverproperties.useNativeTransport));
          writer.write(String.format("rate-limit=%d%n", dedicatedserverproperties.rateLimitPacketsPerSecond));
       } catch (Throwable throwable1) {

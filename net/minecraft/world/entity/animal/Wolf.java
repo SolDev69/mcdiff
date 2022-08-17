@@ -40,6 +40,7 @@ import net.minecraft.world.entity.ai.goal.FollowOwnerGoal;
 import net.minecraft.world.entity.ai.goal.LeapAtTargetGoal;
 import net.minecraft.world.entity.ai.goal.LookAtPlayerGoal;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.PanicGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.SitWhenOrderedToGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
@@ -65,6 +66,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.pathfinder.BlockPathTypes;
 import net.minecraft.world.phys.Vec3;
 
 public class Wolf extends TamableAnimal implements NeutralMob {
@@ -90,10 +92,13 @@ public class Wolf extends TamableAnimal implements NeutralMob {
    public Wolf(EntityType<? extends Wolf> p_30369_, Level p_30370_) {
       super(p_30369_, p_30370_);
       this.setTame(false);
+      this.setPathfindingMalus(BlockPathTypes.POWDER_SNOW, -1.0F);
+      this.setPathfindingMalus(BlockPathTypes.DANGER_POWDER_SNOW, -1.0F);
    }
 
    protected void registerGoals() {
       this.goalSelector.addGoal(1, new FloatGoal(this));
+      this.goalSelector.addGoal(1, new Wolf.WolfPanicGoal(1.5D));
       this.goalSelector.addGoal(2, new SitWhenOrderedToGoal(this));
       this.goalSelector.addGoal(3, new Wolf.WolfAvoidEntityGoal<>(this, Llama.class, 24.0F, 1.5D, 1.5D));
       this.goalSelector.addGoal(4, new LeapAtTargetGoal(this, 0.4F));
@@ -278,7 +283,10 @@ public class Wolf extends TamableAnimal implements NeutralMob {
          return false;
       } else {
          Entity entity = p_30386_.getEntity();
-         this.setOrderedToSit(false);
+         if (!this.level.isClientSide) {
+            this.setOrderedToSit(false);
+         }
+
          if (entity != null && !(entity instanceof Player) && !(entity instanceof AbstractArrow)) {
             p_30387_ = (p_30387_ + 1.0F) / 2.0F;
          }
@@ -524,6 +532,16 @@ public class Wolf extends TamableAnimal implements NeutralMob {
       public void tick() {
          Wolf.this.setTarget((LivingEntity)null);
          super.tick();
+      }
+   }
+
+   class WolfPanicGoal extends PanicGoal {
+      public WolfPanicGoal(double p_203124_) {
+         super(Wolf.this, p_203124_);
+      }
+
+      protected boolean shouldPanic() {
+         return this.mob.isFreezing() || this.mob.isOnFire();
       }
    }
 }

@@ -6,9 +6,10 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import net.minecraft.commands.arguments.blocks.BlockPredicateArgument;
+import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.tags.TagContainer;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 
 public class AdventureModeCheck {
@@ -37,13 +38,13 @@ public class AdventureModeCheck {
       }
    }
 
-   public boolean test(ItemStack p_186329_, TagContainer p_186330_, BlockInWorld p_186331_) {
-      if (areSameBlocks(p_186331_, this.lastCheckedBlock, this.checksBlockEntity)) {
+   public boolean test(ItemStack p_204086_, Registry<Block> p_204087_, BlockInWorld p_204088_) {
+      if (areSameBlocks(p_204088_, this.lastCheckedBlock, this.checksBlockEntity)) {
          return this.lastResult;
       } else {
-         this.lastCheckedBlock = p_186331_;
+         this.lastCheckedBlock = p_204088_;
          this.checksBlockEntity = false;
-         CompoundTag compoundtag = p_186329_.getTag();
+         CompoundTag compoundtag = p_204086_.getTag();
          if (compoundtag != null && compoundtag.contains(this.tagName, 9)) {
             ListTag listtag = compoundtag.getList(this.tagName, 8);
 
@@ -53,8 +54,8 @@ public class AdventureModeCheck {
                try {
                   BlockPredicateArgument.Result blockpredicateargument$result = PREDICATE_PARSER.parse(new StringReader(s));
                   this.checksBlockEntity |= blockpredicateargument$result.requiresNbt();
-                  Predicate<BlockInWorld> predicate = blockpredicateargument$result.create(p_186330_);
-                  if (predicate.test(p_186331_)) {
+                  Predicate<BlockInWorld> predicate = blockpredicateargument$result.create(p_204087_);
+                  if (predicate.test(p_204088_)) {
                      this.lastResult = true;
                      return true;
                   }

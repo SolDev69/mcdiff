@@ -294,7 +294,7 @@ public class Turtle extends Animal {
          this.moveRelative(0.1F, p_30218_);
          this.move(MoverType.SELF, this.getDeltaMovement());
          this.setDeltaMovement(this.getDeltaMovement().scale(0.9D));
-         if (this.getTarget() == null && (!this.isGoingHome() || !this.getHomePos().closerThan(this.position(), 20.0D))) {
+         if (this.getTarget() == null && (!this.isGoingHome() || !this.getHomePos().closerToCenterThan(this.position(), 20.0D))) {
             this.setDeltaMovement(this.getDeltaMovement().add(0.0D, -0.005D, 0.0D));
          }
       } else {
@@ -365,7 +365,7 @@ public class Turtle extends Animal {
          } else if (this.turtle.getRandom().nextInt(reducedTickDelay(700)) != 0) {
             return false;
          } else {
-            return !this.turtle.getHomePos().closerThan(this.turtle.position(), 64.0D);
+            return !this.turtle.getHomePos().closerToCenterThan(this.turtle.position(), 64.0D);
          }
       }
 
@@ -380,12 +380,12 @@ public class Turtle extends Animal {
       }
 
       public boolean canContinueToUse() {
-         return !this.turtle.getHomePos().closerThan(this.turtle.position(), 7.0D) && !this.stuck && this.closeToHomeTryTicks <= this.adjustedTickDelay(600);
+         return !this.turtle.getHomePos().closerToCenterThan(this.turtle.position(), 7.0D) && !this.stuck && this.closeToHomeTryTicks <= this.adjustedTickDelay(600);
       }
 
       public void tick() {
          BlockPos blockpos = this.turtle.getHomePos();
-         boolean flag = blockpos.closerThan(this.turtle.position(), 16.0D);
+         boolean flag = blockpos.closerToCenterThan(this.turtle.position(), 16.0D);
          if (flag) {
             ++this.closeToHomeTryTicks;
          }
@@ -452,11 +452,11 @@ public class Turtle extends Animal {
       }
 
       public boolean canUse() {
-         return this.turtle.hasEgg() && this.turtle.getHomePos().closerThan(this.turtle.position(), 9.0D) ? super.canUse() : false;
+         return this.turtle.hasEgg() && this.turtle.getHomePos().closerToCenterThan(this.turtle.position(), 9.0D) ? super.canUse() : false;
       }
 
       public boolean canContinueToUse() {
-         return super.canContinueToUse() && this.turtle.hasEgg() && this.turtle.getHomePos().closerThan(this.turtle.position(), 9.0D);
+         return super.canContinueToUse() && this.turtle.hasEgg() && this.turtle.getHomePos().closerToCenterThan(this.turtle.position(), 9.0D);
       }
 
       public void tick() {
@@ -497,7 +497,7 @@ public class Turtle extends Animal {
       private void updateSpeed() {
          if (this.turtle.isInWater()) {
             this.turtle.setDeltaMovement(this.turtle.getDeltaMovement().add(0.0D, 0.005D, 0.0D));
-            if (!this.turtle.getHomePos().closerThan(this.turtle.position(), 16.0D)) {
+            if (!this.turtle.getHomePos().closerToCenterThan(this.turtle.position(), 16.0D)) {
                this.turtle.setSpeed(Math.max(this.turtle.getSpeed() / 2.0F, 0.08F));
             }
 
@@ -536,7 +536,7 @@ public class Turtle extends Animal {
       }
 
       public boolean canUse() {
-         if (this.mob.getLastHurtByMob() == null && !this.mob.isOnFire()) {
+         if (!this.shouldPanic()) {
             return false;
          } else {
             BlockPos blockpos = this.lookForWater(this.mob.level, this.mob, 7);

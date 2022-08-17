@@ -15,7 +15,6 @@ public class SimpleReloadInstance<S> implements ReloadInstance {
    private static final int PREPARATION_PROGRESS_WEIGHT = 2;
    private static final int EXTRA_RELOAD_PROGRESS_WEIGHT = 2;
    private static final int LISTENER_PROGRESS_WEIGHT = 1;
-   protected final ResourceManager resourceManager;
    protected final CompletableFuture<Unit> allPreparations = new CompletableFuture<>();
    protected final CompletableFuture<List<S>> allDone;
    final Set<PreparableReloadListener> preparingListeners;
@@ -32,7 +31,6 @@ public class SimpleReloadInstance<S> implements ReloadInstance {
    }
 
    protected SimpleReloadInstance(Executor p_10808_, final Executor p_10809_, ResourceManager p_10810_, List<PreparableReloadListener> p_10811_, SimpleReloadInstance.StateFactory<S> p_10812_, CompletableFuture<Unit> p_10813_) {
-      this.resourceManager = p_10810_;
       this.listenerCount = p_10811_.size();
       this.startedTaskCounter.incrementAndGet();
       p_10813_.thenRun(this.doneTaskCounter::incrementAndGet);
@@ -75,10 +73,8 @@ public class SimpleReloadInstance<S> implements ReloadInstance {
       this.allDone = Util.sequenceFailFast(list);
    }
 
-   public CompletableFuture<Unit> done() {
-      return this.allDone.thenApply((p_10826_) -> {
-         return Unit.INSTANCE;
-      });
+   public CompletableFuture<?> done() {
+      return this.allDone;
    }
 
    public float getActualProgress() {
@@ -88,15 +84,8 @@ public class SimpleReloadInstance<S> implements ReloadInstance {
       return f / f1;
    }
 
-   public boolean isDone() {
-      return this.allDone.isDone();
-   }
-
-   public void checkExceptions() {
-      if (this.allDone.isCompletedExceptionally()) {
-         this.allDone.join();
-      }
-
+   public static ReloadInstance create(ResourceManager p_203835_, List<PreparableReloadListener> p_203836_, Executor p_203837_, Executor p_203838_, CompletableFuture<Unit> p_203839_, boolean p_203840_) {
+      return (ReloadInstance)(p_203840_ ? new ProfiledReloadInstance(p_203835_, p_203836_, p_203837_, p_203838_, p_203839_) : of(p_203835_, p_203836_, p_203837_, p_203838_, p_203839_));
    }
 
    protected interface StateFactory<S> {

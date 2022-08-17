@@ -22,7 +22,7 @@ public class BiomeFilter extends PlacementFilter {
       PlacedFeature placedfeature = p_191563_.topFeature().orElseThrow(() -> {
          return new IllegalStateException("Tried to biome check an unregistered feature");
       });
-      Biome biome = p_191563_.getLevel().getBiome(p_191565_);
+      Biome biome = p_191563_.getLevel().getBiome(p_191565_).value();
       return biome.getGenerationSettings().hasFeature(placedfeature);
    }
 

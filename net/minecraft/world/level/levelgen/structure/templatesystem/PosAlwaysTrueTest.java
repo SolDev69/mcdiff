@@ -5,7 +5,9 @@ import java.util.Random;
 import net.minecraft.core.BlockPos;
 
 public class PosAlwaysTrueTest extends PosRuleTest {
-   public static final Codec<PosAlwaysTrueTest> CODEC;
+   public static final Codec<PosAlwaysTrueTest> CODEC = Codec.unit(() -> {
+      return PosAlwaysTrueTest.INSTANCE;
+   });
    public static final PosAlwaysTrueTest INSTANCE = new PosAlwaysTrueTest();
 
    private PosAlwaysTrueTest() {
@@ -17,11 +19,5 @@ public class PosAlwaysTrueTest extends PosRuleTest {
 
    protected PosRuleTestType<?> getType() {
       return PosRuleTestType.ALWAYS_TRUE_TEST;
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
-      });
    }
 }

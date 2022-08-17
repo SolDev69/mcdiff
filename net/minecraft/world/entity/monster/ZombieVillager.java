@@ -1,5 +1,6 @@
 package net.minecraft.world.entity.monster;
 
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
 import java.util.UUID;
@@ -44,8 +45,10 @@ import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
+import org.slf4j.Logger;
 
 public class ZombieVillager extends Zombie implements VillagerDataHolder {
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final EntityDataAccessor<Boolean> DATA_CONVERTING_ID = SynchedEntityData.defineId(ZombieVillager.class, EntityDataSerializers.BOOLEAN);
    private static final EntityDataAccessor<VillagerData> DATA_VILLAGER_DATA = SynchedEntityData.defineId(ZombieVillager.class, EntityDataSerializers.VILLAGER_DATA);
    private static final int VILLAGER_CONVERSION_WAIT_MIN = 3600;
@@ -63,7 +66,9 @@ public class ZombieVillager extends Zombie implements VillagerDataHolder {
 
    public ZombieVillager(EntityType<? extends ZombieVillager> p_34368_, Level p_34369_) {
       super(p_34368_, p_34369_);
-      this.setVillagerData(this.getVillagerData().setProfession(Registry.VILLAGER_PROFESSION.getRandom(this.random)));
+      Registry.VILLAGER_PROFESSION.getRandom(this.random).ifPresent((p_204069_) -> {
+         this.setVillagerData(this.getVillagerData().setProfession(p_204069_.value()));
+      });
    }
 
    protected void defineSynchedData() {
@@ -74,8 +79,8 @@ public class ZombieVillager extends Zombie implements VillagerDataHolder {
 
    public void addAdditionalSaveData(CompoundTag p_34397_) {
       super.addAdditionalSaveData(p_34397_);
-      VillagerData.CODEC.encodeStart(NbtOps.INSTANCE, this.getVillagerData()).resultOrPartial(LOGGER::error).ifPresent((p_34390_) -> {
-         p_34397_.put("VillagerData", p_34390_);
+      VillagerData.CODEC.encodeStart(NbtOps.INSTANCE, this.getVillagerData()).resultOrPartial(LOGGER::error).ifPresent((p_204072_) -> {
+         p_34397_.put("VillagerData", p_204072_);
       });
       if (this.tradeOffers != null) {
          p_34397_.put("Offers", this.tradeOffers);
@@ -286,7 +291,7 @@ public class ZombieVillager extends Zombie implements VillagerDataHolder {
 
    @Nullable
    public SpawnGroupData finalizeSpawn(ServerLevelAccessor p_34378_, DifficultyInstance p_34379_, MobSpawnType p_34380_, @Nullable SpawnGroupData p_34381_, @Nullable CompoundTag p_34382_) {
-      this.setVillagerData(this.getVillagerData().setType(VillagerType.byBiome(p_34378_.getBiomeName(this.blockPosition()))));
+      this.setVillagerData(this.getVillagerData().setType(VillagerType.byBiome(p_34378_.getBiome(this.blockPosition()))));
       return super.finalizeSpawn(p_34378_, p_34379_, p_34380_, p_34381_, p_34382_);
    }
 

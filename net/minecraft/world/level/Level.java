@@ -15,6 +15,7 @@ import net.minecraft.CrashReportCategory;
 import net.minecraft.ReportedException;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.particles.ParticleOptions;
@@ -26,7 +27,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ChunkHolder;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.tags.TagContainer;
 import net.minecraft.util.Mth;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.DifficultyInstance;
@@ -62,11 +62,8 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.level.storage.WritableLevelData;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.Scoreboard;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public abstract class Level implements LevelAccessor, AutoCloseable {
-   protected static final Logger LOGGER = LogManager.getLogger();
    public static final Codec<ResourceKey<Level>> RESOURCE_KEY_CODEC = ResourceLocation.CODEC.xmap(ResourceKey.elementKey(Registry.DIMENSION_REGISTRY), ResourceKey::location);
    public static final ResourceKey<Level> OVERWORLD = ResourceKey.create(Registry.DIMENSION_REGISTRY, new ResourceLocation("overworld"));
    public static final ResourceKey<Level> NETHER = ResourceKey.create(Registry.DIMENSION_REGISTRY, new ResourceLocation("the_nether"));
@@ -92,7 +89,8 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
    protected float oThunderLevel;
    protected float thunderLevel;
    public final Random random = new Random();
-   private final DimensionType dimensionType;
+   final DimensionType dimensionType;
+   private final Holder<DimensionType> dimensionTypeRegistration;
    protected final WritableLevelData levelData;
    private final Supplier<ProfilerFiller> profiler;
    public final boolean isClientSide;
@@ -101,20 +99,21 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
    private final ResourceKey<Level> dimension;
    private long subTickCount;
 
-   protected Level(WritableLevelData p_46450_, ResourceKey<Level> p_46451_, final DimensionType p_46452_, Supplier<ProfilerFiller> p_46453_, boolean p_46454_, boolean p_46455_, long p_46456_) {
-      this.profiler = p_46453_;
-      this.levelData = p_46450_;
-      this.dimensionType = p_46452_;
-      this.dimension = p_46451_;
-      this.isClientSide = p_46454_;
-      if (p_46452_.coordinateScale() != 1.0D) {
+   protected Level(WritableLevelData p_204149_, ResourceKey<Level> p_204150_, Holder<DimensionType> p_204151_, Supplier<ProfilerFiller> p_204152_, boolean p_204153_, boolean p_204154_, long p_204155_) {
+      this.profiler = p_204152_;
+      this.levelData = p_204149_;
+      this.dimensionTypeRegistration = p_204151_;
+      this.dimensionType = p_204151_.value();
+      this.dimension = p_204150_;
+      this.isClientSide = p_204153_;
+      if (this.dimensionType.coordinateScale() != 1.0D) {
          this.worldBorder = new WorldBorder() {
             public double getCenterX() {
-               return super.getCenterX() / p_46452_.coordinateScale();
+               return super.getCenterX() / Level.this.dimensionType.coordinateScale();
             }
 
             public double getCenterZ() {
-               return super.getCenterZ() / p_46452_.coordinateScale();
+               return super.getCenterZ() / Level.this.dimensionType.coordinateScale();
             }
          };
       } else {
@@ -122,8 +121,8 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
       }
 
       this.thread = Thread.currentThread();
-      this.biomeManager = new BiomeManager(this, p_46456_);
-      this.isDebug = p_46455_;
+      this.biomeManager = new BiomeManager(this, p_204155_);
+      this.isDebug = p_204154_;
    }
 
    public boolean isClientSide() {
@@ -732,13 +731,13 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
       } else if (this.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING, p_46759_).getY() > p_46759_.getY()) {
          return false;
       } else {
-         Biome biome = this.getBiome(p_46759_);
+         Biome biome = this.getBiome(p_46759_).value();
          return biome.getPrecipitation() == Biome.Precipitation.RAIN && biome.warmEnoughToRain(p_46759_);
       }
    }
 
    public boolean isHumidAt(BlockPos p_46762_) {
-      Biome biome = this.getBiome(p_46762_);
+      Biome biome = this.getBiome(p_46762_).value();
       return biome.isHumid();
    }
 
@@ -827,6 +826,10 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
       return this.dimensionType;
    }
 
+   public Holder<DimensionType> dimensionTypeRegistration() {
+      return this.dimensionTypeRegistration;
+   }
+
    public ResourceKey<Level> dimension() {
       return this.dimension;
    }
@@ -844,8 +847,6 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
    }
 
    public abstract RecipeManager getRecipeManager();
-
-   public abstract TagContainer getTagManager();
 
    public BlockPos getBlockRandomPos(int p_46497_, int p_46498_, int p_46499_, int p_46500_) {
       this.randValue = this.randValue * 3 + 1013904223;
@@ -898,9 +899,5 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
 
    public long nextSubTickCount() {
       return (long)(this.subTickCount++);
-   }
-
-   public boolean shouldDelayFallingBlockEntityRemoval(Entity.RemovalReason p_186457_) {
-      return false;
    }
 }

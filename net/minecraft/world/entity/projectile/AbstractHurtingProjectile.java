@@ -141,12 +141,15 @@ public abstract class AbstractHurtingProjectile extends Projectile {
          this.markHurt();
          Entity entity = p_36839_.getEntity();
          if (entity != null) {
-            Vec3 vec3 = entity.getLookAngle();
-            this.setDeltaMovement(vec3);
-            this.xPower = vec3.x * 0.1D;
-            this.yPower = vec3.y * 0.1D;
-            this.zPower = vec3.z * 0.1D;
-            this.setOwner(entity);
+            if (!this.level.isClientSide) {
+               Vec3 vec3 = entity.getLookAngle();
+               this.setDeltaMovement(vec3);
+               this.xPower = vec3.x * 0.1D;
+               this.yPower = vec3.y * 0.1D;
+               this.zPower = vec3.z * 0.1D;
+               this.setOwner(entity);
+            }
+
             return true;
          } else {
             return false;

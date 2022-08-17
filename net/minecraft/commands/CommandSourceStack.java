@@ -249,8 +249,15 @@ public class CommandSourceStack implements SharedSuggestionProvider {
       return this.server.getRecipeManager().getRecipeIds();
    }
 
-   public CompletableFuture<Suggestions> customSuggestion(CommandContext<SharedSuggestionProvider> p_81340_, SuggestionsBuilder p_81341_) {
-      return null;
+   public CompletableFuture<Suggestions> customSuggestion(CommandContext<?> p_212324_) {
+      return Suggestions.empty();
+   }
+
+   public CompletableFuture<Suggestions> suggestRegistryElements(ResourceKey<? extends Registry<?>> p_212330_, SharedSuggestionProvider.ElementSuggestionType p_212331_, SuggestionsBuilder p_212332_, CommandContext<?> p_212333_) {
+      return this.registryAccess().registry(p_212330_).map((p_212328_) -> {
+         this.suggestRegistryElements(p_212328_, p_212331_, p_212332_);
+         return p_212332_.buildFuture();
+      }).orElseGet(Suggestions::empty);
    }
 
    public Set<ResourceKey<Level>> levels() {

@@ -50,7 +50,7 @@ public class EuclideanGameEventDispatcher implements GameEventDispatcher {
       if (!optional.isPresent()) {
          return false;
       } else {
-         double d0 = optional.get().distSqr(p_157759_, false);
+         double d0 = optional.get().distSqr(p_157759_);
          int i = p_157760_.getListenerRadius() * p_157760_.getListenerRadius();
          return d0 <= (double)i && p_157760_.handleGameEvent(p_157756_, p_157757_, p_157758_, p_157759_);
       }

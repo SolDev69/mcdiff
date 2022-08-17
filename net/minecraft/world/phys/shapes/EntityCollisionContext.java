@@ -8,12 +8,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.material.FlowingFluid;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
 
 public class EntityCollisionContext implements CollisionContext {
-   protected static final CollisionContext EMPTY = new EntityCollisionContext(false, -Double.MAX_VALUE, ItemStack.EMPTY, (p_82891_) -> {
+   protected static final CollisionContext EMPTY = new EntityCollisionContext(false, -Double.MAX_VALUE, ItemStack.EMPTY, (p_205118_) -> {
       return false;
    }, (Entity)null) {
       public boolean isAbove(VoxelShape p_82898_, BlockPos p_82899_, boolean p_82900_) {
@@ -23,11 +21,11 @@ public class EntityCollisionContext implements CollisionContext {
    private final boolean descending;
    private final double entityBottom;
    private final ItemStack heldItem;
-   private final Predicate<Fluid> canStandOnFluid;
+   private final Predicate<FluidState> canStandOnFluid;
    @Nullable
    private final Entity entity;
 
-   protected EntityCollisionContext(boolean p_198916_, double p_198917_, ItemStack p_198918_, Predicate<Fluid> p_198919_, @Nullable Entity p_198920_) {
+   protected EntityCollisionContext(boolean p_198916_, double p_198917_, ItemStack p_198918_, Predicate<FluidState> p_198919_, @Nullable Entity p_198920_) {
       this.descending = p_198916_;
       this.entityBottom = p_198917_;
       this.heldItem = p_198918_;
@@ -38,7 +36,7 @@ public class EntityCollisionContext implements CollisionContext {
    /** @deprecated */
    @Deprecated
    protected EntityCollisionContext(Entity p_82872_) {
-      this(p_82872_.isDescending(), p_82872_.getY(), p_82872_ instanceof LivingEntity ? ((LivingEntity)p_82872_).getMainHandItem() : ItemStack.EMPTY, p_82872_ instanceof LivingEntity ? ((LivingEntity)p_82872_)::canStandOnFluid : (p_82881_) -> {
+      this(p_82872_.isDescending(), p_82872_.getY(), p_82872_ instanceof LivingEntity ? ((LivingEntity)p_82872_).getMainHandItem() : ItemStack.EMPTY, p_82872_ instanceof LivingEntity ? ((LivingEntity)p_82872_)::canStandOnFluid : (p_205113_) -> {
          return false;
       }, p_82872_);
    }
@@ -47,8 +45,8 @@ public class EntityCollisionContext implements CollisionContext {
       return this.heldItem.is(p_82879_);
    }
 
-   public boolean canStandOnFluid(FluidState p_82883_, FlowingFluid p_82884_) {
-      return this.canStandOnFluid.test(p_82884_) && !p_82883_.getType().isSame(p_82884_);
+   public boolean canStandOnFluid(FluidState p_205115_, FluidState p_205116_) {
+      return this.canStandOnFluid.test(p_205116_) && !p_205115_.getType().isSame(p_205116_.getType());
    }
 
    public boolean isDescending() {

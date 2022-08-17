@@ -29,9 +29,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.datafixers.DataFixer;
-import com.mojang.datafixers.util.Function4;
+import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import com.mojang.math.Matrix4f;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import java.io.File;
@@ -50,6 +52,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.MissingResourceException;
 import java.util.Queue;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -155,14 +158,13 @@ import net.minecraft.client.tutorial.Tutorial;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.ConnectionProtocol;
 import net.minecraft.network.chat.ClickEvent;
@@ -174,12 +176,11 @@ import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.handshake.ClientIntentionPacket;
 import net.minecraft.network.protocol.login.ServerboundHelloPacket;
-import net.minecraft.resources.RegistryReadOps;
-import net.minecraft.resources.RegistryWriteOps;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ServerResources;
+import net.minecraft.server.WorldStem;
 import net.minecraft.server.level.progress.ProcessorChunkProgressListener;
 import net.minecraft.server.level.progress.StoringChunkProgressListener;
 import net.minecraft.server.packs.PackResources;
@@ -192,11 +193,10 @@ import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.repository.ServerPacksSource;
 import net.minecraft.server.packs.resources.ReloadableResourceManager;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.server.packs.resources.SimpleReloadableResourceManager;
 import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.sounds.Music;
 import net.minecraft.sounds.Musics;
-import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.FileZipper;
 import net.minecraft.util.FrameTimer;
 import net.minecraft.util.MemoryReserve;
@@ -229,7 +229,6 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.PlayerHeadItem;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.DataPackConfig;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.biome.Biome;
@@ -249,19 +248,19 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.io.FileUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements WindowEventHandler {
    private static Minecraft instance;
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    public static final boolean ON_OSX = Util.getPlatform() == Util.OS.OSX;
    private static final int MAX_TICKS_PER_UPDATE = 10;
    public static final ResourceLocation DEFAULT_FONT = new ResourceLocation("default");
    public static final ResourceLocation UNIFORM_FONT = new ResourceLocation("uniform");
    public static final ResourceLocation ALT_FONT = new ResourceLocation("alt");
+   private static final ResourceLocation REGIONAL_COMPLIANCIES = new ResourceLocation("regional_compliancies.json");
    private static final CompletableFuture<Unit> RESOURCE_RELOAD_INITIAL_TASK = CompletableFuture.completedFuture(Unit.INSTANCE);
    private static final Component SOCIAL_INTERACTIONS_NOT_AVAILABLE = new TranslatableComponent("multiplayer.socialInteractions.not_available");
    public static final String UPDATE_DRIVERS_ADVICE = "Please make sure you have up-to-date drivers (see aka.ms/mcdriver for instructions).";
@@ -311,6 +310,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
    private final FontManager fontManager;
    private final SplashManager splashManager;
    private final GpuWarnlistManager gpuWarnlistManager;
+   private final PeriodicNotificationManager regionalCompliancies = new PeriodicNotificationManager(REGIONAL_COMPLIANCIES, Minecraft::countryEqualsISO3);
    private final MinecraftSessionService minecraftSessionService;
    private final UserApiService userApiService;
    private final SkinManager skinManager;
@@ -455,7 +455,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       this.mainRenderTarget = new MainTarget(this.window.getWidth(), this.window.getHeight());
       this.mainRenderTarget.setClearColor(0.0F, 0.0F, 0.0F, 0.0F);
       this.mainRenderTarget.clear(ON_OSX);
-      this.resourceManager = new SimpleReloadableResourceManager(PackType.CLIENT_RESOURCES);
+      this.resourceManager = new ReloadableResourceManager(PackType.CLIENT_RESOURCES);
       this.resourcePackRepository.reload();
       this.options.loadSelectedResourcePacks(this.resourcePackRepository);
       this.languageManager = new LanguageManager(this.options.languageCode);
@@ -511,6 +511,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       this.resourceManager.registerReloadListener(this.mobEffectTextures);
       this.gpuWarnlistManager = new GpuWarnlistManager();
       this.resourceManager.registerReloadListener(this.gpuWarnlistManager);
+      this.resourceManager.registerReloadListener(this.regionalCompliancies);
       this.gui = new Gui(this);
       this.debugRenderer = new DebugRenderer(this);
       RenderSystem.setErrorCallback(this::onFullscreenError);
@@ -537,8 +538,8 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       LoadingOverlay.registerTextures(this);
       List<PackResources> list = this.resourcePackRepository.openAllSelected();
       this.reloadStateTracker.startReload(ResourceLoadStateTracker.ReloadReason.INITIAL, list);
-      this.setOverlay(new LoadingOverlay(this, this.resourceManager.createReload(Util.backgroundExecutor(), this, RESOURCE_RELOAD_INITIAL_TASK, list), (p_91245_) -> {
-         Util.ifElse(p_91245_, this::rollbackResourcePacks, () -> {
+      this.setOverlay(new LoadingOverlay(this, this.resourceManager.createReload(Util.backgroundExecutor(), this, RESOURCE_RELOAD_INITIAL_TASK, list), (p_210745_) -> {
+         Util.ifElse(p_210745_, this::rollbackResourcePacks, () -> {
             if (SharedConstants.IS_RUNNING_IN_IDE) {
                this.selfTest();
             }
@@ -552,6 +553,14 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          this.setScreen(new TitleScreen(true));
       }
 
+   }
+
+   private static boolean countryEqualsISO3(Object p_210783_) {
+      try {
+         return Locale.getDefault().getISO3Country().equals(p_210783_);
+      } catch (MissingResourceException missingresourceexception) {
+         return false;
+      }
    }
 
    public void updateTitle() {
@@ -598,14 +607,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
 
    private void rollbackResourcePacks(Throwable p_91240_) {
       if (this.resourcePackRepository.getSelectedIds().size() > 1) {
-         Component component;
-         if (p_91240_ instanceof SimpleReloadableResourceManager.ResourcePackLoadingFailure) {
-            component = new TextComponent(((SimpleReloadableResourceManager.ResourcePackLoadingFailure)p_91240_).getPack().getName());
-         } else {
-            component = null;
-         }
-
-         this.clearResourcePacksOnError(p_91240_, component);
+         this.clearResourcePacksOnError(p_91240_, (Component)null);
       } else {
          Util.throwAsRuntime(p_91240_);
       }
@@ -658,18 +660,18 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
                this.emergencySave();
                this.setScreen(new OutOfMemoryScreen());
                System.gc();
-               LOGGER.fatal("Out of memory", (Throwable)outofmemoryerror);
+               LOGGER.error(LogUtils.FATAL_MARKER, "Out of memory", (Throwable)outofmemoryerror);
                flag = true;
             }
          }
       } catch (ReportedException reportedexception) {
          this.fillReport(reportedexception.getReport());
          this.emergencySave();
-         LOGGER.fatal("Reported exception thrown!", (Throwable)reportedexception);
+         LOGGER.error(LogUtils.FATAL_MARKER, "Reported exception thrown!", (Throwable)reportedexception);
          crash(reportedexception.getReport());
       } catch (Throwable throwable) {
          CrashReport crashreport = this.fillReport(new CrashReport("Unexpected error", throwable));
-         LOGGER.fatal("Unreported exception thrown!", throwable);
+         LOGGER.error(LogUtils.FATAL_MARKER, "Unreported exception thrown!", throwable);
          this.emergencySave();
          crash(crashreport);
       }
@@ -681,17 +683,17 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
    }
 
    private void createSearchTrees() {
-      ReloadableSearchTree<ItemStack> reloadablesearchtree = new ReloadableSearchTree<>((p_91345_) -> {
-         return p_91345_.getTooltipLines((Player)null, TooltipFlag.Default.NORMAL).stream().map((p_168014_) -> {
-            return ChatFormatting.stripFormatting(p_168014_.getString()).trim();
-         }).filter((p_168016_) -> {
-            return !p_168016_.isEmpty();
+      ReloadableSearchTree<ItemStack> reloadablesearchtree = new ReloadableSearchTree<>((p_210797_) -> {
+         return p_210797_.getTooltipLines((Player)null, TooltipFlag.Default.NORMAL).stream().map((p_210807_) -> {
+            return ChatFormatting.stripFormatting(p_210807_.getString()).trim();
+         }).filter((p_210809_) -> {
+            return !p_210809_.isEmpty();
          });
       }, (p_91317_) -> {
          return Stream.of(Registry.ITEM.getKey(p_91317_.getItem()));
       });
       ReloadableIdSearchTree<ItemStack> reloadableidsearchtree = new ReloadableIdSearchTree<>((p_91121_) -> {
-         return ItemTags.getAllTags().getMatchingTags(p_91121_.getItem()).stream();
+         return p_91121_.getTags().map(TagKey::location);
       });
       NonNullList<ItemStack> nonnulllist = NonNullList.create();
 
@@ -699,21 +701,21 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          item.fillItemCategory(CreativeModeTab.TAB_SEARCH, nonnulllist);
       }
 
-      nonnulllist.forEach((p_91170_) -> {
-         reloadablesearchtree.add(p_91170_);
-         reloadableidsearchtree.add(p_91170_);
+      nonnulllist.forEach((p_210707_) -> {
+         reloadablesearchtree.add(p_210707_);
+         reloadableidsearchtree.add(p_210707_);
       });
-      ReloadableSearchTree<RecipeCollection> reloadablesearchtree1 = new ReloadableSearchTree<>((p_91323_) -> {
-         return p_91323_.getRecipes().stream().flatMap((p_167987_) -> {
-            return p_167987_.getResultItem().getTooltipLines((Player)null, TooltipFlag.Default.NORMAL).stream();
-         }).map((p_168008_) -> {
-            return ChatFormatting.stripFormatting(p_168008_.getString()).trim();
-         }).filter((p_168010_) -> {
-            return !p_168010_.isEmpty();
+      ReloadableSearchTree<RecipeCollection> reloadablesearchtree1 = new ReloadableSearchTree<>((p_210778_) -> {
+         return p_210778_.getRecipes().stream().flatMap((p_210776_) -> {
+            return p_210776_.getResultItem().getTooltipLines((Player)null, TooltipFlag.Default.NORMAL).stream();
+         }).map((p_210803_) -> {
+            return ChatFormatting.stripFormatting(p_210803_.getString()).trim();
+         }).filter((p_210805_) -> {
+            return !p_210805_.isEmpty();
          });
-      }, (p_91155_) -> {
-         return p_91155_.getRecipes().stream().map((p_167866_) -> {
-            return Registry.ITEM.getKey(p_167866_.getResultItem().getItem());
+      }, (p_210701_) -> {
+         return p_210701_.getRecipes().stream().map((p_210681_) -> {
+            return Registry.ITEM.getKey(p_210681_.getResultItem().getItem());
          });
       });
       this.searchRegistry.register(SearchRegistry.CREATIVE_NAMES, reloadablesearchtree);
@@ -795,8 +797,8 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
                this.reloadStateTracker.startReload(ResourceLoadStateTracker.ReloadReason.MANUAL, list);
             }
 
-            this.setOverlay(new LoadingOverlay(this, this.resourceManager.createReload(Util.backgroundExecutor(), this, RESOURCE_RELOAD_INITIAL_TASK, list), (p_91252_) -> {
-               Util.ifElse(p_91252_, this::rollbackResourcePacks, () -> {
+            this.setOverlay(new LoadingOverlay(this, this.resourceManager.createReload(Util.backgroundExecutor(), this, RESOURCE_RELOAD_INITIAL_TASK, list), (p_210750_) -> {
+               Util.ifElse(p_210750_, this::rollbackResourcePacks, () -> {
                   this.levelRenderer.allChanged();
                   this.reloadStateTracker.finishReload();
                   completablefuture.complete((Void)null);
@@ -945,6 +947,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
 
    public void close() {
       try {
+         this.regionalCompliancies.close();
          this.modelManager.close();
          this.fontManager.close();
          this.gameRenderer.close();
@@ -1070,7 +1073,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
 
       while(Util.getMillis() >= this.lastTime + 1000L) {
          fps = this.frames;
-         this.fpsString = String.format("%d fps T: %s%s%s%s B: %d", fps, (double)this.options.framerateLimit == Option.FRAMERATE_LIMIT.getMaxValue() ? "inf" : this.options.framerateLimit, this.options.enableVsync ? " vsync" : "", this.options.graphicsMode.toString(), this.options.renderClouds == CloudStatus.OFF ? "" : (this.options.renderClouds == CloudStatus.FAST ? " fast-clouds" : " fancy-clouds"), this.options.biomeBlendRadius);
+         this.fpsString = String.format("%d fps T: %s%s%s%s B: %d", fps, (double)this.options.framerateLimit == Option.FRAMERATE_LIMIT.getMaxValue() ? "inf" : this.options.framerateLimit, this.options.enableVsync ? " vsync" : "", this.options.graphicsMode, this.options.renderClouds == CloudStatus.OFF ? "" : (this.options.renderClouds == CloudStatus.FAST ? " fast-clouds" : " fancy-clouds"), this.options.biomeBlendRadius);
          this.lastTime += 1000L;
          this.frames = 0;
       }
@@ -1170,30 +1173,30 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          this.debugClientMetricsStop();
          return false;
       } else {
-         Consumer<ProfileResults> consumer = (p_167993_) -> {
-            int i = p_167993_.getTickDuration();
-            double d0 = (double)p_167993_.getNanoDuration() / (double)TimeUtil.NANOSECONDS_PER_SECOND;
+         Consumer<ProfileResults> consumer = (p_210788_) -> {
+            int i = p_210788_.getTickDuration();
+            double d0 = (double)p_210788_.getNanoDuration() / (double)TimeUtil.NANOSECONDS_PER_SECOND;
             this.execute(() -> {
                p_167947_.accept(new TranslatableComponent("commands.debug.stopped", String.format(Locale.ROOT, "%.2f", d0), i, String.format(Locale.ROOT, "%.2f", (double)i / d0)));
             });
          };
-         Consumer<Path> consumer1 = (p_167996_) -> {
-            Component component = (new TextComponent(p_167996_.toString())).withStyle(ChatFormatting.UNDERLINE).withStyle((p_167943_) -> {
-               return p_167943_.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, p_167996_.toFile().getParent()));
+         Consumer<Path> consumer1 = (p_210791_) -> {
+            Component component = (new TextComponent(p_210791_.toString())).withStyle(ChatFormatting.UNDERLINE).withStyle((p_210743_) -> {
+               return p_210743_.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, p_210791_.toFile().getParent()));
             });
             this.execute(() -> {
                p_167947_.accept(new TranslatableComponent("debug.profiling.stop", component));
             });
          };
          SystemReport systemreport = fillSystemReport(new SystemReport(), this, this.languageManager, this.launchedVersion, this.options);
-         Consumer<List<Path>> consumer2 = (p_167862_) -> {
-            Path path = this.archiveProfilingReport(systemreport, p_167862_);
+         Consumer<List<Path>> consumer2 = (p_210677_) -> {
+            Path path = this.archiveProfilingReport(systemreport, p_210677_);
             consumer1.accept(path);
          };
          Consumer<Path> consumer3;
          if (this.singleplayerServer == null) {
-            consumer3 = (p_167957_) -> {
-               consumer2.accept(ImmutableList.of(p_167957_));
+            consumer3 = (p_210760_) -> {
+               consumer2.accept(ImmutableList.of(p_210760_));
             };
          } else {
             this.singleplayerServer.fillSystemReport(systemreport);
@@ -1202,14 +1205,14 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
             CompletableFuture.allOf(completablefuture, completablefuture1).thenRunAsync(() -> {
                consumer2.accept(ImmutableList.of(completablefuture.join(), completablefuture1.join()));
             }, Util.ioPool());
-            this.singleplayerServer.startRecordingMetrics((p_167864_) -> {
+            this.singleplayerServer.startRecordingMetrics((p_210679_) -> {
             }, completablefuture1::complete);
             consumer3 = completablefuture::complete;
          }
 
-         this.metricsRecorder = ActiveMetricsRecorder.createStarted(new ClientMetricsSamplersProvider(Util.timeSource, this.levelRenderer), Util.timeSource, Util.ioPool(), new MetricsPersister("client"), (p_167954_) -> {
+         this.metricsRecorder = ActiveMetricsRecorder.createStarted(new ClientMetricsSamplersProvider(Util.timeSource, this.levelRenderer), Util.timeSource, Util.ioPool(), new MetricsPersister("client"), (p_210757_) -> {
             this.metricsRecorder = InactiveMetricsRecorder.INSTANCE;
-            consumer.accept(p_167954_);
+            consumer.accept(p_210757_);
          }, consumer3);
          return true;
       }
@@ -1443,36 +1446,44 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       }
    }
 
-   private void startAttack() {
-      if (this.missTime <= 0) {
-         if (this.hitResult == null) {
-            LOGGER.error("Null returned as 'hitResult', this shouldn't happen!");
+   private boolean startAttack() {
+      if (this.missTime > 0) {
+         return false;
+      } else if (this.hitResult == null) {
+         LOGGER.error("Null returned as 'hitResult', this shouldn't happen!");
+         if (this.gameMode.hasMissTime()) {
+            this.missTime = 10;
+         }
+
+         return false;
+      } else if (this.player.isHandsBusy()) {
+         return false;
+      } else {
+         boolean flag = false;
+         switch(this.hitResult.getType()) {
+         case ENTITY:
+            this.gameMode.attack(this.player, ((EntityHitResult)this.hitResult).getEntity());
+            break;
+         case BLOCK:
+            BlockHitResult blockhitresult = (BlockHitResult)this.hitResult;
+            BlockPos blockpos = blockhitresult.getBlockPos();
+            if (!this.level.getBlockState(blockpos).isAir()) {
+               this.gameMode.startDestroyBlock(blockpos, blockhitresult.getDirection());
+               if (this.level.getBlockState(blockpos).isAir()) {
+                  flag = true;
+               }
+               break;
+            }
+         case MISS:
             if (this.gameMode.hasMissTime()) {
                this.missTime = 10;
             }
 
-         } else if (!this.player.isHandsBusy()) {
-            switch(this.hitResult.getType()) {
-            case ENTITY:
-               this.gameMode.attack(this.player, ((EntityHitResult)this.hitResult).getEntity());
-               break;
-            case BLOCK:
-               BlockHitResult blockhitresult = (BlockHitResult)this.hitResult;
-               BlockPos blockpos = blockhitresult.getBlockPos();
-               if (!this.level.getBlockState(blockpos).isAir()) {
-                  this.gameMode.startDestroyBlock(blockpos, blockhitresult.getDirection());
-                  break;
-               }
-            case MISS:
-               if (this.gameMode.hasMissTime()) {
-                  this.missTime = 10;
-               }
-
-               this.player.resetAttackStrengthTicker();
-            }
-
-            this.player.swing(InteractionHand.MAIN_HAND);
+            this.player.resetAttackStrengthTicker();
          }
+
+         this.player.swing(InteractionHand.MAIN_HAND);
+         return flag;
       }
    }
 
@@ -1763,6 +1774,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          this.openChatScreen("/");
       }
 
+      boolean flag2 = false;
       if (this.player.isUsingItem()) {
          if (!this.options.keyUse.isDown()) {
             this.gameMode.releaseUsingItem(this.player);
@@ -1778,7 +1790,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          }
       } else {
          while(this.options.keyAttack.consumeClick()) {
-            this.startAttack();
+            flag2 |= this.startAttack();
          }
 
          while(this.options.keyUse.consumeClick()) {
@@ -1794,26 +1806,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          this.startUseItem();
       }
 
-      this.continueAttack(this.screen == null && this.options.keyAttack.isDown() && this.mouseHandler.isMouseGrabbed());
-   }
-
-   public static DataPackConfig loadDataPacks(LevelStorageSource.LevelStorageAccess p_91134_) {
-      DataPackConfig datapackconfig = p_91134_.getDataPacks();
-      if (datapackconfig == null) {
-         throw new IllegalStateException("Failed to load data pack config");
-      } else {
-         return datapackconfig;
-      }
-   }
-
-   public static WorldData loadWorldData(LevelStorageSource.LevelStorageAccess p_91136_, RegistryAccess.RegistryHolder p_91137_, ResourceManager p_91138_, DataPackConfig p_91139_) {
-      RegistryReadOps<Tag> registryreadops = RegistryReadOps.createAndLoad(NbtOps.INSTANCE, p_91138_, p_91137_);
-      WorldData worlddata = p_91136_.getDataTag(registryreadops, p_91139_);
-      if (worlddata == null) {
-         throw new IllegalStateException("Failed to load world");
-      } else {
-         return worlddata;
-      }
+      this.continueAttack(this.screen == null && !flag2 && this.options.keyAttack.isDown() && this.mouseHandler.isMouseGrabbed());
    }
 
    public ClientTelemetryManager createTelemetryManager() {
@@ -1821,62 +1814,69 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
    }
 
    public void loadLevel(String p_91201_) {
-      this.doLoadLevel(p_91201_, RegistryAccess.builtin(), Minecraft::loadDataPacks, Minecraft::loadWorldData, false, Minecraft.ExperimentalDialogType.BACKUP);
+      this.doLoadLevel(p_91201_, WorldStem.DataPackConfigSupplier::loadFromWorld, WorldStem.WorldDataSupplier::loadFromWorld, false, Minecraft.ExperimentalDialogType.BACKUP);
    }
 
-   public void createLevel(String p_91203_, LevelSettings p_91204_, RegistryAccess.RegistryHolder p_91205_, WorldGenSettings p_91206_) {
-      this.doLoadLevel(p_91203_, p_91205_, (p_167869_) -> {
-         return p_91204_.getDataPackConfig();
-      }, (p_167886_, p_167887_, p_167888_, p_167889_) -> {
-         RegistryWriteOps<JsonElement> registrywriteops = RegistryWriteOps.create(JsonOps.INSTANCE, p_91205_);
-         RegistryReadOps<JsonElement> registryreadops = RegistryReadOps.createAndLoad(JsonOps.INSTANCE, p_167888_, p_91205_);
-         DataResult<WorldGenSettings> dataresult = WorldGenSettings.CODEC.encodeStart(registrywriteops, p_91206_).setLifecycle(Lifecycle.stable()).flatMap((p_167969_) -> {
-            return WorldGenSettings.CODEC.parse(registryreadops, p_167969_);
-         });
-         WorldGenSettings worldgensettings = dataresult.resultOrPartial(Util.prefix("Error reading worldgen settings after loading data packs: ", LOGGER::error)).orElse(p_91206_);
-         return new PrimaryLevelData(p_91204_, worldgensettings, dataresult.lifecycle());
+   public void createLevel(String p_205186_, LevelSettings p_205187_, RegistryAccess p_205188_, WorldGenSettings p_205189_) {
+      this.doLoadLevel(p_205186_, (p_210684_) -> {
+         return p_205187_::getDataPackConfig;
+      }, (p_210718_) -> {
+         return (p_210712_, p_210713_) -> {
+            RegistryAccess.Writable registryaccess$writable = RegistryAccess.builtinCopy();
+            DynamicOps<JsonElement> dynamicops = RegistryOps.create(JsonOps.INSTANCE, p_205188_);
+            DynamicOps<JsonElement> dynamicops1 = RegistryOps.createAndLoad(JsonOps.INSTANCE, registryaccess$writable, p_210712_);
+            DataResult<WorldGenSettings> dataresult = WorldGenSettings.CODEC.encodeStart(dynamicops, p_205189_).setLifecycle(Lifecycle.stable()).flatMap((p_210687_) -> {
+               return WorldGenSettings.CODEC.parse(dynamicops1, p_210687_);
+            });
+            WorldGenSettings worldgensettings = dataresult.getOrThrow(false, Util.prefix("Error reading worldgen settings after loading data packs: ", LOGGER::error));
+            return Pair.of(new PrimaryLevelData(p_205187_, worldgensettings, dataresult.lifecycle()), registryaccess$writable.freeze());
+         };
       }, false, Minecraft.ExperimentalDialogType.CREATE);
    }
 
-   private void doLoadLevel(String p_91220_, RegistryAccess.RegistryHolder p_91221_, Function<LevelStorageSource.LevelStorageAccess, DataPackConfig> p_91222_, Function4<LevelStorageSource.LevelStorageAccess, RegistryAccess.RegistryHolder, ResourceManager, DataPackConfig, WorldData> p_91223_, boolean p_91224_, Minecraft.ExperimentalDialogType p_91225_) {
+   private void doLoadLevel(String p_205206_, Function<LevelStorageSource.LevelStorageAccess, WorldStem.DataPackConfigSupplier> p_205207_, Function<LevelStorageSource.LevelStorageAccess, WorldStem.WorldDataSupplier> p_205208_, boolean p_205209_, Minecraft.ExperimentalDialogType p_205210_) {
       LevelStorageSource.LevelStorageAccess levelstoragesource$levelstorageaccess;
       try {
-         levelstoragesource$levelstorageaccess = this.levelSource.createAccess(p_91220_);
+         levelstoragesource$levelstorageaccess = this.levelSource.createAccess(p_205206_);
       } catch (IOException ioexception2) {
-         LOGGER.warn("Failed to read level {} data", p_91220_, ioexception2);
-         SystemToast.onWorldAccessFailure(this, p_91220_);
+         LOGGER.warn("Failed to read level {} data", p_205206_, ioexception2);
+         SystemToast.onWorldAccessFailure(this, p_205206_);
          this.setScreen((Screen)null);
          return;
       }
 
-      Minecraft.ServerStem minecraft$serverstem;
+      PackRepository packrepository = createPackRepository(levelstoragesource$levelstorageaccess);
+
+      WorldStem worldstem;
       try {
-         minecraft$serverstem = this.makeServerStem(p_91221_, p_91222_, p_91223_, p_91224_, levelstoragesource$levelstorageaccess);
+         worldstem = this.makeWorldStem(packrepository, p_205209_, p_205207_.apply(levelstoragesource$levelstorageaccess), p_205208_.apply(levelstoragesource$levelstorageaccess));
       } catch (Exception exception) {
          LOGGER.warn("Failed to load datapacks, can't proceed with server load", (Throwable)exception);
          this.setScreen(new DatapackLoadFailureScreen(() -> {
-            this.doLoadLevel(p_91220_, p_91221_, p_91222_, p_91223_, true, p_91225_);
+            this.doLoadLevel(p_205206_, p_205207_, p_205208_, true, p_205210_);
          }));
 
          try {
+            packrepository.close();
             levelstoragesource$levelstorageaccess.close();
          } catch (IOException ioexception) {
-            LOGGER.warn("Failed to unlock access to level {}", p_91220_, ioexception);
+            LOGGER.warn("Failed to unlock access to level {}", p_205206_, ioexception);
          }
 
          return;
       }
 
-      WorldData worlddata = minecraft$serverstem.worldData();
+      WorldData worlddata = worldstem.worldData();
       boolean flag = worlddata.worldGenSettings().isOldCustomizedWorld();
       boolean flag1 = worlddata.worldGenSettingsLifecycle() != Lifecycle.stable();
-      if (p_91225_ == Minecraft.ExperimentalDialogType.NONE || !flag && !flag1) {
+      if (p_205210_ == Minecraft.ExperimentalDialogType.NONE || !flag && !flag1) {
          this.clearLevel();
          this.progressListener.set((StoringChunkProgressListener)null);
 
          try {
-            levelstoragesource$levelstorageaccess.saveDataTag(p_91221_, worlddata);
-            minecraft$serverstem.serverResources().updateGlobals();
+            RegistryAccess.Frozen registryaccess$frozen = worldstem.registryAccess();
+            levelstoragesource$levelstorageaccess.saveDataTag(registryaccess$frozen, worlddata);
+            worldstem.updateGlobals();
             YggdrasilAuthenticationService yggdrasilauthenticationservice = new YggdrasilAuthenticationService(this.proxy);
             MinecraftSessionService minecraftsessionservice = yggdrasilauthenticationservice.createMinecraftSessionService();
             GameProfileRepository gameprofilerepository = yggdrasilauthenticationservice.createProfileRepository();
@@ -1884,9 +1884,9 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
             gameprofilecache.setExecutor(this);
             SkullBlockEntity.setup(gameprofilecache, minecraftsessionservice, this);
             GameProfileCache.setUsesAuthentication(false);
-            this.singleplayerServer = MinecraftServer.spin((p_167898_) -> {
-               return new IntegratedServer(p_167898_, this, p_91221_, levelstoragesource$levelstorageaccess, minecraft$serverstem.packRepository(), minecraft$serverstem.serverResources(), worlddata, minecraftsessionservice, gameprofilerepository, gameprofilecache, (p_168000_) -> {
-                  StoringChunkProgressListener storingchunkprogresslistener = new StoringChunkProgressListener(p_168000_ + 0);
+            this.singleplayerServer = MinecraftServer.spin((p_210695_) -> {
+               return new IntegratedServer(p_210695_, this, levelstoragesource$levelstorageaccess, packrepository, worldstem, minecraftsessionservice, gameprofilerepository, gameprofilecache, (p_210795_) -> {
+                  StoringChunkProgressListener storingchunkprogresslistener = new StoringChunkProgressListener(p_210795_ + 0);
                   this.progressListener.set(storingchunkprogresslistener);
                   return ProcessorChunkProgressListener.createStarted(storingchunkprogresslistener, this.progressTasks::add);
                });
@@ -1895,7 +1895,7 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          } catch (Throwable throwable) {
             CrashReport crashreport = CrashReport.forThrowable(throwable, "Starting integrated server");
             CrashReportCategory crashreportcategory = crashreport.addCategory("Starting integrated server");
-            crashreportcategory.setDetail("Level ID", p_91220_);
+            crashreportcategory.setDetail("Level ID", p_205206_);
             crashreportcategory.setDetail("Level Name", worlddata.getLevelName());
             throw new ReportedException(crashreport);
          }
@@ -1926,21 +1926,22 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          this.profiler.pop();
          SocketAddress socketaddress = this.singleplayerServer.getConnection().startMemoryChannel();
          Connection connection = Connection.connectToLocalServer(socketaddress);
-         connection.setListener(new ClientHandshakePacketListenerImpl(connection, this, (Screen)null, (p_167998_) -> {
+         connection.setListener(new ClientHandshakePacketListenerImpl(connection, this, (Screen)null, (p_210793_) -> {
          }));
          connection.send(new ClientIntentionPacket(socketaddress.toString(), 0, ConnectionProtocol.LOGIN));
          connection.send(new ServerboundHelloPacket(this.getUser().getGameProfile()));
          this.pendingConnection = connection;
       } else {
-         this.displayExperimentalConfirmationDialog(p_91225_, p_91220_, flag, () -> {
-            this.doLoadLevel(p_91220_, p_91221_, p_91222_, p_91223_, p_91224_, Minecraft.ExperimentalDialogType.NONE);
+         this.displayExperimentalConfirmationDialog(p_205210_, p_205206_, flag, () -> {
+            this.doLoadLevel(p_205206_, p_205207_, p_205208_, p_205209_, Minecraft.ExperimentalDialogType.NONE);
          });
-         minecraft$serverstem.close();
+         worldstem.close();
 
          try {
+            packrepository.close();
             levelstoragesource$levelstorageaccess.close();
          } catch (IOException ioexception1) {
-            LOGGER.warn("Failed to unlock access to level {}", p_91220_, ioexception1);
+            LOGGER.warn("Failed to unlock access to level {}", p_205206_, ioexception1);
          }
 
       }
@@ -1958,16 +1959,16 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
             component1 = new TranslatableComponent("selectWorld.backupWarning.experimental");
          }
 
-         this.setScreen(new BackupConfirmScreen((Screen)null, (p_167931_, p_167932_) -> {
-            if (p_167931_) {
+         this.setScreen(new BackupConfirmScreen((Screen)null, (p_210729_, p_210730_) -> {
+            if (p_210729_) {
                EditWorldScreen.makeBackupAndShowToast(this.levelSource, p_91145_);
             }
 
             p_91147_.run();
          }, component, component1, false));
       } else {
-         this.setScreen(new ConfirmScreen((p_167915_) -> {
-            if (p_167915_) {
+         this.setScreen(new ConfirmScreen((p_210725_) -> {
+            if (p_210725_) {
                p_91147_.run();
             } else {
                this.setScreen((Screen)null);
@@ -2003,21 +2004,25 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
 
    }
 
-   public Minecraft.ServerStem makeServerStem(RegistryAccess.RegistryHolder p_91191_, Function<LevelStorageSource.LevelStorageAccess, DataPackConfig> p_91192_, Function4<LevelStorageSource.LevelStorageAccess, RegistryAccess.RegistryHolder, ResourceManager, DataPackConfig, WorldData> p_91193_, boolean p_91194_, LevelStorageSource.LevelStorageAccess p_91195_) throws InterruptedException, ExecutionException {
-      DataPackConfig datapackconfig = p_91192_.apply(p_91195_);
-      PackRepository packrepository = new PackRepository(PackType.SERVER_DATA, new ServerPacksSource(), new FolderRepositorySource(p_91195_.getLevelPath(LevelResource.DATAPACK_DIR).toFile(), PackSource.WORLD));
+   public WorldStem makeWorldStem(LevelStorageSource.LevelStorageAccess p_205153_, boolean p_205154_) throws ExecutionException, InterruptedException {
+      PackRepository packrepository = createPackRepository(p_205153_);
+      return this.makeWorldStem(packrepository, p_205154_, WorldStem.DataPackConfigSupplier.loadFromWorld(p_205153_), WorldStem.WorldDataSupplier.loadFromWorld(p_205153_));
+   }
 
+   public WorldStem makeWorldStem(PackRepository p_205126_, boolean p_205127_, WorldStem.DataPackConfigSupplier p_205128_, WorldStem.WorldDataSupplier p_205129_) throws InterruptedException, ExecutionException {
       try {
-         DataPackConfig datapackconfig1 = MinecraftServer.configurePackRepository(packrepository, datapackconfig, p_91194_);
-         CompletableFuture<ServerResources> completablefuture = ServerResources.loadResources(packrepository.openAllSelected(), p_91191_, Commands.CommandSelection.INTEGRATED, 2, Util.backgroundExecutor(), this);
+         WorldStem.InitConfig worldstem$initconfig = new WorldStem.InitConfig(p_205126_, Commands.CommandSelection.INTEGRATED, 2, p_205127_);
+         CompletableFuture<WorldStem> completablefuture = WorldStem.load(worldstem$initconfig, p_205128_, p_205129_, Util.backgroundExecutor(), this);
          this.managedBlock(completablefuture::isDone);
-         ServerResources serverresources = completablefuture.get();
-         WorldData worlddata = p_91193_.apply(p_91195_, p_91191_, serverresources.getResourceManager(), datapackconfig1);
-         return new Minecraft.ServerStem(packrepository, serverresources, worlddata);
+         return completablefuture.get();
       } catch (ExecutionException | InterruptedException interruptedexception) {
-         packrepository.close();
+         p_205126_.close();
          throw interruptedexception;
       }
+   }
+
+   private static PackRepository createPackRepository(LevelStorageSource.LevelStorageAccess p_205143_) {
+      return new PackRepository(PackType.SERVER_DATA, new ServerPacksSource(), new FolderRepositorySource(p_205143_.getLevelPath(LevelResource.DATAPACK_DIR).toFile(), PackSource.WORLD));
    }
 
    public void setLevel(ClientLevel p_91157_) {
@@ -2319,8 +2324,8 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
    }
 
    public CompletableFuture<Void> delayTextureReload() {
-      return this.submit(() -> this.reloadResourcePacks()).thenCompose((p_167945_) -> {
-         return p_167945_;
+      return this.submit(() -> this.reloadResourcePacks()).thenCompose((p_210747_) -> {
+         return p_210747_;
       });
    }
 
@@ -2414,9 +2419,10 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
          if (this.player.level.dimension() == Level.END) {
             return this.gui.getBossOverlay().shouldPlayMusic() ? Musics.END_BOSS : Musics.END;
          } else {
-            Biome.BiomeCategory biome$biomecategory = this.player.level.getBiome(this.player.blockPosition()).getBiomeCategory();
+            Holder<Biome> holder = this.player.level.getBiome(this.player.blockPosition());
+            Biome.BiomeCategory biome$biomecategory = Biome.getBiomeCategory(holder);
             if (!this.musicManager.isPlayingMusic(Musics.UNDER_WATER) && (!this.player.isUnderWater() || biome$biomecategory != Biome.BiomeCategory.OCEAN && biome$biomecategory != Biome.BiomeCategory.RIVER)) {
-               return this.player.level.dimension() != Level.NETHER && this.player.getAbilities().instabuild && this.player.getAbilities().mayfly ? Musics.CREATIVE : this.level.getBiomeManager().getNoiseBiomeAtPosition(this.player.blockPosition()).getBackgroundMusic().orElse(Musics.GAME);
+               return this.player.level.dimension() != Level.NETHER && this.player.getAbilities().instabuild && this.player.getAbilities().mayfly ? Musics.CREATIVE : holder.value().getBackgroundMusic().orElse(Musics.GAME);
             } else {
                return Musics.UNDER_WATER;
             }
@@ -2603,12 +2609,12 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
             } catch (InterruptedException interruptedexception) {
             }
 
-            Screenshot.grab(p_167900_, "panorama_" + k + ".png", rendertarget, (p_167966_) -> {
+            Screenshot.grab(p_167900_, "panorama_" + k + ".png", rendertarget, (p_210769_) -> {
             });
          }
 
-         Component component = (new TextComponent(p_167900_.getName())).withStyle(ChatFormatting.UNDERLINE).withStyle((p_167990_) -> {
-            return p_167990_.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, p_167900_.getAbsolutePath()));
+         Component component = (new TextComponent(p_167900_.getName())).withStyle(ChatFormatting.UNDERLINE).withStyle((p_210781_) -> {
+            return p_210781_.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, p_167900_.getAbsolutePath()));
          });
          return new TranslatableComponent("screenshot.success", component);
       } catch (Exception exception) {
@@ -2659,8 +2665,8 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
 
          File file1 = screenshot.close();
          GlUtil.freeMemory(bytebuffer);
-         Component component = (new TextComponent(file1.getName())).withStyle(ChatFormatting.UNDERLINE).withStyle((p_167911_) -> {
-            return p_167911_.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, file1.getAbsolutePath()));
+         Component component = (new TextComponent(file1.getName())).withStyle(ChatFormatting.UNDERLINE).withStyle((p_210721_) -> {
+            return p_210721_.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_FILE, file1.getAbsolutePath()));
          });
          return new TranslatableComponent("screenshot.success", component);
       } catch (Exception exception) {
@@ -2790,35 +2796,5 @@ public class Minecraft extends ReentrantBlockableEventLoop<Runnable> implements 
       NONE,
       CREATE,
       BACKUP;
-   }
-
-   @OnlyIn(Dist.CLIENT)
-   public static final class ServerStem implements AutoCloseable {
-      private final PackRepository packRepository;
-      private final ServerResources serverResources;
-      private final WorldData worldData;
-
-      ServerStem(PackRepository p_91424_, ServerResources p_91425_, WorldData p_91426_) {
-         this.packRepository = p_91424_;
-         this.serverResources = p_91425_;
-         this.worldData = p_91426_;
-      }
-
-      public PackRepository packRepository() {
-         return this.packRepository;
-      }
-
-      public ServerResources serverResources() {
-         return this.serverResources;
-      }
-
-      public WorldData worldData() {
-         return this.worldData;
-      }
-
-      public void close() {
-         this.packRepository.close();
-         this.serverResources.close();
-      }
    }
 }

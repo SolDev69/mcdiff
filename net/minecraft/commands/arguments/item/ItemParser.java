@@ -15,7 +15,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.TagCollection;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 
 public class ItemParser {
@@ -25,17 +25,18 @@ public class ItemParser {
    });
    private static final char SYNTAX_START_NBT = '{';
    private static final char SYNTAX_TAG = '#';
-   private static final BiFunction<SuggestionsBuilder, TagCollection<Item>, CompletableFuture<Suggestions>> SUGGEST_NOTHING = (p_121028_, p_121029_) -> {
-      return p_121028_.buildFuture();
+   private static final BiFunction<SuggestionsBuilder, Registry<Item>, CompletableFuture<Suggestions>> SUGGEST_NOTHING = (p_205679_, p_205680_) -> {
+      return p_205679_.buildFuture();
    };
    private final StringReader reader;
    private final boolean forTesting;
    private Item item;
    @Nullable
    private CompoundTag nbt;
-   private ResourceLocation tag = new ResourceLocation("");
+   @Nullable
+   private TagKey<Item> tag;
    private int tagCursor;
-   private BiFunction<SuggestionsBuilder, TagCollection<Item>, CompletableFuture<Suggestions>> suggestions = SUGGEST_NOTHING;
+   private BiFunction<SuggestionsBuilder, Registry<Item>, CompletableFuture<Suggestions>> suggestions = SUGGEST_NOTHING;
 
    public ItemParser(StringReader p_121004_, boolean p_121005_) {
       this.reader = p_121004_;
@@ -51,7 +52,7 @@ public class ItemParser {
       return this.nbt;
    }
 
-   public ResourceLocation getTag() {
+   public TagKey<Item> getTag() {
       return this.tag;
    }
 
@@ -71,7 +72,7 @@ public class ItemParser {
          this.suggestions = this::suggestTag;
          this.reader.expect('#');
          this.tagCursor = this.reader.getCursor();
-         this.tag = ResourceLocation.read(this.reader);
+         this.tag = TagKey.create(Registry.ITEM_REGISTRY, ResourceLocation.read(this.reader));
       }
    }
 
@@ -96,27 +97,27 @@ public class ItemParser {
       return this;
    }
 
-   private CompletableFuture<Suggestions> suggestOpenNbt(SuggestionsBuilder p_121016_, TagCollection<Item> p_121017_) {
-      if (p_121016_.getRemaining().isEmpty()) {
-         p_121016_.suggest(String.valueOf('{'));
+   private CompletableFuture<Suggestions> suggestOpenNbt(SuggestionsBuilder p_205669_, Registry<Item> p_205670_) {
+      if (p_205669_.getRemaining().isEmpty()) {
+         p_205669_.suggest(String.valueOf('{'));
       }
 
-      return p_121016_.buildFuture();
+      return p_205669_.buildFuture();
    }
 
-   private CompletableFuture<Suggestions> suggestTag(SuggestionsBuilder p_121020_, TagCollection<Item> p_121021_) {
-      return SharedSuggestionProvider.suggestResource(p_121021_.getAvailableTags(), p_121020_.createOffset(this.tagCursor));
+   private CompletableFuture<Suggestions> suggestTag(SuggestionsBuilder p_205673_, Registry<Item> p_205674_) {
+      return SharedSuggestionProvider.suggestResource(p_205674_.getTagNames().map(TagKey::location), p_205673_.createOffset(this.tagCursor));
    }
 
-   private CompletableFuture<Suggestions> suggestItemIdOrTag(SuggestionsBuilder p_121024_, TagCollection<Item> p_121025_) {
+   private CompletableFuture<Suggestions> suggestItemIdOrTag(SuggestionsBuilder p_205676_, Registry<Item> p_205677_) {
       if (this.forTesting) {
-         SharedSuggestionProvider.suggestResource(p_121025_.getAvailableTags(), p_121024_, String.valueOf('#'));
+         SharedSuggestionProvider.suggestResource(p_205677_.getTagNames().map(TagKey::location), p_205676_, String.valueOf('#'));
       }
 
-      return SharedSuggestionProvider.suggestResource(Registry.ITEM.keySet(), p_121024_);
+      return SharedSuggestionProvider.suggestResource(Registry.ITEM.keySet(), p_205676_);
    }
 
-   public CompletableFuture<Suggestions> fillSuggestions(SuggestionsBuilder p_121010_, TagCollection<Item> p_121011_) {
-      return this.suggestions.apply(p_121010_.createOffset(this.reader.getCursor()), p_121011_);
+   public CompletableFuture<Suggestions> fillSuggestions(SuggestionsBuilder p_205666_, Registry<Item> p_205667_) {
+      return this.suggestions.apply(p_205666_.createOffset(this.reader.getCursor()), p_205667_);
    }
 }

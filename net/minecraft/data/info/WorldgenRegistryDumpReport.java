@@ -3,6 +3,7 @@ package net.minecraft.data.info;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.Encoder;
 import com.mojang.serialization.JsonOps;
@@ -10,24 +11,22 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Map.Entry;
-import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.HashCache;
-import net.minecraft.resources.RegistryWriteOps;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.dimension.LevelStem;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class WorldgenRegistryDumpReport implements DataProvider {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Gson GSON = (new GsonBuilder()).setPrettyPrinting().create();
    private final DataGenerator generator;
 
@@ -37,16 +36,16 @@ public class WorldgenRegistryDumpReport implements DataProvider {
 
    public void run(HashCache p_194682_) {
       Path path = this.generator.getOutputFolder();
-      RegistryAccess registryaccess = RegistryAccess.builtin();
+      RegistryAccess registryaccess = RegistryAccess.BUILTIN.get();
       int i = 0;
-      MappedRegistry<LevelStem> mappedregistry = DimensionType.defaultDimensions(registryaccess, 0L, false);
+      Registry<LevelStem> registry = DimensionType.defaultDimensions(registryaccess, 0L, false);
       ChunkGenerator chunkgenerator = WorldGenSettings.makeDefaultOverworld(registryaccess, 0L, false);
-      MappedRegistry<LevelStem> mappedregistry1 = WorldGenSettings.withOverworld(registryaccess.ownedRegistryOrThrow(Registry.DIMENSION_TYPE_REGISTRY), mappedregistry, chunkgenerator);
-      DynamicOps<JsonElement> dynamicops = RegistryWriteOps.create(JsonOps.INSTANCE, registryaccess);
+      Registry<LevelStem> registry1 = WorldGenSettings.withOverworld(registryaccess.ownedRegistryOrThrow(Registry.DIMENSION_TYPE_REGISTRY), registry, chunkgenerator);
+      DynamicOps<JsonElement> dynamicops = RegistryOps.create(JsonOps.INSTANCE, registryaccess);
       RegistryAccess.knownRegistries().forEach((p_194713_) -> {
          dumpRegistryCap(p_194682_, path, registryaccess, dynamicops, p_194713_);
       });
-      dumpRegistry(path, p_194682_, dynamicops, Registry.LEVEL_STEM_REGISTRY, mappedregistry1, LevelStem.CODEC);
+      dumpRegistry(path, p_194682_, dynamicops, Registry.LEVEL_STEM_REGISTRY, registry1, LevelStem.CODEC);
    }
 
    private static <T> void dumpRegistryCap(HashCache p_194684_, Path p_194685_, RegistryAccess p_194686_, DynamicOps<JsonElement> p_194687_, RegistryAccess.RegistryData<T> p_194688_) {
@@ -63,11 +62,11 @@ public class WorldgenRegistryDumpReport implements DataProvider {
 
    private static <E> void dumpValue(Path p_194692_, HashCache p_194693_, DynamicOps<JsonElement> p_194694_, Encoder<E> p_194695_, E p_194696_) {
       try {
-         Optional<JsonElement> optional = p_194695_.encodeStart(p_194694_, p_194696_).result();
+         Optional<JsonElement> optional = p_194695_.encodeStart(p_194694_, p_194696_).resultOrPartial((p_206405_) -> {
+            LOGGER.error("Couldn't serialize element {}: {}", p_194692_, p_206405_);
+         });
          if (optional.isPresent()) {
             DataProvider.save(GSON, p_194693_, optional.get(), p_194692_);
-         } else {
-            LOGGER.error("Couldn't serialize element {}", (Object)p_194692_);
          }
       } catch (IOException ioexception) {
          LOGGER.error("Couldn't save element {}", p_194692_, ioexception);

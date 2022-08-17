@@ -11,10 +11,12 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
+import javax.annotation.Nullable;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.protocol.game.ServerboundCommandSuggestionPacket;
 import net.minecraft.resources.ResourceKey;
@@ -32,6 +34,7 @@ public class ClientSuggestionProvider implements SharedSuggestionProvider {
    private final ClientPacketListener connection;
    private final Minecraft minecraft;
    private int pendingSuggestionsId = -1;
+   @Nullable
    private CompletableFuture<Suggestions> pendingSuggestionsFuture;
 
    public ClientSuggestionProvider(ClientPacketListener p_105165_, Minecraft p_105166_) {
@@ -70,14 +73,23 @@ public class ClientSuggestionProvider implements SharedSuggestionProvider {
       return localplayer != null ? localplayer.hasPermissions(p_105178_) : p_105178_ == 0;
    }
 
-   public CompletableFuture<Suggestions> customSuggestion(CommandContext<SharedSuggestionProvider> p_105175_, SuggestionsBuilder p_105176_) {
+   public CompletableFuture<Suggestions> suggestRegistryElements(ResourceKey<? extends Registry<?>> p_212429_, SharedSuggestionProvider.ElementSuggestionType p_212430_, SuggestionsBuilder p_212431_, CommandContext<?> p_212432_) {
+      return this.registryAccess().registry(p_212429_).map((p_212427_) -> {
+         this.suggestRegistryElements(p_212427_, p_212430_, p_212431_);
+         return p_212431_.buildFuture();
+      }).orElseGet(() -> {
+         return this.customSuggestion(p_212432_);
+      });
+   }
+
+   public CompletableFuture<Suggestions> customSuggestion(CommandContext<?> p_212423_) {
       if (this.pendingSuggestionsFuture != null) {
          this.pendingSuggestionsFuture.cancel(false);
       }
 
       this.pendingSuggestionsFuture = new CompletableFuture<>();
       int i = ++this.pendingSuggestionsId;
-      this.connection.send(new ServerboundCommandSuggestionPacket(i, p_105175_.getInput()));
+      this.connection.send(new ServerboundCommandSuggestionPacket(i, p_212423_.getInput()));
       return this.pendingSuggestionsFuture;
    }
 

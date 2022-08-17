@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.google.common.primitives.Floats;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
+import com.mojang.logging.LogUtils;
 import io.netty.util.concurrent.Future;
 import io.netty.util.concurrent.GenericFutureListener;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
@@ -128,6 +129,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.BaseCommandBlock;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
@@ -148,11 +150,10 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ServerGamePacketListenerImpl implements ServerPlayerConnection, ServerGamePacketListener {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    private static final int LATENCY_CHECK_INTERVAL = 15000;
    public final Connection connection;
    private final MinecraftServer server;
@@ -207,7 +208,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
       this.player.absMoveTo(this.firstGoodX, this.firstGoodY, this.firstGoodZ, this.player.getYRot(), this.player.getXRot());
       ++this.tickCount;
       this.knownMovePacketCount = this.receivedMovePacketCount;
-      if (this.clientIsFloating && !this.player.isSleeping()) {
+      if (this.clientIsFloating && !this.player.isSleeping() && !this.player.isPassenger()) {
          if (++this.aboveGroundTickCount > 80) {
             LOGGER.warn("{} was kicked for floating too long!", (Object)this.player.getName().getString());
             this.disconnect(new TranslatableComponent("multiplayer.disconnect.flying"));
@@ -297,9 +298,13 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
 
    private <T, R> void filterTextPacket(T p_9802_, Consumer<R> p_9803_, BiFunction<TextFilter, T, CompletableFuture<R>> p_9804_) {
       BlockableEventLoop<?> blockableeventloop = this.player.getLevel().getServer();
-      Consumer<R> consumer = (p_9941_) -> {
+      Consumer<R> consumer = (p_201923_) -> {
          if (this.getConnection().isConnected()) {
-            p_9803_.accept(p_9941_);
+            try {
+               p_9803_.accept(p_201923_);
+            } catch (Exception exception) {
+               LOGGER.error("Failed to handle chat packet {}, suppressing error", p_9802_, exception);
+            }
          } else {
             LOGGER.debug("Ignoring packet due to disconnection");
          }
@@ -364,6 +369,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
             d6 = d3 - this.vehicleLastGoodX;
             d7 = d4 - this.vehicleLastGoodY - 1.0E-6D;
             d8 = d5 - this.vehicleLastGoodZ;
+            boolean flag1 = entity.verticalCollisionBelow;
             entity.move(MoverType.PLAYER, new Vec3(d6, d7, d8));
             d6 = d3 - entity.getX();
             d7 = d4 - entity.getY();
@@ -373,15 +379,15 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
 
             d8 = d5 - entity.getZ();
             d10 = d6 * d6 + d7 * d7 + d8 * d8;
-            boolean flag1 = false;
+            boolean flag2 = false;
             if (d10 > 0.0625D) {
-               flag1 = true;
+               flag2 = true;
                LOGGER.warn("{} (vehicle of {}) moved wrongly! {}", entity.getName().getString(), this.player.getName().getString(), Math.sqrt(d10));
             }
 
             entity.absMoveTo(d3, d4, d5, f, f1);
-            boolean flag2 = serverlevel.noCollision(entity, entity.getBoundingBox().deflate(0.0625D));
-            if (flag && (flag1 || !flag2)) {
+            boolean flag3 = serverlevel.noCollision(entity, entity.getBoundingBox().deflate(0.0625D));
+            if (flag && (flag2 || !flag3)) {
                entity.absMoveTo(d0, d1, d2, f, f1);
                this.connection.send(new ClientboundMoveVehiclePacket(entity));
                return;
@@ -389,7 +395,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
 
             this.player.getLevel().getChunkSource().move(this.player);
             this.player.checkMovementStatistics(this.player.getX() - d0, this.player.getY() - d1, this.player.getZ() - d2);
-            this.clientVehicleIsFloating = d7 >= -0.03125D && !this.server.isFlightAllowed() && this.noBlocksAround(entity);
+            this.clientVehicleIsFloating = d7 >= -0.03125D && !flag1 && !this.server.isFlightAllowed() && !entity.isNoGravity() && this.noBlocksAround(entity);
             this.vehicleLastGoodX = entity.getX();
             this.vehicleLastGoodY = entity.getY();
             this.vehicleLastGoodZ = entity.getZ();
@@ -827,6 +833,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
                         this.player.jumpFromGround();
                      }
 
+                     boolean flag1 = this.player.verticalCollisionBelow;
                      this.player.move(MoverType.PLAYER, new Vec3(d7, d8, d9));
                      d7 = d0 - this.player.getX();
                      d8 = d1 - this.player.getY();
@@ -836,15 +843,15 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
 
                      d9 = d2 - this.player.getZ();
                      d11 = d7 * d7 + d8 * d8 + d9 * d9;
-                     boolean flag1 = false;
+                     boolean flag2 = false;
                      if (!this.player.isChangingDimension() && d11 > 0.0625D && !this.player.isSleeping() && !this.player.gameMode.isCreative() && this.player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR) {
-                        flag1 = true;
+                        flag2 = true;
                         LOGGER.warn("{} moved wrongly!", (Object)this.player.getName().getString());
                      }
 
                      this.player.absMoveTo(d0, d1, d2, f, f1);
-                     if (this.player.noPhysics || this.player.isSleeping() || (!flag1 || !serverlevel.noCollision(this.player, aabb)) && !this.isPlayerCollidingWithAnythingNew(serverlevel, aabb)) {
-                        this.clientIsFloating = d8 >= -0.03125D && this.player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR && !this.server.isFlightAllowed() && !this.player.getAbilities().mayfly && !this.player.hasEffect(MobEffects.LEVITATION) && !this.player.isFallFlying() && this.noBlocksAround(this.player);
+                     if (this.player.noPhysics || this.player.isSleeping() || (!flag2 || !serverlevel.noCollision(this.player, aabb)) && !this.isPlayerCollidingWithAnythingNew(serverlevel, aabb)) {
+                        this.clientIsFloating = d8 >= -0.03125D && !flag1 && this.player.gameMode.getGameModeForPlayer() != GameType.SPECTATOR && !this.server.isFlightAllowed() && !this.player.getAbilities().mayfly && !this.player.hasEffect(MobEffects.LEVITATION) && !this.player.isFallFlying() && !this.player.isAutoSpinAttack() && this.noBlocksAround(this.player);
                         this.player.getLevel().getChunkSource().move(this.player);
                         this.player.doCheckFallDamage(this.player.getY() - d6, p_9874_.isOnGround());
                         this.player.setOnGround(p_9874_.isOnGround());
@@ -962,27 +969,38 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
       InteractionHand interactionhand = p_9930_.getHand();
       ItemStack itemstack = this.player.getItemInHand(interactionhand);
       BlockHitResult blockhitresult = p_9930_.getHitResult();
+      Vec3 vec3 = blockhitresult.getLocation();
       BlockPos blockpos = blockhitresult.getBlockPos();
-      Direction direction = blockhitresult.getDirection();
-      this.player.resetLastActionTime();
-      int i = this.player.level.getMaxBuildHeight();
-      if (blockpos.getY() < i) {
-         if (this.awaitingPositionFromClient == null && this.player.distanceToSqr((double)blockpos.getX() + 0.5D, (double)blockpos.getY() + 0.5D, (double)blockpos.getZ() + 0.5D) < 64.0D && serverlevel.mayInteract(this.player, blockpos)) {
-            InteractionResult interactionresult = this.player.gameMode.useItemOn(this.player, serverlevel, itemstack, interactionhand, blockhitresult);
-            if (direction == Direction.UP && !interactionresult.consumesAction() && blockpos.getY() >= i - 1 && wasBlockPlacementAttempt(this.player, itemstack)) {
-               Component component = (new TranslatableComponent("build.tooHigh", i - 1)).withStyle(ChatFormatting.RED);
-               this.player.sendMessage(component, ChatType.GAME_INFO, Util.NIL_UUID);
-            } else if (interactionresult.shouldSwing()) {
-               this.player.swing(interactionhand, true);
+      Vec3 vec31 = vec3.subtract(Vec3.atCenterOf(blockpos));
+      if (this.player.level.getServer() != null && this.player.chunkPosition().getChessboardDistance(new ChunkPos(blockpos)) < this.player.level.getServer().getPlayerList().getViewDistance()) {
+         double d0 = 1.0000001D;
+         if (Math.abs(vec31.x()) < 1.0000001D && Math.abs(vec31.y()) < 1.0000001D && Math.abs(vec31.z()) < 1.0000001D) {
+            Direction direction = blockhitresult.getDirection();
+            this.player.resetLastActionTime();
+            int i = this.player.level.getMaxBuildHeight();
+            if (blockpos.getY() < i) {
+               if (this.awaitingPositionFromClient == null && this.player.distanceToSqr((double)blockpos.getX() + 0.5D, (double)blockpos.getY() + 0.5D, (double)blockpos.getZ() + 0.5D) < 64.0D && serverlevel.mayInteract(this.player, blockpos)) {
+                  InteractionResult interactionresult = this.player.gameMode.useItemOn(this.player, serverlevel, itemstack, interactionhand, blockhitresult);
+                  if (direction == Direction.UP && !interactionresult.consumesAction() && blockpos.getY() >= i - 1 && wasBlockPlacementAttempt(this.player, itemstack)) {
+                     Component component = (new TranslatableComponent("build.tooHigh", i - 1)).withStyle(ChatFormatting.RED);
+                     this.player.sendMessage(component, ChatType.GAME_INFO, Util.NIL_UUID);
+                  } else if (interactionresult.shouldSwing()) {
+                     this.player.swing(interactionhand, true);
+                  }
+               }
+            } else {
+               Component component1 = (new TranslatableComponent("build.tooHigh", i - 1)).withStyle(ChatFormatting.RED);
+               this.player.sendMessage(component1, ChatType.GAME_INFO, Util.NIL_UUID);
             }
+
+            this.player.connection.send(new ClientboundBlockUpdatePacket(serverlevel, blockpos));
+            this.player.connection.send(new ClientboundBlockUpdatePacket(serverlevel, blockpos.relative(direction)));
+         } else {
+            LOGGER.warn("Ignoring UseItemOnPacket from {}: Location {} too far away from hit block {}.", this.player.getGameProfile().getName(), vec3, blockpos);
          }
       } else {
-         Component component1 = (new TranslatableComponent("build.tooHigh", i - 1)).withStyle(ChatFormatting.RED);
-         this.player.sendMessage(component1, ChatType.GAME_INFO, Util.NIL_UUID);
+         LOGGER.warn("Ignoring UseItemOnPacket from {}: hit position {} too far away from player {}.", this.player.getGameProfile().getName(), blockpos, this.player.blockPosition());
       }
-
-      this.player.connection.send(new ClientboundBlockUpdatePacket(serverlevel, blockpos));
-      this.player.connection.send(new ClientboundBlockUpdatePacket(serverlevel, blockpos.relative(direction)));
    }
 
    public void handleUseItem(ServerboundUseItemPacket p_9932_) {
@@ -1277,24 +1295,29 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
          if (this.player.isSpectator()) {
             this.player.containerMenu.sendAllDataToRemote();
          } else {
-            boolean flag = p_9856_.getStateId() != this.player.containerMenu.getStateId();
-            this.player.containerMenu.suppressRemoteUpdates();
-            this.player.containerMenu.clicked(p_9856_.getSlotNum(), p_9856_.getButtonNum(), p_9856_.getClickType(), this.player);
-
-            for(Entry<ItemStack> entry : Int2ObjectMaps.fastIterable(p_9856_.getChangedSlots())) {
-               this.player.containerMenu.setRemoteSlotNoCopy(entry.getIntKey(), entry.getValue());
-            }
-
-            this.player.containerMenu.setRemoteCarried(p_9856_.getCarriedItem());
-            this.player.containerMenu.resumeRemoteUpdates();
-            if (flag) {
-               this.player.containerMenu.broadcastFullState();
+            int i = p_9856_.getSlotNum();
+            if (!this.player.containerMenu.isValidSlotIndex(i)) {
+               LOGGER.debug("Player {} clicked invalid slot index: {}, available slots: {}", this.player.getName(), i, this.player.containerMenu.slots.size());
             } else {
-               this.player.containerMenu.broadcastChanges();
+               boolean flag = p_9856_.getStateId() != this.player.containerMenu.getStateId();
+               this.player.containerMenu.suppressRemoteUpdates();
+               this.player.containerMenu.clicked(i, p_9856_.getButtonNum(), p_9856_.getClickType(), this.player);
+
+               for(Entry<ItemStack> entry : Int2ObjectMaps.fastIterable(p_9856_.getChangedSlots())) {
+                  this.player.containerMenu.setRemoteSlotNoCopy(entry.getIntKey(), entry.getValue());
+               }
+
+               this.player.containerMenu.setRemoteCarried(p_9856_.getCarriedItem());
+               this.player.containerMenu.resumeRemoteUpdates();
+               if (flag) {
+                  this.player.containerMenu.broadcastFullState();
+               } else {
+                  this.player.containerMenu.broadcastChanges();
+               }
+
             }
          }
       }
-
    }
 
    public void handlePlaceRecipe(ServerboundPlaceRecipePacket p_9882_) {
@@ -1311,8 +1334,10 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Ser
       PacketUtils.ensureRunningOnSameThread(p_9854_, this, this.player.getLevel());
       this.player.resetLastActionTime();
       if (this.player.containerMenu.containerId == p_9854_.getContainerId() && !this.player.isSpectator()) {
-         this.player.containerMenu.clickMenuButton(this.player, p_9854_.getButtonId());
-         this.player.containerMenu.broadcastChanges();
+         boolean flag = this.player.containerMenu.clickMenuButton(this.player, p_9854_.getButtonId());
+         if (flag) {
+            this.player.containerMenu.broadcastChanges();
+         }
       }
 
    }

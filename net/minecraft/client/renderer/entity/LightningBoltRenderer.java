@@ -69,12 +69,12 @@ public class LightningBoltRenderer extends EntityRenderer<LightningBolt> {
                float f9 = 0.5F;
                float f10 = 0.1F + (float)j * 0.2F;
                if (k == 0) {
-                  f10 = (float)((double)f10 * ((double)j1 * 0.1D + 1.0D));
+                  f10 *= (float)j1 * 0.1F + 1.0F;
                }
 
                float f11 = 0.1F + (float)j * 0.2F;
                if (k == 0) {
-                  f11 *= (float)(j1 - 1) * 0.1F + 1.0F;
+                  f11 *= ((float)j1 - 1.0F) * 0.1F + 1.0F;
                }
 
                quad(matrix4f, vertexconsumer, f2, f3, j1, f4, f5, 0.45F, 0.45F, 0.5F, f10, f11, false, false, true, false);

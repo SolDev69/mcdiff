@@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
 import java.util.Random;
 import java.util.function.Function;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -33,7 +34,7 @@ public class NetherWorldCarver extends CaveWorldCarver {
       return 5.0D;
    }
 
-   protected boolean carveBlock(CarvingContext p_190731_, CaveCarverConfiguration p_190732_, ChunkAccess p_190733_, Function<BlockPos, Biome> p_190734_, CarvingMask p_190735_, BlockPos.MutableBlockPos p_190736_, BlockPos.MutableBlockPos p_190737_, Aquifer p_190738_, MutableBoolean p_190739_) {
+   protected boolean carveBlock(CarvingContext p_190731_, CaveCarverConfiguration p_190732_, ChunkAccess p_190733_, Function<BlockPos, Holder<Biome>> p_190734_, CarvingMask p_190735_, BlockPos.MutableBlockPos p_190736_, BlockPos.MutableBlockPos p_190737_, Aquifer p_190738_, MutableBoolean p_190739_) {
       if (this.canReplaceBlock(p_190733_.getBlockState(p_190736_))) {
          BlockState blockstate;
          if (p_190736_.getY() <= p_190731_.getMinGenY() + 31) {

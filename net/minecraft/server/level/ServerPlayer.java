@@ -3,6 +3,7 @@ package net.minecraft.server.level;
 import com.google.common.collect.Lists;
 import com.mojang.authlib.GameProfile;
 import com.mojang.datafixers.util.Either;
+import com.mojang.logging.LogUtils;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -133,11 +134,10 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Score;
 import net.minecraft.world.scores.Team;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ServerPlayer extends Player {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int NEUTRAL_MOB_DEATH_NOTIFICATION_RADII_XZ = 32;
    private static final int NEUTRAL_MOB_DEATH_NOTIFICATION_RADII_Y = 10;
    public ServerGamePacketListenerImpl connection;
@@ -701,7 +701,7 @@ public class ServerPlayer extends Player {
          return this;
       } else {
          LevelData leveldata = p_9180_.getLevelData();
-         this.connection.send(new ClientboundRespawnPacket(p_9180_.dimensionType(), p_9180_.dimension(), BiomeManager.obfuscateSeed(p_9180_.getSeed()), this.gameMode.getGameModeForPlayer(), this.gameMode.getPreviousGameModeForPlayer(), p_9180_.isDebug(), p_9180_.isFlat(), true));
+         this.connection.send(new ClientboundRespawnPacket(p_9180_.dimensionTypeRegistration(), p_9180_.dimension(), BiomeManager.obfuscateSeed(p_9180_.getSeed()), this.gameMode.getGameModeForPlayer(), this.gameMode.getPreviousGameModeForPlayer(), p_9180_.isDebug(), p_9180_.isFlat(), true));
          this.connection.send(new ClientboundChangeDifficultyPacket(leveldata.getDifficulty(), leveldata.isDifficultyLocked()));
          PlayerList playerlist = this.server.getPlayerList();
          playerlist.sendPlayerPermissionLevel(this);
@@ -1353,7 +1353,7 @@ public class ServerPlayer extends Player {
       } else {
          ServerLevel serverlevel = this.getLevel();
          LevelData leveldata = p_9000_.getLevelData();
-         this.connection.send(new ClientboundRespawnPacket(p_9000_.dimensionType(), p_9000_.dimension(), BiomeManager.obfuscateSeed(p_9000_.getSeed()), this.gameMode.getGameModeForPlayer(), this.gameMode.getPreviousGameModeForPlayer(), p_9000_.isDebug(), p_9000_.isFlat(), true));
+         this.connection.send(new ClientboundRespawnPacket(p_9000_.dimensionTypeRegistration(), p_9000_.dimension(), BiomeManager.obfuscateSeed(p_9000_.getSeed()), this.gameMode.getGameModeForPlayer(), this.gameMode.getPreviousGameModeForPlayer(), p_9000_.isDebug(), p_9000_.isFlat(), true));
          this.connection.send(new ClientboundChangeDifficultyPacket(leveldata.getDifficulty(), leveldata.isDifficultyLocked()));
          this.server.getPlayerList().sendPlayerPermissionLevel(this);
          serverlevel.removePlayerImmediately(this, Entity.RemovalReason.CHANGED_DIMENSION);

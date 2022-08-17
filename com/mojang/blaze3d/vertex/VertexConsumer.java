@@ -11,14 +11,10 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.util.FastColor;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.system.MemoryStack;
 
 @OnlyIn(Dist.CLIENT)
 public interface VertexConsumer {
-   Logger LOGGER = LogManager.getLogger();
-
    VertexConsumer vertex(double p_85945_, double p_85946_, double p_85947_);
 
    VertexConsumer color(int p_85973_, int p_85974_, int p_85975_, int p_85976_);

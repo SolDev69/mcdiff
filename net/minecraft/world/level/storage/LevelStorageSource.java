@@ -5,6 +5,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.mojang.datafixers.DataFixer;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.DynamicOps;
@@ -38,6 +39,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.visitors.FieldSelector;
+import net.minecraft.nbt.visitors.SkipFields;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.DirectoryLock;
@@ -50,14 +53,14 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelSettings;
 import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class LevelStorageSource {
-   static final Logger LOGGER = LogManager.getLogger();
+   static final Logger LOGGER = LogUtils.getLogger();
    static final DateTimeFormatter FORMATTER = (new DateTimeFormatterBuilder()).appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD).appendLiteral('-').appendValue(ChronoField.MONTH_OF_YEAR, 2).appendLiteral('-').appendValue(ChronoField.DAY_OF_MONTH, 2).appendLiteral('_').appendValue(ChronoField.HOUR_OF_DAY, 2).appendLiteral('-').appendValue(ChronoField.MINUTE_OF_HOUR, 2).appendLiteral('-').appendValue(ChronoField.SECOND_OF_MINUTE, 2).toFormatter();
    private static final String ICON_FILENAME = "icon.png";
    private static final ImmutableList<String> OLD_SETTINGS_KEYS = ImmutableList.of("RandomSeed", "generatorName", "generatorOptions", "generatorVersion", "legacy_custom_options", "MapFeatures", "BonusChest");
+   private static final String TAG_DATA = "Data";
    final Path baseDir;
    private final Path backupDir;
    final DataFixer fixerUpper;
@@ -92,7 +95,7 @@ public class LevelStorageSource {
       Dynamic<T> dynamic1 = p_78206_.update(References.WORLD_GEN_SETTINGS, dynamic, p_78207_, SharedConstants.getCurrentVersion().getWorldVersion());
       DataResult<WorldGenSettings> dataresult = WorldGenSettings.CODEC.parse(dynamic1);
       return Pair.of(dataresult.resultOrPartial(Util.prefix("WorldGenSettings: ", LOGGER::error)).orElseGet(() -> {
-         RegistryAccess registryaccess = RegistryAccess.RegistryHolder.readFromDisk(dynamic1);
+         RegistryAccess registryaccess = RegistryAccess.readFromDisk(dynamic1);
          return WorldGenSettings.makeDefault(registryaccess);
       }), dataresult.lifecycle());
    }
@@ -130,8 +133,15 @@ public class LevelStorageSource {
                } catch (OutOfMemoryError outofmemoryerror) {
                   MemoryReserve.release();
                   System.gc();
-                  LOGGER.fatal("Ran out of memory trying to read summary of {}", (Object)file1);
+                  LOGGER.error(LogUtils.FATAL_MARKER, "Ran out of memory trying to read summary of {}", (Object)file1);
                   throw outofmemoryerror;
+               } catch (StackOverflowError stackoverflowerror) {
+                  LOGGER.error(LogUtils.FATAL_MARKER, "Ran out of stack trying to read summary of {}. Assuming corruption; attempting to restore from from level.dat_old.", (Object)file1);
+                  File file2 = new File(file1, "level.dat");
+                  File file3 = new File(file1, "level.dat_old");
+                  File file4 = new File(file1, "level.dat_corrupted_" + LocalDateTime.now().format(FORMATTER));
+                  Util.safeReplaceOrMoveFile(file2, file3, file4, true);
+                  throw stackoverflowerror;
                }
             }
          }
@@ -165,33 +175,37 @@ public class LevelStorageSource {
    @Nullable
    private static DataPackConfig getDataPacks(File p_78253_, DataFixer p_78254_) {
       try {
-         CompoundTag compoundtag = NbtIo.readCompressed(p_78253_);
-         CompoundTag compoundtag1 = compoundtag.getCompound("Data");
-         compoundtag1.remove("Player");
-         int i = compoundtag1.contains("DataVersion", 99) ? compoundtag1.getInt("DataVersion") : -1;
-         Dynamic<Tag> dynamic = p_78254_.update(DataFixTypes.LEVEL.getType(), new Dynamic<>(NbtOps.INSTANCE, compoundtag1), i, SharedConstants.getCurrentVersion().getWorldVersion());
-         return dynamic.get("DataPacks").result().map(LevelStorageSource::readDataPackConfig).orElse(DataPackConfig.DEFAULT);
+         Tag tag = readLightweightData(p_78253_);
+         if (tag instanceof CompoundTag) {
+            CompoundTag compoundtag = (CompoundTag)tag;
+            CompoundTag compoundtag1 = compoundtag.getCompound("Data");
+            int i = compoundtag1.contains("DataVersion", 99) ? compoundtag1.getInt("DataVersion") : -1;
+            Dynamic<Tag> dynamic = p_78254_.update(DataFixTypes.LEVEL.getType(), new Dynamic<>(NbtOps.INSTANCE, compoundtag1), i, SharedConstants.getCurrentVersion().getWorldVersion());
+            return dynamic.get("DataPacks").result().map(LevelStorageSource::readDataPackConfig).orElse(DataPackConfig.DEFAULT);
+         }
       } catch (Exception exception) {
          LOGGER.error("Exception reading {}", p_78253_, exception);
-         return null;
       }
+
+      return null;
    }
 
-   static BiFunction<File, DataFixer, PrimaryLevelData> getLevelData(DynamicOps<Tag> p_78248_, DataPackConfig p_78249_) {
-      return (p_193010_, p_193011_) -> {
+   static BiFunction<File, DataFixer, PrimaryLevelData> getLevelData(DynamicOps<Tag> p_211738_, DataPackConfig p_211739_, Lifecycle p_211740_) {
+      return (p_211745_, p_211746_) -> {
          try {
-            CompoundTag compoundtag = NbtIo.readCompressed(p_193010_);
+            CompoundTag compoundtag = NbtIo.readCompressed(p_211745_);
             CompoundTag compoundtag1 = compoundtag.getCompound("Data");
             CompoundTag compoundtag2 = compoundtag1.contains("Player", 10) ? compoundtag1.getCompound("Player") : null;
             compoundtag1.remove("Player");
             int i = compoundtag1.contains("DataVersion", 99) ? compoundtag1.getInt("DataVersion") : -1;
-            Dynamic<Tag> dynamic = p_193011_.update(DataFixTypes.LEVEL.getType(), new Dynamic<>(p_78248_, compoundtag1), i, SharedConstants.getCurrentVersion().getWorldVersion());
-            Pair<WorldGenSettings, Lifecycle> pair = readWorldGenSettings(dynamic, p_193011_, i);
+            Dynamic<Tag> dynamic = p_211746_.update(DataFixTypes.LEVEL.getType(), new Dynamic<>(p_211738_, compoundtag1), i, SharedConstants.getCurrentVersion().getWorldVersion());
+            Pair<WorldGenSettings, Lifecycle> pair = readWorldGenSettings(dynamic, p_211746_, i);
             LevelVersion levelversion = LevelVersion.parse(dynamic);
-            LevelSettings levelsettings = LevelSettings.parse(dynamic, p_78249_);
-            return PrimaryLevelData.parse(dynamic, p_193011_, i, compoundtag2, levelsettings, levelversion, pair.getFirst(), pair.getSecond());
+            LevelSettings levelsettings = LevelSettings.parse(dynamic, p_211739_);
+            Lifecycle lifecycle = pair.getSecond().add(p_211740_);
+            return PrimaryLevelData.parse(dynamic, p_211746_, i, compoundtag2, levelsettings, levelversion, pair.getFirst(), lifecycle);
          } catch (Exception exception) {
-            LOGGER.error("Exception reading {}", p_193010_, exception);
+            LOGGER.error("Exception reading {}", p_211745_, exception);
             return null;
          }
       };
@@ -200,27 +214,38 @@ public class LevelStorageSource {
    BiFunction<File, DataFixer, LevelSummary> levelSummaryReader(File p_78233_, boolean p_78234_) {
       return (p_193015_, p_193016_) -> {
          try {
-            CompoundTag compoundtag = NbtIo.readCompressed(p_193015_);
-            CompoundTag compoundtag1 = compoundtag.getCompound("Data");
-            compoundtag1.remove("Player");
-            int i = compoundtag1.contains("DataVersion", 99) ? compoundtag1.getInt("DataVersion") : -1;
-            Dynamic<Tag> dynamic = p_193016_.update(DataFixTypes.LEVEL.getType(), new Dynamic<>(NbtOps.INSTANCE, compoundtag1), i, SharedConstants.getCurrentVersion().getWorldVersion());
-            LevelVersion levelversion = LevelVersion.parse(dynamic);
-            int j = levelversion.levelDataVersion();
-            if (j != 19132 && j != 19133) {
-               return null;
+            Tag tag = readLightweightData(p_193015_);
+            if (tag instanceof CompoundTag) {
+               CompoundTag compoundtag = (CompoundTag)tag;
+               CompoundTag compoundtag1 = compoundtag.getCompound("Data");
+               int i = compoundtag1.contains("DataVersion", 99) ? compoundtag1.getInt("DataVersion") : -1;
+               Dynamic<Tag> dynamic = p_193016_.update(DataFixTypes.LEVEL.getType(), new Dynamic<>(NbtOps.INSTANCE, compoundtag1), i, SharedConstants.getCurrentVersion().getWorldVersion());
+               LevelVersion levelversion = LevelVersion.parse(dynamic);
+               int j = levelversion.levelDataVersion();
+               if (j == 19132 || j == 19133) {
+                  boolean flag = j != this.getStorageVersion();
+                  File file1 = new File(p_78233_, "icon.png");
+                  DataPackConfig datapackconfig = dynamic.get("DataPacks").result().map(LevelStorageSource::readDataPackConfig).orElse(DataPackConfig.DEFAULT);
+                  LevelSettings levelsettings = LevelSettings.parse(dynamic, datapackconfig);
+                  return new LevelSummary(levelsettings, levelversion, p_78233_.getName(), flag, p_78234_, file1);
+               }
             } else {
-               boolean flag = j != this.getStorageVersion();
-               File file1 = new File(p_78233_, "icon.png");
-               DataPackConfig datapackconfig = dynamic.get("DataPacks").result().map(LevelStorageSource::readDataPackConfig).orElse(DataPackConfig.DEFAULT);
-               LevelSettings levelsettings = LevelSettings.parse(dynamic, datapackconfig);
-               return new LevelSummary(levelsettings, levelversion, p_78233_.getName(), flag, p_78234_, file1);
+               LOGGER.warn("Invalid root tag in {}", (Object)p_193015_);
             }
+
+            return null;
          } catch (Exception exception) {
             LOGGER.error("Exception reading {}", p_193015_, exception);
             return null;
          }
       };
+   }
+
+   @Nullable
+   private static Tag readLightweightData(File p_202313_) throws IOException {
+      SkipFields skipfields = new SkipFields(new FieldSelector("Data", CompoundTag.TYPE, "Player"), new FieldSelector("Data", CompoundTag.TYPE, "WorldGenSettings"));
+      NbtIo.parseCompressed(p_202313_, skipfields);
+      return skipfields.getResult();
    }
 
    public boolean isNewLevelIdAcceptable(String p_78241_) {
@@ -294,9 +319,9 @@ public class LevelStorageSource {
       }
 
       @Nullable
-      public WorldData getDataTag(DynamicOps<Tag> p_78281_, DataPackConfig p_78282_) {
+      public WorldData getDataTag(DynamicOps<Tag> p_211748_, DataPackConfig p_211749_, Lifecycle p_211750_) {
          this.checkLock();
-         return LevelStorageSource.this.readLevelData(this.levelPath.toFile(), LevelStorageSource.getLevelData(p_78281_, p_78282_));
+         return LevelStorageSource.this.readLevelData(this.levelPath.toFile(), LevelStorageSource.getLevelData(p_211748_, p_211749_, p_211750_));
       }
 
       @Nullable
@@ -334,6 +359,7 @@ public class LevelStorageSource {
       public void deleteLevel() throws IOException {
          this.checkLock();
          final Path path = this.levelPath.resolve("session.lock");
+         LevelStorageSource.LOGGER.info("Deleting level {}", (Object)this.levelId);
 
          for(int i = 1; i <= 5; ++i) {
             LevelStorageSource.LOGGER.info("Attempt {}...", (int)i);

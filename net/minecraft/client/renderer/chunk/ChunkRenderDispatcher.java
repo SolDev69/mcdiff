@@ -9,17 +9,19 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.ObjectArraySet;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -48,17 +50,16 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class ChunkRenderDispatcher {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final int MAX_WORKERS_32_BIT = 4;
    private static final VertexFormat VERTEX_FORMAT = DefaultVertexFormat.BLOCK;
    private static final int MAX_HIGH_PRIORITY_QUOTA = 2;
-   private final PriorityQueue<ChunkRenderDispatcher.RenderChunk.ChunkCompileTask> toBatchHighPriority = Queues.newPriorityQueue();
-   private final Queue<ChunkRenderDispatcher.RenderChunk.ChunkCompileTask> toBatchLowPriority = Queues.newArrayDeque();
+   private final PriorityBlockingQueue<ChunkRenderDispatcher.RenderChunk.ChunkCompileTask> toBatchHighPriority = Queues.newPriorityBlockingQueue();
+   private final Queue<ChunkRenderDispatcher.RenderChunk.ChunkCompileTask> toBatchLowPriority = Queues.newLinkedBlockingDeque();
    private int highPriorityQuota = 2;
    private final Queue<ChunkBufferBuilderPack> freeBuffers;
    private final Queue<Runnable> toUpload = Queues.newConcurrentLinkedQueue();
@@ -297,6 +298,7 @@ public class ChunkRenderDispatcher {
       public static final int SIZE = 16;
       public final int index;
       public final AtomicReference<ChunkRenderDispatcher.CompiledChunk> compiled = new AtomicReference<>(ChunkRenderDispatcher.CompiledChunk.UNCOMPILED);
+      final AtomicInteger initialCompilationCancelCount = new AtomicInteger(0);
       @Nullable
       private ChunkRenderDispatcher.RenderChunk.RebuildTask lastRebuildTask;
       @Nullable
@@ -307,7 +309,7 @@ public class ChunkRenderDispatcher {
       }, (p_112834_) -> {
          return new VertexBuffer();
       }));
-      public AABB bb;
+      private AABB bb;
       private boolean dirty = true;
       final BlockPos.MutableBlockPos origin = new BlockPos.MutableBlockPos(-1, -1, -1);
       private final BlockPos.MutableBlockPos[] relativeOrigins = Util.make(new BlockPos.MutableBlockPos[6], (p_112831_) -> {
@@ -318,8 +320,9 @@ public class ChunkRenderDispatcher {
       });
       private boolean playerChanged;
 
-      public RenderChunk(int p_173720_) {
-         this.index = p_173720_;
+      public RenderChunk(int p_202436_, int p_202437_, int p_202438_, int p_202439_) {
+         this.index = p_202436_;
+         this.setOrigin(p_202437_, p_202438_, p_202439_);
       }
 
       private boolean doesChunkExistAt(BlockPos p_112823_) {
@@ -335,21 +338,23 @@ public class ChunkRenderDispatcher {
          }
       }
 
+      public AABB getBoundingBox() {
+         return this.bb;
+      }
+
       public VertexBuffer getBuffer(RenderType p_112808_) {
          return this.buffers.get(p_112808_);
       }
 
       public void setOrigin(int p_112802_, int p_112803_, int p_112804_) {
-         if (p_112802_ != this.origin.getX() || p_112803_ != this.origin.getY() || p_112804_ != this.origin.getZ()) {
-            this.reset();
-            this.origin.set(p_112802_, p_112803_, p_112804_);
-            this.bb = new AABB((double)p_112802_, (double)p_112803_, (double)p_112804_, (double)(p_112802_ + 16), (double)(p_112803_ + 16), (double)(p_112804_ + 16));
+         this.reset();
+         this.origin.set(p_112802_, p_112803_, p_112804_);
+         this.bb = new AABB((double)p_112802_, (double)p_112803_, (double)p_112804_, (double)(p_112802_ + 16), (double)(p_112803_ + 16), (double)(p_112804_ + 16));
 
-            for(Direction direction : Direction.values()) {
-               this.relativeOrigins[direction.ordinal()].set(this.origin).move(direction, 16);
-            }
-
+         for(Direction direction : Direction.values()) {
+            this.relativeOrigins[direction.ordinal()].set(this.origin).move(direction, 16);
          }
+
       }
 
       protected double getDistToPlayerSqr() {
@@ -432,7 +437,6 @@ public class ChunkRenderDispatcher {
          if (this.lastResortTransparencyTask != null) {
             this.lastResortTransparencyTask.cancel();
             this.lastResortTransparencyTask = null;
-            flag = true;
          }
 
          return flag;
@@ -443,7 +447,12 @@ public class ChunkRenderDispatcher {
          BlockPos blockpos = this.origin.immutable();
          int i = 1;
          RenderChunkRegion renderchunkregion = p_200438_.createRegion(ChunkRenderDispatcher.this.level, blockpos.offset(-1, -1, -1), blockpos.offset(16, 16, 16), 1);
-         this.lastRebuildTask = new ChunkRenderDispatcher.RenderChunk.RebuildTask(this.getDistToPlayerSqr(), renderchunkregion, flag || this.compiled.get() != ChunkRenderDispatcher.CompiledChunk.UNCOMPILED);
+         boolean flag1 = this.compiled.get() == ChunkRenderDispatcher.CompiledChunk.UNCOMPILED;
+         if (flag1 && flag) {
+            this.initialCompilationCancelCount.incrementAndGet();
+         }
+
+         this.lastRebuildTask = new ChunkRenderDispatcher.RenderChunk.RebuildTask(this.getDistToPlayerSqr(), renderchunkregion, !flag1 || this.initialCompilationCancelCount.get() > 2);
          return this.lastRebuildTask;
       }
 
@@ -544,6 +553,7 @@ public class ChunkRenderDispatcher {
                         return ChunkRenderDispatcher.ChunkTaskResult.CANCELLED;
                      } else {
                         RenderChunk.this.compiled.set(chunkrenderdispatcher$compiledchunk);
+                        RenderChunk.this.initialCompilationCancelCount.set(0);
                         ChunkRenderDispatcher.this.renderer.addRecentlyCompiledChunk(RenderChunk.this);
                         return ChunkRenderDispatcher.ChunkTaskResult.SUCCESSFUL;
                      }
@@ -579,7 +589,8 @@ public class ChunkRenderDispatcher {
                      }
                   }
 
-                  FluidState fluidstate = renderchunkregion.getFluidState(blockpos2);
+                  BlockState blockstate1 = renderchunkregion.getBlockState(blockpos2);
+                  FluidState fluidstate = blockstate1.getFluidState();
                   if (!fluidstate.isEmpty()) {
                      RenderType rendertype = ItemBlockRenderTypes.getRenderLayer(fluidstate);
                      BufferBuilder bufferbuilder = p_112870_.builder(rendertype);
@@ -587,7 +598,7 @@ public class ChunkRenderDispatcher {
                         RenderChunk.this.beginLayer(bufferbuilder);
                      }
 
-                     if (blockrenderdispatcher.renderLiquid(blockpos2, renderchunkregion, bufferbuilder, fluidstate)) {
+                     if (blockrenderdispatcher.renderLiquid(blockpos2, renderchunkregion, bufferbuilder, blockstate1, fluidstate)) {
                         p_112869_.isCompletelyEmpty = false;
                         p_112869_.hasBlocks.add(rendertype);
                      }

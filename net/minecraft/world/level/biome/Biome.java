@@ -6,18 +6,17 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import it.unimi.dsi.fastutil.longs.Long2FloatLinkedOpenHashMap;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.core.Registry;
-import net.minecraft.data.BuiltinRegistries;
+import net.minecraft.core.RegistryCodecs;
 import net.minecraft.resources.RegistryFileCodec;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.Music;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
@@ -34,11 +33,8 @@ import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.synth.PerlinSimplexNoise;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.level.material.Fluids;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public final class Biome {
-   public static final Logger LOGGER = LogManager.getLogger();
    public static final Codec<Biome> DIRECT_CODEC = RecordCodecBuilder.create((p_186636_) -> {
       return p_186636_.group(Biome.ClimateSettings.CODEC.forGetter((p_151717_) -> {
          return p_151717_.climateSettings;
@@ -63,8 +59,8 @@ public final class Biome {
          return new Biome(p_186626_, p_186627_, p_186628_, BiomeGenerationSettings.EMPTY, MobSpawnSettings.EMPTY);
       });
    });
-   public static final Codec<Supplier<Biome>> CODEC = RegistryFileCodec.create(Registry.BIOME_REGISTRY, DIRECT_CODEC);
-   public static final Codec<List<Supplier<Biome>>> LIST_CODEC = RegistryFileCodec.homogeneousList(Registry.BIOME_REGISTRY, DIRECT_CODEC);
+   public static final Codec<Holder<Biome>> CODEC = RegistryFileCodec.create(Registry.BIOME_REGISTRY, DIRECT_CODEC);
+   public static final Codec<HolderSet<Biome>> LIST_CODEC = RegistryCodecs.homogeneousList(Registry.BIOME_REGISTRY, DIRECT_CODEC);
    private static final PerlinSimplexNoise TEMPERATURE_NOISE = new PerlinSimplexNoise(new WorldgenRandom(new LegacyRandomSource(1234L)), ImmutableList.of(0));
    static final PerlinSimplexNoise FROZEN_TEMPERATURE_NOISE = new PerlinSimplexNoise(new WorldgenRandom(new LegacyRandomSource(3456L)), ImmutableList.of(-2, -1, 0));
    /** @deprecated */
@@ -269,13 +265,14 @@ public final class Biome {
       return this.specialEffects.getBackgroundMusic();
    }
 
-   public final Biome.BiomeCategory getBiomeCategory() {
+   Biome.BiomeCategory getBiomeCategory() {
       return this.biomeCategory;
    }
 
-   public String toString() {
-      ResourceLocation resourcelocation = BuiltinRegistries.BIOME.getKey(this);
-      return resourcelocation == null ? super.toString() : resourcelocation.toString();
+   /** @deprecated */
+   @Deprecated
+   public static Biome.BiomeCategory getBiomeCategory(Holder<Biome> p_204184_) {
+      return p_204184_.value().getBiomeCategory();
    }
 
    public static class BiomeBuilder {
@@ -294,6 +291,10 @@ public final class Biome {
       private MobSpawnSettings mobSpawnSettings;
       @Nullable
       private BiomeGenerationSettings generationSettings;
+
+      public static Biome.BiomeBuilder from(Biome p_204186_) {
+         return (new Biome.BiomeBuilder()).precipitation(p_204186_.getPrecipitation()).biomeCategory(p_204186_.getBiomeCategory()).temperature(p_204186_.getBaseTemperature()).downfall(p_204186_.getDownfall()).specialEffects(p_204186_.getSpecialEffects()).generationSettings(p_204186_.getGenerationSettings()).mobSpawnSettings(p_204186_.getMobSettings());
+      }
 
       public Biome.BiomeBuilder precipitation(Biome.Precipitation p_47598_) {
          this.precipitation = p_47598_;

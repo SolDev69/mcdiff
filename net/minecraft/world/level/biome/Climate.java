@@ -10,6 +10,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -17,7 +18,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.QuartPos;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.util.Mth;
-import net.minecraft.world.level.levelgen.NoiseSampler;
+import net.minecraft.world.level.levelgen.DensityFunction;
+import net.minecraft.world.level.levelgen.DensityFunctions;
 
 public class Climate {
    private static final boolean DEBUG_SLOW_BIOME_SEARCH = false;
@@ -45,8 +47,13 @@ public class Climate {
       return (float)p_186797_ / 10000.0F;
    }
 
-   public static BlockPos findSpawnPosition(List<Climate.ParameterPoint> p_186807_, NoiseSampler p_186808_) {
-      return (new Climate.SpawnFinder(p_186807_, p_186808_)).result.location();
+   public static Climate.Sampler empty() {
+      DensityFunction densityfunction = DensityFunctions.zero();
+      return new Climate.Sampler(densityfunction, densityfunction, densityfunction, densityfunction, densityfunction, densityfunction, List.of());
+   }
+
+   public static BlockPos findSpawnPosition(List<Climate.ParameterPoint> p_207843_, Climate.Sampler p_207844_) {
+      return (new Climate.SpawnFinder(p_207843_, p_207844_)).result.location();
    }
 
    interface DistanceMetric<T> {
@@ -116,20 +123,23 @@ public class Climate {
          return this.values;
       }
 
-      public T findValue(Climate.TargetPoint p_186857_, T p_186858_) {
-         return this.findValueIndex(p_186857_);
+      public T findValue(Climate.TargetPoint p_204253_) {
+         return this.findValueIndex(p_204253_);
       }
 
       @VisibleForTesting
-      public T findValueBruteForce(Climate.TargetPoint p_186860_, T p_186861_) {
-         long i = Long.MAX_VALUE;
-         T t = p_186861_;
+      public T findValueBruteForce(Climate.TargetPoint p_204255_) {
+         Iterator<Pair<Climate.ParameterPoint, T>> iterator = this.values().iterator();
+         Pair<Climate.ParameterPoint, T> pair = iterator.next();
+         long i = pair.getFirst().fitness(p_204255_);
+         T t = pair.getSecond();
 
-         for(Pair<Climate.ParameterPoint, T> pair : this.values()) {
-            long j = pair.getFirst().fitness(p_186860_);
+         while(iterator.hasNext()) {
+            Pair<Climate.ParameterPoint, T> pair1 = iterator.next();
+            long j = pair1.getFirst().fitness(p_204255_);
             if (j < i) {
                i = j;
-               t = pair.getSecond();
+               t = pair1.getSecond();
             }
          }
 
@@ -389,58 +399,64 @@ public class Climate {
       }
    }
 
-   public interface Sampler {
-      Climate.TargetPoint sample(int p_186975_, int p_186976_, int p_186977_);
+   public static record Sampler(DensityFunction temperature, DensityFunction humidity, DensityFunction continentalness, DensityFunction erosion, DensityFunction depth, DensityFunction weirdness, List<Climate.ParameterPoint> spawnTarget) {
+      public Climate.TargetPoint sample(int p_186975_, int p_186976_, int p_186977_) {
+         int i = QuartPos.toBlock(p_186975_);
+         int j = QuartPos.toBlock(p_186976_);
+         int k = QuartPos.toBlock(p_186977_);
+         DensityFunction.SinglePointContext densityfunction$singlepointcontext = new DensityFunction.SinglePointContext(i, j, k);
+         return Climate.target((float)this.temperature.compute(densityfunction$singlepointcontext), (float)this.humidity.compute(densityfunction$singlepointcontext), (float)this.continentalness.compute(densityfunction$singlepointcontext), (float)this.erosion.compute(densityfunction$singlepointcontext), (float)this.depth.compute(densityfunction$singlepointcontext), (float)this.weirdness.compute(densityfunction$singlepointcontext));
+      }
 
-      default BlockPos findSpawnPosition() {
-         return BlockPos.ZERO;
+      public BlockPos findSpawnPosition() {
+         return this.spawnTarget.isEmpty() ? BlockPos.ZERO : Climate.findSpawnPosition(this.spawnTarget, this);
       }
    }
 
    static class SpawnFinder {
       Climate.SpawnFinder.Result result;
 
-      SpawnFinder(List<Climate.ParameterPoint> p_186980_, NoiseSampler p_186981_) {
-         this.result = getSpawnPositionAndFitness(p_186980_, p_186981_, 0, 0);
-         this.radialSearch(p_186980_, p_186981_, 2048.0F, 512.0F);
-         this.radialSearch(p_186980_, p_186981_, 512.0F, 32.0F);
+      SpawnFinder(List<Climate.ParameterPoint> p_207872_, Climate.Sampler p_207873_) {
+         this.result = getSpawnPositionAndFitness(p_207872_, p_207873_, 0, 0);
+         this.radialSearch(p_207872_, p_207873_, 2048.0F, 512.0F);
+         this.radialSearch(p_207872_, p_207873_, 512.0F, 32.0F);
       }
 
-      private void radialSearch(List<Climate.ParameterPoint> p_186983_, NoiseSampler p_186984_, float p_186985_, float p_186986_) {
+      private void radialSearch(List<Climate.ParameterPoint> p_207875_, Climate.Sampler p_207876_, float p_207877_, float p_207878_) {
          float f = 0.0F;
-         float f1 = p_186986_;
+         float f1 = p_207878_;
          BlockPos blockpos = this.result.location();
 
-         while(f1 <= p_186985_) {
+         while(f1 <= p_207877_) {
             int i = blockpos.getX() + (int)(Math.sin((double)f) * (double)f1);
             int j = blockpos.getZ() + (int)(Math.cos((double)f) * (double)f1);
-            Climate.SpawnFinder.Result climate$spawnfinder$result = getSpawnPositionAndFitness(p_186983_, p_186984_, i, j);
+            Climate.SpawnFinder.Result climate$spawnfinder$result = getSpawnPositionAndFitness(p_207875_, p_207876_, i, j);
             if (climate$spawnfinder$result.fitness() < this.result.fitness()) {
                this.result = climate$spawnfinder$result;
             }
 
-            f += p_186986_ / f1;
+            f += p_207878_ / f1;
             if ((double)f > (Math.PI * 2D)) {
                f = 0.0F;
-               f1 += p_186986_;
+               f1 += p_207878_;
             }
          }
 
       }
 
-      private static Climate.SpawnFinder.Result getSpawnPositionAndFitness(List<Climate.ParameterPoint> p_186988_, NoiseSampler p_186989_, int p_186990_, int p_186991_) {
+      private static Climate.SpawnFinder.Result getSpawnPositionAndFitness(List<Climate.ParameterPoint> p_207880_, Climate.Sampler p_207881_, int p_207882_, int p_207883_) {
          double d0 = Mth.square(2500.0D);
          int i = 2;
-         long j = (long)((double)Mth.square(10000.0F) * Math.pow((double)(Mth.square((long)p_186990_) + Mth.square((long)p_186991_)) / d0, 2.0D));
-         Climate.TargetPoint climate$targetpoint = p_186989_.sample(QuartPos.fromBlock(p_186990_), 0, QuartPos.fromBlock(p_186991_));
+         long j = (long)((double)Mth.square(10000.0F) * Math.pow((double)(Mth.square((long)p_207882_) + Mth.square((long)p_207883_)) / d0, 2.0D));
+         Climate.TargetPoint climate$targetpoint = p_207881_.sample(QuartPos.fromBlock(p_207882_), 0, QuartPos.fromBlock(p_207883_));
          Climate.TargetPoint climate$targetpoint1 = new Climate.TargetPoint(climate$targetpoint.temperature(), climate$targetpoint.humidity(), climate$targetpoint.continentalness(), climate$targetpoint.erosion(), 0L, climate$targetpoint.weirdness());
          long k = Long.MAX_VALUE;
 
-         for(Climate.ParameterPoint climate$parameterpoint : p_186988_) {
+         for(Climate.ParameterPoint climate$parameterpoint : p_207880_) {
             k = Math.min(k, climate$parameterpoint.fitness(climate$targetpoint1));
          }
 
-         return new Climate.SpawnFinder.Result(new BlockPos(p_186990_, 0, p_186991_), j + k);
+         return new Climate.SpawnFinder.Result(new BlockPos(p_207882_, 0, p_207883_), j + k);
       }
 
       static record Result(BlockPos location, long fitness) {

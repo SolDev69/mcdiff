@@ -9,6 +9,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonSyntaxException;
+import com.mojang.logging.LogUtils;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,7 +19,6 @@ import java.util.Optional;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import net.minecraft.Util;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
@@ -29,12 +29,11 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class RecipeManager extends SimpleJsonResourceReloadListener {
    private static final Gson GSON = (new GsonBuilder()).setPrettyPrinting().disableHtmlEscaping().create();
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private Map<RecipeType<?>, Map<ResourceLocation, Recipe<?>>> recipes = ImmutableMap.of();
    private Map<ResourceLocation, Recipe<?>> byName = ImmutableMap.of();
    private boolean hasErrors;
@@ -75,7 +74,7 @@ public class RecipeManager extends SimpleJsonResourceReloadListener {
 
    public <C extends Container, T extends Recipe<C>> Optional<T> getRecipeFor(RecipeType<T> p_44016_, C p_44017_, Level p_44018_) {
       return this.byType(p_44016_).values().stream().flatMap((p_44064_) -> {
-         return Util.toStream(p_44016_.tryMatch(p_44064_, p_44018_, p_44017_));
+         return p_44016_.tryMatch(p_44064_, p_44018_, p_44017_).stream();
       }).findFirst();
    }
 
@@ -87,7 +86,7 @@ public class RecipeManager extends SimpleJsonResourceReloadListener {
 
    public <C extends Container, T extends Recipe<C>> List<T> getRecipesFor(RecipeType<T> p_44057_, C p_44058_, Level p_44059_) {
       return this.byType(p_44057_).values().stream().flatMap((p_44023_) -> {
-         return Util.toStream(p_44057_.tryMatch(p_44023_, p_44059_, p_44058_));
+         return p_44057_.tryMatch(p_44023_, p_44059_, p_44058_).stream();
       }).sorted(Comparator.comparing((p_44012_) -> {
          return p_44012_.getResultItem().getDescriptionId();
       })).collect(Collectors.toList());

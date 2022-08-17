@@ -59,7 +59,7 @@ public class Boat extends Entity {
    public static final int PADDLE_LEFT = 0;
    public static final int PADDLE_RIGHT = 1;
    private static final int TIME_TO_EJECT = 60;
-   private static final double PADDLE_SPEED = (double)((float)Math.PI / 8F);
+   private static final float PADDLE_SPEED = ((float)Math.PI / 8F);
    public static final double PADDLE_SOUND_TIME = (double)((float)Math.PI / 4F);
    public static final int BUBBLE_TIME = 60;
    private final float[] paddlePositions = new float[2];
@@ -278,7 +278,7 @@ public class Boat extends Entity {
 
       for(int i = 0; i <= 1; ++i) {
          if (this.getPaddleState(i)) {
-            if (!this.isSilent() && (double)(this.paddlePositions[i] % ((float)Math.PI * 2F)) <= (double)((float)Math.PI / 4F) && ((double)this.paddlePositions[i] + (double)((float)Math.PI / 8F)) % (double)((float)Math.PI * 2F) >= (double)((float)Math.PI / 4F)) {
+            if (!this.isSilent() && (double)(this.paddlePositions[i] % ((float)Math.PI * 2F)) <= (double)((float)Math.PI / 4F) && (double)((this.paddlePositions[i] + ((float)Math.PI / 8F)) % ((float)Math.PI * 2F)) >= (double)((float)Math.PI / 4F)) {
                SoundEvent soundevent = this.getPaddleSound();
                if (soundevent != null) {
                   Vec3 vec3 = this.getViewVector(1.0F);
@@ -289,7 +289,7 @@ public class Boat extends Entity {
                }
             }
 
-            this.paddlePositions[i] = (float)((double)this.paddlePositions[i] + (double)((float)Math.PI / 8F));
+            this.paddlePositions[i] += ((float)Math.PI / 8F);
          } else {
             this.paddlePositions[i] = 0.0F;
          }
@@ -395,7 +395,7 @@ public class Boat extends Entity {
    }
 
    public float getRowingTime(int p_38316_, float p_38317_) {
-      return this.getPaddleState(p_38316_) ? (float)Mth.clampedLerp((double)this.paddlePositions[p_38316_] - (double)((float)Math.PI / 8F), (double)this.paddlePositions[p_38316_], (double)p_38317_) : 0.0F;
+      return this.getPaddleState(p_38316_) ? Mth.clampedLerp(this.paddlePositions[p_38316_] - ((float)Math.PI / 8F), this.paddlePositions[p_38316_], p_38317_) : 0.0F;
    }
 
    private Boat.Status getStatus() {
@@ -631,7 +631,7 @@ public class Boat extends Entity {
             }
 
             if (p_38379_ instanceof Animal) {
-               f = (float)((double)f + 0.2D);
+               f += 0.2F;
             }
          }
 
@@ -745,7 +745,7 @@ public class Boat extends Entity {
 
             this.resetFallDistance();
          } else if (!this.level.getFluidState(this.blockPosition().below()).is(FluidTags.WATER) && p_38307_ < 0.0D) {
-            this.fallDistance = (float)((double)this.fallDistance - p_38307_);
+            this.fallDistance -= (float)p_38307_;
          }
 
       }

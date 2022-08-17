@@ -1,24 +1,20 @@
 package net.minecraft.client.gui.screens.worldselection;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonIOException;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.logging.LogUtils;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.Lifecycle;
 import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.Button;
@@ -28,33 +24,31 @@ import net.minecraft.client.gui.components.MultiLineLabel;
 import net.minecraft.client.gui.components.Widget;
 import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.client.gui.screens.ConfirmScreen;
-import net.minecraft.commands.Commands;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.resources.RegistryReadOps;
-import net.minecraft.resources.RegistryWriteOps;
+import net.minecraft.resources.RegistryOps;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.ServerResources;
+import net.minecraft.server.WorldStem;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.repository.FolderRepositorySource;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.repository.ServerPacksSource;
+import net.minecraft.server.packs.resources.CloseableResourceManager;
+import net.minecraft.server.packs.resources.MultiPackResourceManager;
 import net.minecraft.world.level.levelgen.WorldGenSettings;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
+import org.slf4j.Logger;
 
 @OnlyIn(Dist.CLIENT)
 public class WorldGenSettingsComponent implements Widget {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private static final Component CUSTOM_WORLD_DESCRIPTION = new TranslatableComponent("generator.custom");
    private static final Component AMPLIFIED_HELP_TEXT = new TranslatableComponent("generator.amplified.info");
    private static final Component MAP_FEATURES_INFO = new TranslatableComponent("selectWorld.mapFeatures.info");
@@ -69,16 +63,16 @@ public class WorldGenSettingsComponent implements Widget {
    private Button customWorldDummyButton;
    private Button customizeTypeButton;
    private Button importSettingsButton;
-   private RegistryAccess.RegistryHolder registryHolder;
+   private RegistryAccess.Frozen registryHolder;
    private WorldGenSettings settings;
    private Optional<WorldPreset> preset;
    private OptionalLong seed;
 
-   public WorldGenSettingsComponent(RegistryAccess.RegistryHolder p_101399_, WorldGenSettings p_101400_, Optional<WorldPreset> p_101401_, OptionalLong p_101402_) {
-      this.registryHolder = p_101399_;
-      this.settings = p_101400_;
-      this.preset = p_101401_;
-      this.seed = p_101402_;
+   public WorldGenSettingsComponent(RegistryAccess.Frozen p_205452_, WorldGenSettings p_205453_, Optional<WorldPreset> p_205454_, OptionalLong p_205455_) {
+      this.registryHolder = p_205452_;
+      this.settings = p_205453_;
+      this.preset = p_205454_;
+      this.seed = p_205455_;
    }
 
    public void init(CreateWorldScreen p_101430_, Minecraft p_101431_, Font p_101432_) {
@@ -87,7 +81,7 @@ public class WorldGenSettingsComponent implements Widget {
       this.seedEdit = new EditBox(this.font, this.width / 2 - 100, 60, 200, 20, new TranslatableComponent("selectWorld.enterSeed"));
       this.seedEdit.setValue(toString(this.seed));
       this.seedEdit.setResponder((p_101465_) -> {
-         this.seed = this.parseSeed();
+         this.seed = WorldGenSettings.parseSeed(this.seedEdit.getValue());
       });
       p_101430_.addWidget(this.seedEdit);
       int i = this.width / 2 - 155;
@@ -126,92 +120,113 @@ public class WorldGenSettingsComponent implements Widget {
       this.importSettingsButton = p_101430_.addRenderableWidget(new Button(i, 185, 150, 20, new TranslatableComponent("selectWorld.import_worldgen_settings"), (p_170271_) -> {
          String s = TinyFileDialogs.tinyfd_openFileDialog(SELECT_FILE_PROMPT.getString(), (CharSequence)null, (PointerBuffer)null, (CharSequence)null, false);
          if (s != null) {
-            RegistryAccess.RegistryHolder registryaccess$registryholder = RegistryAccess.builtin();
+            RegistryAccess.Writable registryaccess$writable = RegistryAccess.builtinCopy();
             PackRepository packrepository = new PackRepository(PackType.SERVER_DATA, new ServerPacksSource(), new FolderRepositorySource(p_101430_.getTempDataPackDir().toFile(), PackSource.WORLD));
 
-            ServerResources serverresources;
-            try {
-               MinecraftServer.configurePackRepository(packrepository, p_101430_.dataPacks, false);
-               CompletableFuture<ServerResources> completablefuture = ServerResources.loadResources(packrepository.openAllSelected(), registryaccess$registryholder, Commands.CommandSelection.INTEGRATED, 2, Util.backgroundExecutor(), p_101431_);
-               p_101431_.managedBlock(completablefuture::isDone);
-               serverresources = completablefuture.get();
-            } catch (ExecutionException | InterruptedException interruptedexception) {
-               LOGGER.error("Error loading data packs when importing world settings", (Throwable)interruptedexception);
-               Component component = new TranslatableComponent("selectWorld.import_worldgen_settings.failure");
-               Component component1 = new TextComponent(interruptedexception.getMessage());
-               p_101431_.getToasts().addToast(SystemToast.multiline(p_101431_, SystemToast.SystemToastIds.WORLD_GEN_SETTINGS_TRANSFER, component, component1));
+            label74: {
+               DataResult<WorldGenSettings> dataresult;
+               try {
+                  MinecraftServer.configurePackRepository(packrepository, p_101430_.dataPacks, false);
+                  CloseableResourceManager closeableresourcemanager = new MultiPackResourceManager(PackType.SERVER_DATA, packrepository.openAllSelected());
+
+                  label70: {
+                     try {
+                        DynamicOps<JsonElement> dynamicops = RegistryOps.createAndLoad(JsonOps.INSTANCE, registryaccess$writable, closeableresourcemanager);
+
+                        try {
+                           BufferedReader bufferedreader = Files.newBufferedReader(Paths.get(s));
+
+                           try {
+                              JsonElement jsonelement = JsonParser.parseReader(bufferedreader);
+                              dataresult = WorldGenSettings.CODEC.parse(dynamicops, jsonelement);
+                           } catch (Throwable throwable3) {
+                              if (bufferedreader != null) {
+                                 try {
+                                    bufferedreader.close();
+                                 } catch (Throwable throwable2) {
+                                    throwable3.addSuppressed(throwable2);
+                                 }
+                              }
+
+                              throw throwable3;
+                           }
+
+                           if (bufferedreader != null) {
+                              bufferedreader.close();
+                           }
+                        } catch (Exception exception) {
+                           dataresult = DataResult.error("Failed to parse file: " + exception.getMessage());
+                        }
+
+                        if (!dataresult.error().isPresent()) {
+                           break label70;
+                        }
+
+                        Component component1 = new TranslatableComponent("selectWorld.import_worldgen_settings.failure");
+                        String s1 = dataresult.error().get().message();
+                        LOGGER.error("Error parsing world settings: {}", (Object)s1);
+                        Component component = new TextComponent(s1);
+                        p_101431_.getToasts().addToast(SystemToast.multiline(p_101431_, SystemToast.SystemToastIds.WORLD_GEN_SETTINGS_TRANSFER, component1, component));
+                     } catch (Throwable throwable4) {
+                        try {
+                           closeableresourcemanager.close();
+                        } catch (Throwable throwable1) {
+                           throwable4.addSuppressed(throwable1);
+                        }
+
+                        throw throwable4;
+                     }
+
+                     closeableresourcemanager.close();
+                     break label74;
+                  }
+
+                  closeableresourcemanager.close();
+               } catch (Throwable throwable5) {
+                  try {
+                     packrepository.close();
+                  } catch (Throwable throwable) {
+                     throwable5.addSuppressed(throwable);
+                  }
+
+                  throw throwable5;
+               }
+
                packrepository.close();
+               Lifecycle lifecycle = dataresult.lifecycle();
+               dataresult.resultOrPartial(LOGGER::error).ifPresent((p_205461_) -> {
+                  BooleanConsumer booleanconsumer = (p_205467_) -> {
+                     p_101431_.setScreen(p_101430_);
+                     if (p_205467_) {
+                        this.importSettings(registryaccess$writable.freeze(), p_205461_);
+                     }
+
+                  };
+                  if (lifecycle == Lifecycle.stable()) {
+                     this.importSettings(registryaccess$writable.freeze(), p_205461_);
+                  } else if (lifecycle == Lifecycle.experimental()) {
+                     p_101431_.setScreen(new ConfirmScreen(booleanconsumer, new TranslatableComponent("selectWorld.import_worldgen_settings.experimental.title"), new TranslatableComponent("selectWorld.import_worldgen_settings.experimental.question")));
+                  } else {
+                     p_101431_.setScreen(new ConfirmScreen(booleanconsumer, new TranslatableComponent("selectWorld.import_worldgen_settings.deprecated.title"), new TranslatableComponent("selectWorld.import_worldgen_settings.deprecated.question")));
+                  }
+
+               });
                return;
             }
 
-            RegistryReadOps<JsonElement> registryreadops = RegistryReadOps.createAndLoad(JsonOps.INSTANCE, serverresources.getResourceManager(), registryaccess$registryholder);
-            JsonParser jsonparser = new JsonParser();
-
-            DataResult<WorldGenSettings> dataresult;
-            try {
-               BufferedReader bufferedreader = Files.newBufferedReader(Paths.get(s));
-
-               try {
-                  JsonElement jsonelement = jsonparser.parse(bufferedreader);
-                  dataresult = WorldGenSettings.CODEC.parse(registryreadops, jsonelement);
-               } catch (Throwable throwable1) {
-                  if (bufferedreader != null) {
-                     try {
-                        bufferedreader.close();
-                     } catch (Throwable throwable) {
-                        throwable1.addSuppressed(throwable);
-                     }
-                  }
-
-                  throw throwable1;
-               }
-
-               if (bufferedreader != null) {
-                  bufferedreader.close();
-               }
-            } catch (JsonIOException | JsonSyntaxException | IOException ioexception) {
-               dataresult = DataResult.error("Failed to parse file: " + ioexception.getMessage());
-            }
-
-            if (dataresult.error().isPresent()) {
-               Component component3 = new TranslatableComponent("selectWorld.import_worldgen_settings.failure");
-               String s1 = dataresult.error().get().message();
-               LOGGER.error("Error parsing world settings: {}", (Object)s1);
-               Component component2 = new TextComponent(s1);
-               p_101431_.getToasts().addToast(SystemToast.multiline(p_101431_, SystemToast.SystemToastIds.WORLD_GEN_SETTINGS_TRANSFER, component3, component2));
-            }
-
-            serverresources.close();
-            Lifecycle lifecycle = dataresult.lifecycle();
-            dataresult.resultOrPartial(LOGGER::error).ifPresent((p_170254_) -> {
-               BooleanConsumer booleanconsumer = (p_170260_) -> {
-                  p_101431_.setScreen(p_101430_);
-                  if (p_170260_) {
-                     this.importSettings(registryaccess$registryholder, p_170254_);
-                  }
-
-               };
-               if (lifecycle == Lifecycle.stable()) {
-                  this.importSettings(registryaccess$registryholder, p_170254_);
-               } else if (lifecycle == Lifecycle.experimental()) {
-                  p_101431_.setScreen(new ConfirmScreen(booleanconsumer, new TranslatableComponent("selectWorld.import_worldgen_settings.experimental.title"), new TranslatableComponent("selectWorld.import_worldgen_settings.experimental.question")));
-               } else {
-                  p_101431_.setScreen(new ConfirmScreen(booleanconsumer, new TranslatableComponent("selectWorld.import_worldgen_settings.deprecated.title"), new TranslatableComponent("selectWorld.import_worldgen_settings.deprecated.question")));
-               }
-
-            });
+            packrepository.close();
          }
       }));
       this.importSettingsButton.visible = false;
       this.amplifiedWorldInfo = MultiLineLabel.create(p_101432_, AMPLIFIED_HELP_TEXT, this.typeButton.getWidth());
    }
 
-   private void importSettings(RegistryAccess.RegistryHolder p_101443_, WorldGenSettings p_101444_) {
-      this.registryHolder = p_101443_;
-      this.settings = p_101444_;
-      this.preset = WorldPreset.of(p_101444_);
+   private void importSettings(RegistryAccess.Frozen p_205469_, WorldGenSettings p_205470_) {
+      this.registryHolder = p_205469_;
+      this.settings = p_205470_;
+      this.preset = WorldPreset.of(p_205470_);
       this.selectWorldTypeButton(true);
-      this.seed = OptionalLong.of(p_101444_.seed());
+      this.seed = OptionalLong.of(p_205470_.seed());
       this.seedEdit.setValue(toString(this.seed));
    }
 
@@ -239,34 +254,9 @@ public class WorldGenSettingsComponent implements Widget {
       return p_101448_.isPresent() ? Long.toString(p_101448_.getAsLong()) : "";
    }
 
-   private static OptionalLong parseLong(String p_101446_) {
-      try {
-         return OptionalLong.of(Long.parseLong(p_101446_));
-      } catch (NumberFormatException numberformatexception) {
-         return OptionalLong.empty();
-      }
-   }
-
    public WorldGenSettings makeSettings(boolean p_101455_) {
-      OptionalLong optionallong = this.parseSeed();
+      OptionalLong optionallong = WorldGenSettings.parseSeed(this.seedEdit.getValue());
       return this.settings.withSeed(p_101455_, optionallong);
-   }
-
-   private OptionalLong parseSeed() {
-      String s = this.seedEdit.getValue();
-      OptionalLong optionallong;
-      if (StringUtils.isEmpty(s)) {
-         optionallong = OptionalLong.empty();
-      } else {
-         OptionalLong optionallong1 = parseLong(s);
-         if (optionallong1.isPresent() && optionallong1.getAsLong() != 0L) {
-            optionallong = optionallong1;
-         } else {
-            optionallong = OptionalLong.of((long)s.hashCode());
-         }
-      }
-
-      return optionallong;
    }
 
    public boolean isDebug() {
@@ -301,21 +291,13 @@ public class WorldGenSettingsComponent implements Widget {
 
    }
 
-   public RegistryAccess.RegistryHolder registryHolder() {
+   public RegistryAccess registryHolder() {
       return this.registryHolder;
    }
 
-   void updateDataPacks(ServerResources p_101453_) {
-      RegistryAccess.RegistryHolder registryaccess$registryholder = RegistryAccess.builtin();
-      RegistryWriteOps<JsonElement> registrywriteops = RegistryWriteOps.create(JsonOps.INSTANCE, this.registryHolder);
-      RegistryReadOps<JsonElement> registryreadops = RegistryReadOps.createAndLoad(JsonOps.INSTANCE, p_101453_.getResourceManager(), registryaccess$registryholder);
-      DataResult<WorldGenSettings> dataresult = WorldGenSettings.CODEC.encodeStart(registrywriteops, this.settings).flatMap((p_170278_) -> {
-         return WorldGenSettings.CODEC.parse(registryreadops, p_170278_);
-      });
-      dataresult.resultOrPartial(Util.prefix("Error parsing worldgen settings after loading data packs: ", LOGGER::error)).ifPresent((p_170286_) -> {
-         this.settings = p_170286_;
-         this.registryHolder = registryaccess$registryholder;
-      });
+   void updateDataPacks(WorldStem p_205472_) {
+      this.settings = p_205472_.worldData().worldGenSettings();
+      this.registryHolder = p_205472_.registryAccess();
    }
 
    public void switchToHardcore() {

@@ -3,6 +3,7 @@ package net.minecraft.server.level;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Sets;
 import com.mojang.datafixers.util.Either;
+import com.mojang.logging.LogUtils;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,11 +21,10 @@ import net.minecraft.util.thread.ProcessorHandle;
 import net.minecraft.util.thread.ProcessorMailbox;
 import net.minecraft.util.thread.StrictQueue;
 import net.minecraft.world.level.ChunkPos;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class ChunkTaskPriorityQueueSorter implements ChunkHolder.LevelChangeListener, AutoCloseable {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final Map<ProcessorHandle<?>, ChunkTaskPriorityQueue<? extends Function<ProcessorHandle<Unit>, ?>>> queues;
    private final Set<ProcessorHandle<?>> sleeping;
    private final ProcessorMailbox<StrictQueue.IntRunnable> mailbox;
@@ -35,6 +35,10 @@ public class ChunkTaskPriorityQueueSorter implements ChunkHolder.LevelChangeList
       }));
       this.sleeping = Sets.newHashSet(p_140555_);
       this.mailbox = new ProcessorMailbox<>(new StrictQueue.FixedPriorityQueue(4), p_140556_, "sorter");
+   }
+
+   public boolean hasWork() {
+      return this.mailbox.hasWork() || this.queues.values().stream().anyMatch(ChunkTaskPriorityQueue::hasWork);
    }
 
    public static <T> ChunkTaskPriorityQueueSorter.Message<T> message(Function<ProcessorHandle<Unit>, T> p_143182_, long p_143183_, IntSupplier p_143184_) {
@@ -127,12 +131,14 @@ public class ChunkTaskPriorityQueueSorter implements ChunkHolder.LevelChangeList
          if (stream == null) {
             this.sleeping.add(p_140647_);
          } else {
-            Util.sequence(stream.map((p_143172_) -> {
+            CompletableFuture.allOf(stream.map((p_143172_) -> {
                return p_143172_.map(p_140647_::ask, (p_143180_) -> {
                   p_143180_.run();
                   return CompletableFuture.completedFuture(Unit.INSTANCE);
                });
-            }).collect(Collectors.toList())).thenAccept((p_143162_) -> {
+            }).toArray((p_212890_) -> {
+               return new CompletableFuture[p_212890_];
+            })).thenAccept((p_212894_) -> {
                this.pollTask(p_140646_, p_140647_);
             });
          }
@@ -151,9 +157,9 @@ public class ChunkTaskPriorityQueueSorter implements ChunkHolder.LevelChangeList
 
    @VisibleForTesting
    public String getDebugStatus() {
-      return (String)this.queues.entrySet().stream().map((p_140636_) -> {
-         return p_140636_.getKey().name() + "=[" + (String)p_140636_.getValue().getAcquired().stream().map((p_143178_) -> {
-            return p_143178_ + ":" + new ChunkPos(p_143178_);
+      return (String)this.queues.entrySet().stream().map((p_212898_) -> {
+         return p_212898_.getKey().name() + "=[" + (String)p_212898_.getValue().getAcquired().stream().map((p_212896_) -> {
+            return p_212896_ + ":" + new ChunkPos(p_212896_);
          }).collect(Collectors.joining(",")) + "]";
       }).collect(Collectors.joining(",")) + ", s=" + this.sleeping.size();
    }

@@ -1,6 +1,5 @@
 package net.minecraft.world.level.biome;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -9,15 +8,19 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.util.CubicSpline;
 import net.minecraft.util.Mth;
 import net.minecraft.util.StringRepresentable;
 import net.minecraft.util.ToFloatFunction;
 import net.minecraft.util.VisibleForDebug;
+import net.minecraft.world.level.levelgen.DensityFunction;
+import org.jetbrains.annotations.VisibleForTesting;
 
-public final class TerrainShaper {
+public record TerrainShaper(CubicSpline<TerrainShaper.Point> offsetSampler, CubicSpline<TerrainShaper.Point> factorSampler, CubicSpline<TerrainShaper.Point> jaggednessSampler) {
    private static final Codec<CubicSpline<TerrainShaper.Point>> SPLINE_CODEC = CubicSpline.codec(TerrainShaper.Coordinate.WIDE_CODEC);
+   public static final Codec<CubicSpline<TerrainShaper.PointCustom>> SPLINE_CUSTOM_CODEC = CubicSpline.codec(TerrainShaper.CoordinateCustom.WIDE_CODEC);
    public static final Codec<TerrainShaper> CODEC = RecordCodecBuilder.create((p_187316_) -> {
       return p_187316_.group(SPLINE_CODEC.fieldOf("offset").forGetter(TerrainShaper::offsetSampler), SPLINE_CODEC.fieldOf("factor").forGetter(TerrainShaper::factorSampler), SPLINE_CODEC.fieldOf("jaggedness").forGetter((p_187314_) -> {
          return p_187314_.jaggednessSampler;
@@ -27,15 +30,6 @@ public final class TerrainShaper {
    private static final ToFloatFunction<Float> NO_TRANSFORM = (p_187318_) -> {
       return p_187318_;
    };
-   private final CubicSpline<TerrainShaper.Point> offsetSampler;
-   private final CubicSpline<TerrainShaper.Point> factorSampler;
-   private final CubicSpline<TerrainShaper.Point> jaggednessSampler;
-
-   public TerrainShaper(CubicSpline<TerrainShaper.Point> p_187261_, CubicSpline<TerrainShaper.Point> p_187262_, CubicSpline<TerrainShaper.Point> p_187263_) {
-      this.offsetSampler = p_187261_;
-      this.factorSampler = p_187262_;
-      this.jaggednessSampler = p_187263_;
-   }
 
    private static float getAmplifiedOffset(float p_187325_) {
       return p_187325_ < 0.0F ? p_187325_ : p_187325_ * 2.0F;
@@ -230,21 +224,6 @@ public final class TerrainShaper {
 
    }
 
-   @VisibleForDebug
-   public CubicSpline<TerrainShaper.Point> offsetSampler() {
-      return this.offsetSampler;
-   }
-
-   @VisibleForDebug
-   public CubicSpline<TerrainShaper.Point> factorSampler() {
-      return this.factorSampler;
-   }
-
-   @VisibleForDebug
-   public CubicSpline<TerrainShaper.Point> jaggednessSampler() {
-      return this.jaggednessSampler;
-   }
-
    public float offset(TerrainShaper.Point p_187312_) {
       return this.offsetSampler.apply(p_187312_) + -0.50375F;
    }
@@ -257,8 +236,12 @@ public final class TerrainShaper {
       return this.jaggednessSampler.apply(p_187340_);
    }
 
-   public TerrainShaper.Point makePoint(float p_187268_, float p_187269_, float p_187270_) {
+   public static TerrainShaper.Point makePoint(float p_187268_, float p_187269_, float p_187270_) {
       return new TerrainShaper.Point(p_187268_, p_187269_, peaksAndValleys(p_187270_), p_187270_);
+   }
+
+   public static TerrainShaper.PointCustom makePoint(DensityFunction.FunctionContext p_211600_) {
+      return new TerrainShaper.PointCustom(p_211600_);
    }
 
    public static float peaksAndValleys(float p_187266_) {
@@ -312,6 +295,31 @@ public final class TerrainShaper {
       }
    }
 
+   public static record CoordinateCustom(Holder<DensityFunction> function) implements ToFloatFunction<TerrainShaper.PointCustom> {
+      static final Codec<ToFloatFunction<TerrainShaper.PointCustom>> WIDE_CODEC = DensityFunction.CODEC.flatComapMap(TerrainShaper.CoordinateCustom::new, (p_211608_) -> {
+         DataResult dataresult;
+         if (p_211608_ instanceof TerrainShaper.CoordinateCustom) {
+            TerrainShaper.CoordinateCustom terrainshaper$coordinatecustom = (TerrainShaper.CoordinateCustom)p_211608_;
+            dataresult = DataResult.success(terrainshaper$coordinatecustom.function());
+         } else {
+            dataresult = DataResult.error("Not a coordinate resolver: " + p_211608_);
+         }
+
+         return dataresult;
+      });
+
+      public float apply(TerrainShaper.PointCustom p_211610_) {
+         return (float)this.function.value().compute(p_211610_.context());
+      }
+
+      public TerrainShaper.CoordinateCustom mapAll(DensityFunction.Visitor p_211612_) {
+         return new TerrainShaper.CoordinateCustom(new Holder.Direct<>(this.function.value().mapAll(p_211612_)));
+      }
+   }
+
    public static record Point(float continents, float erosion, float ridges, float weirdness) {
+   }
+
+   public static record PointCustom(DensityFunction.FunctionContext context) {
    }
 }

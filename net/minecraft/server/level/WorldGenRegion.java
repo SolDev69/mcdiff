@@ -1,5 +1,6 @@
 package net.minecraft.server.level;
 
+import com.mojang.logging.LogUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
@@ -10,6 +11,7 @@ import javax.annotation.Nullable;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.SectionPos;
 import net.minecraft.core.particles.ParticleOptions;
@@ -41,8 +43,6 @@ import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
-import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.FluidState;
@@ -50,11 +50,10 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.ticks.LevelTickAccess;
 import net.minecraft.world.ticks.WorldGenTickAccess;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public class WorldGenRegion implements WorldGenLevel {
-   private static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    private final List<ChunkAccess> cache;
    private final ChunkAccess center;
    private final int size;
@@ -165,8 +164,8 @@ public class WorldGenRegion implements WorldGenLevel {
       return this.biomeManager;
    }
 
-   public Biome getUncachedNoiseBiome(int p_9510_, int p_9511_, int p_9512_) {
-      return this.level.getUncachedNoiseBiome(p_9510_, p_9511_, p_9512_);
+   public Holder<Biome> getUncachedNoiseBiome(int p_203787_, int p_203788_, int p_203789_) {
+      return this.level.getUncachedNoiseBiome(p_203787_, p_203788_, p_203789_);
    }
 
    public float getShade(Direction p_9555_, boolean p_9556_) {
@@ -396,10 +395,6 @@ public class WorldGenRegion implements WorldGenLevel {
 
    public List<Player> players() {
       return Collections.emptyList();
-   }
-
-   public List<? extends StructureStart<?>> startsForFeature(SectionPos p_184186_, StructureFeature<?> p_184187_) {
-      return this.structureFeatureManager.startsForFeature(p_184186_, p_184187_);
    }
 
    public int getMinBuildHeight() {

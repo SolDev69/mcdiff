@@ -20,8 +20,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
-import net.minecraft.world.level.levelgen.feature.StructurePieceType;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
+import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceType;
 
 public class OceanMonumentPieces {
    private OceanMonumentPieces() {
@@ -1336,15 +1336,15 @@ public class OceanMonumentPieces {
          return p_72395_ * 25 + p_72396_ * 5 + p_72394_;
       }
 
-      public OceanMonumentPiece(StructurePieceType p_163033_, Direction p_163034_, int p_163035_, BoundingBox p_163036_) {
-         super(p_163033_, p_163035_, p_163036_);
-         this.setOrientation(p_163034_);
+      public OceanMonumentPiece(StructurePieceType p_209902_, Direction p_209903_, int p_209904_, BoundingBox p_209905_) {
+         super(p_209902_, p_209904_, p_209905_);
+         this.setOrientation(p_209903_);
       }
 
-      protected OceanMonumentPiece(StructurePieceType p_72340_, int p_72341_, Direction p_72342_, OceanMonumentPieces.RoomDefinition p_72343_, int p_72344_, int p_72345_, int p_72346_) {
-         super(p_72340_, p_72341_, makeBoundingBox(p_72342_, p_72343_, p_72344_, p_72345_, p_72346_));
-         this.setOrientation(p_72342_);
-         this.roomDefinition = p_72343_;
+      protected OceanMonumentPiece(StructurePieceType p_209894_, int p_209895_, Direction p_209896_, OceanMonumentPieces.RoomDefinition p_209897_, int p_209898_, int p_209899_, int p_209900_) {
+         super(p_209894_, p_209895_, makeBoundingBox(p_209896_, p_209897_, p_209898_, p_209899_, p_209900_));
+         this.setOrientation(p_209896_);
+         this.roomDefinition = p_209897_;
       }
 
       private static BoundingBox makeBoundingBox(Direction p_163041_, OceanMonumentPieces.RoomDefinition p_163042_, int p_163043_, int p_163044_, int p_163045_) {
@@ -1371,8 +1371,8 @@ public class OceanMonumentPieces {
          return boundingbox;
       }
 
-      public OceanMonumentPiece(StructurePieceType p_72352_, CompoundTag p_72353_) {
-         super(p_72352_, p_72353_);
+      public OceanMonumentPiece(StructurePieceType p_209907_, CompoundTag p_209908_) {
+         super(p_209907_, p_209908_);
       }
 
       protected void addAdditionalSaveData(StructurePieceSerializationContext p_192355_, CompoundTag p_192356_) {

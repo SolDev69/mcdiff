@@ -114,6 +114,10 @@ public class DripstoneUtils {
       return p_159665_.isAir() || p_159665_.is(Blocks.WATER);
    }
 
+   public static boolean isNeitherEmptyNorWater(BlockState p_203131_) {
+      return !p_203131_.isAir() && !p_203131_.is(Blocks.WATER);
+   }
+
    public static boolean isEmptyOrWaterOrLava(BlockState p_159667_) {
       return p_159667_.isAir() || p_159667_.is(Blocks.WATER) || p_159667_.is(Blocks.LAVA);
    }

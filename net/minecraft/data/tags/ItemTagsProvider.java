@@ -1,19 +1,18 @@
 package net.minecraft.data.tags;
 
-import java.nio.file.Path;
 import java.util.function.Function;
 import net.minecraft.core.Registry;
 import net.minecraft.data.DataGenerator;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 
 public class ItemTagsProvider extends TagsProvider<Item> {
-   private final Function<Tag.Named<Block>, Tag.Builder> blockTags;
+   private final Function<TagKey<Block>, Tag.Builder> blockTags;
 
    public ItemTagsProvider(DataGenerator p_126530_, BlockTagsProvider p_126531_) {
       super(p_126530_, Registry.ITEM);
@@ -94,14 +93,10 @@ public class ItemTagsProvider extends TagsProvider<Item> {
       this.tag(ItemTags.CLUSTER_MAX_HARVESTABLES).add(Items.DIAMOND_PICKAXE, Items.GOLDEN_PICKAXE, Items.IRON_PICKAXE, Items.NETHERITE_PICKAXE, Items.STONE_PICKAXE, Items.WOODEN_PICKAXE);
    }
 
-   protected void copy(Tag.Named<Block> p_126534_, Tag.Named<Item> p_126535_) {
-      Tag.Builder tag$builder = this.getOrCreateRawBuilder(p_126535_);
-      Tag.Builder tag$builder1 = this.blockTags.apply(p_126534_);
+   protected void copy(TagKey<Block> p_206422_, TagKey<Item> p_206423_) {
+      Tag.Builder tag$builder = this.getOrCreateRawBuilder(p_206423_);
+      Tag.Builder tag$builder1 = this.blockTags.apply(p_206422_);
       tag$builder1.getEntries().forEach(tag$builder::add);
-   }
-
-   protected Path getPath(ResourceLocation p_126537_) {
-      return this.generator.getOutputFolder().resolve("data/" + p_126537_.getNamespace() + "/tags/items/" + p_126537_.getPath() + ".json");
    }
 
    public String getName() {

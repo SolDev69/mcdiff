@@ -18,7 +18,7 @@ import net.minecraft.advancements.RequirementsStrategy;
 import net.minecraft.advancements.critereon.RecipeUnlockedTrigger;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -46,8 +46,8 @@ public class ShapedRecipeBuilder implements RecipeBuilder {
       return new ShapedRecipeBuilder(p_126119_, p_126120_);
    }
 
-   public ShapedRecipeBuilder define(Character p_126122_, Tag<Item> p_126123_) {
-      return this.define(p_126122_, Ingredient.of(p_126123_));
+   public ShapedRecipeBuilder define(Character p_206417_, TagKey<Item> p_206418_) {
+      return this.define(p_206417_, Ingredient.of(p_206418_));
    }
 
    public ShapedRecipeBuilder define(Character p_126128_, ItemLike p_126129_) {

@@ -54,7 +54,7 @@ public class StrollThroughVillageGoal extends Goal {
    public void tick() {
       if (this.wantedPos != null) {
          PathNavigation pathnavigation = this.mob.getNavigation();
-         if (pathnavigation.isDone() && !this.wantedPos.closerThan(this.mob.position(), 10.0D)) {
+         if (pathnavigation.isDone() && !this.wantedPos.closerToCenterThan(this.mob.position(), 10.0D)) {
             Vec3 vec3 = Vec3.atBottomCenterOf(this.wantedPos);
             Vec3 vec31 = this.mob.position();
             Vec3 vec32 = vec31.subtract(vec3);

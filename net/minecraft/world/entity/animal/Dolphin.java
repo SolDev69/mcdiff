@@ -14,6 +14,7 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.ConfiguredStructureTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
@@ -57,7 +58,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
 import net.minecraft.world.level.pathfinder.PathComputationType;
 import net.minecraft.world.phys.Vec3;
 
@@ -321,7 +321,7 @@ public class Dolphin extends WaterAnimal {
 
    protected boolean closeToNextPos() {
       BlockPos blockpos = this.getNavigation().getTargetPos();
-      return blockpos != null ? blockpos.closerThan(this.position(), 12.0D) : false;
+      return blockpos != null ? blockpos.closerToCenterThan(this.position(), 12.0D) : false;
    }
 
    public void travel(Vec3 p_28383_) {
@@ -361,7 +361,7 @@ public class Dolphin extends WaterAnimal {
 
       public boolean canContinueToUse() {
          BlockPos blockpos = this.dolphin.getTreasurePos();
-         return !(new BlockPos((double)blockpos.getX(), this.dolphin.getY(), (double)blockpos.getZ())).closerThan(this.dolphin.position(), 4.0D) && !this.stuck && this.dolphin.getAirSupply() >= 100;
+         return !(new BlockPos((double)blockpos.getX(), this.dolphin.getY(), (double)blockpos.getZ())).closerToCenterThan(this.dolphin.position(), 4.0D) && !this.stuck && this.dolphin.getAirSupply() >= 100;
       }
 
       public void start() {
@@ -370,28 +370,19 @@ public class Dolphin extends WaterAnimal {
             this.stuck = false;
             this.dolphin.getNavigation().stop();
             BlockPos blockpos = this.dolphin.blockPosition();
-            StructureFeature<?> structurefeature = (double)serverlevel.random.nextFloat() >= 0.5D ? StructureFeature.OCEAN_RUIN : StructureFeature.SHIPWRECK;
-            BlockPos blockpos1 = serverlevel.findNearestMapFeature(structurefeature, blockpos, 50, false);
-            if (blockpos1 == null) {
-               StructureFeature<?> structurefeature1 = structurefeature.equals(StructureFeature.OCEAN_RUIN) ? StructureFeature.SHIPWRECK : StructureFeature.OCEAN_RUIN;
-               BlockPos blockpos2 = serverlevel.findNearestMapFeature(structurefeature1, blockpos, 50, false);
-               if (blockpos2 == null) {
-                  this.stuck = true;
-                  return;
-               }
-
-               this.dolphin.setTreasurePos(blockpos2);
-            } else {
+            BlockPos blockpos1 = serverlevel.findNearestMapFeature(ConfiguredStructureTags.DOLPHIN_LOCATED, blockpos, 50, false);
+            if (blockpos1 != null) {
                this.dolphin.setTreasurePos(blockpos1);
+               serverlevel.broadcastEntityEvent(this.dolphin, (byte)38);
+            } else {
+               this.stuck = true;
             }
-
-            serverlevel.broadcastEntityEvent(this.dolphin, (byte)38);
          }
       }
 
       public void stop() {
          BlockPos blockpos = this.dolphin.getTreasurePos();
-         if ((new BlockPos((double)blockpos.getX(), this.dolphin.getY(), (double)blockpos.getZ())).closerThan(this.dolphin.position(), 4.0D) || this.stuck) {
+         if ((new BlockPos((double)blockpos.getX(), this.dolphin.getY(), (double)blockpos.getZ())).closerToCenterThan(this.dolphin.position(), 4.0D) || this.stuck) {
             this.dolphin.setGotFish(false);
          }
 

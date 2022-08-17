@@ -289,7 +289,7 @@ public class BeeDebugRenderer implements DebugRenderer.SimpleDebugRenderer {
    }
 
    private String getPosDescription(BeeDebugRenderer.BeeInfo p_113069_, BlockPos p_113070_) {
-      double d0 = Math.sqrt(p_113070_.distSqr(p_113069_.pos.x(), p_113069_.pos.y(), p_113069_.pos.z(), true));
+      double d0 = Math.sqrt(p_113070_.distToCenterSqr(p_113069_.pos));
       double d1 = (double)Math.round(d0 * 10.0D) / 10.0D;
       return p_113070_.toShortString() + " (dist " + d1 + ")";
    }

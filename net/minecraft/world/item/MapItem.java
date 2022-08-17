@@ -211,8 +211,8 @@ public class MapItem extends ComplexItem {
       return !fluidstate.isEmpty() && !p_42902_.isFaceSturdy(p_42901_, p_42903_, Direction.UP) ? fluidstate.createLegacyBlock() : p_42902_;
    }
 
-   private static boolean isBiomeWatery(boolean[] p_186366_, int p_186367_, int p_186368_, int p_186369_) {
-      return p_186366_[p_186368_ * p_186367_ + p_186369_ * p_186367_ * 128 * p_186367_];
+   private static boolean isBiomeWatery(boolean[] p_212252_, int p_212253_, int p_212254_) {
+      return p_212252_[p_212254_ * 128 + p_212253_];
    }
 
    public static void renderBiomePreviewMap(ServerLevel p_42851_, ItemStack p_42852_) {
@@ -222,89 +222,67 @@ public class MapItem extends ComplexItem {
             int i = 1 << mapitemsaveddata.scale;
             int j = mapitemsaveddata.x;
             int k = mapitemsaveddata.z;
-            boolean[] aboolean = new boolean[128 * i * 128 * i];
-
-            for(int l = 0; l < 128 * i; ++l) {
-               for(int i1 = 0; i1 < 128 * i; ++i1) {
-                  Biome.BiomeCategory biome$biomecategory = p_42851_.getBiome(new BlockPos((j / i - 64) * i + i1, 0, (k / i - 64) * i + l)).getBiomeCategory();
-                  aboolean[l * 128 * i + i1] = biome$biomecategory == Biome.BiomeCategory.OCEAN || biome$biomecategory == Biome.BiomeCategory.RIVER || biome$biomecategory == Biome.BiomeCategory.SWAMP;
-               }
-            }
+            boolean[] aboolean = new boolean[16384];
+            int l = j / i - 64;
+            int i1 = k / i - 64;
+            BlockPos.MutableBlockPos blockpos$mutableblockpos = new BlockPos.MutableBlockPos();
 
             for(int j1 = 0; j1 < 128; ++j1) {
                for(int k1 = 0; k1 < 128; ++k1) {
-                  if (j1 > 0 && k1 > 0 && j1 < 127 && k1 < 127) {
-                     int l1 = 8;
-                     if (!isBiomeWatery(aboolean, i, j1 - 1, k1 - 1)) {
-                        --l1;
-                     }
+                  Biome.BiomeCategory biome$biomecategory = Biome.getBiomeCategory(p_42851_.getBiome(blockpos$mutableblockpos.set((l + k1) * i, 0, (i1 + j1) * i)));
+                  aboolean[j1 * 128 + k1] = biome$biomecategory == Biome.BiomeCategory.OCEAN || biome$biomecategory == Biome.BiomeCategory.RIVER || biome$biomecategory == Biome.BiomeCategory.SWAMP;
+               }
+            }
 
-                     if (!isBiomeWatery(aboolean, i, j1 - 1, k1 + 1)) {
-                        --l1;
-                     }
+            for(int j2 = 1; j2 < 127; ++j2) {
+               for(int k2 = 1; k2 < 127; ++k2) {
+                  int l2 = 0;
 
-                     if (!isBiomeWatery(aboolean, i, j1 - 1, k1)) {
-                        --l1;
-                     }
-
-                     if (!isBiomeWatery(aboolean, i, j1 + 1, k1 - 1)) {
-                        --l1;
-                     }
-
-                     if (!isBiomeWatery(aboolean, i, j1 + 1, k1 + 1)) {
-                        --l1;
-                     }
-
-                     if (!isBiomeWatery(aboolean, i, j1 + 1, k1)) {
-                        --l1;
-                     }
-
-                     if (!isBiomeWatery(aboolean, i, j1, k1 - 1)) {
-                        --l1;
-                     }
-
-                     if (!isBiomeWatery(aboolean, i, j1, k1 + 1)) {
-                        --l1;
-                     }
-
-                     MaterialColor.Brightness materialcolor$brightness = MaterialColor.Brightness.LOWEST;
-                     MaterialColor materialcolor = MaterialColor.NONE;
-                     if (isBiomeWatery(aboolean, i, j1, k1)) {
-                        materialcolor = MaterialColor.COLOR_ORANGE;
-                        if (l1 > 7 && k1 % 2 == 0) {
-                           switch((j1 + (int)(Mth.sin((float)k1 + 0.0F) * 7.0F)) / 8 % 5) {
-                           case 0:
-                           case 4:
-                              materialcolor$brightness = MaterialColor.Brightness.LOW;
-                              break;
-                           case 1:
-                           case 3:
-                              materialcolor$brightness = MaterialColor.Brightness.NORMAL;
-                              break;
-                           case 2:
-                              materialcolor$brightness = MaterialColor.Brightness.HIGH;
-                           }
-                        } else if (l1 > 7) {
-                           materialcolor = MaterialColor.NONE;
-                        } else if (l1 > 5) {
-                           materialcolor$brightness = MaterialColor.Brightness.NORMAL;
-                        } else if (l1 > 3) {
-                           materialcolor$brightness = MaterialColor.Brightness.LOW;
-                        } else if (l1 > 1) {
-                           materialcolor$brightness = MaterialColor.Brightness.LOW;
-                        }
-                     } else if (l1 > 0) {
-                        materialcolor = MaterialColor.COLOR_BROWN;
-                        if (l1 > 3) {
-                           materialcolor$brightness = MaterialColor.Brightness.NORMAL;
-                        } else {
-                           materialcolor$brightness = MaterialColor.Brightness.LOWEST;
+                  for(int l1 = -1; l1 < 2; ++l1) {
+                     for(int i2 = -1; i2 < 2; ++i2) {
+                        if ((l1 != 0 || i2 != 0) && isBiomeWatery(aboolean, j2 + l1, k2 + i2)) {
+                           ++l2;
                         }
                      }
+                  }
 
-                     if (materialcolor != MaterialColor.NONE) {
-                        mapitemsaveddata.setColor(j1, k1, materialcolor.getPackedId(materialcolor$brightness));
+                  MaterialColor.Brightness materialcolor$brightness = MaterialColor.Brightness.LOWEST;
+                  MaterialColor materialcolor = MaterialColor.NONE;
+                  if (isBiomeWatery(aboolean, j2, k2)) {
+                     materialcolor = MaterialColor.COLOR_ORANGE;
+                     if (l2 > 7 && k2 % 2 == 0) {
+                        switch((j2 + (int)(Mth.sin((float)k2 + 0.0F) * 7.0F)) / 8 % 5) {
+                        case 0:
+                        case 4:
+                           materialcolor$brightness = MaterialColor.Brightness.LOW;
+                           break;
+                        case 1:
+                        case 3:
+                           materialcolor$brightness = MaterialColor.Brightness.NORMAL;
+                           break;
+                        case 2:
+                           materialcolor$brightness = MaterialColor.Brightness.HIGH;
+                        }
+                     } else if (l2 > 7) {
+                        materialcolor = MaterialColor.NONE;
+                     } else if (l2 > 5) {
+                        materialcolor$brightness = MaterialColor.Brightness.NORMAL;
+                     } else if (l2 > 3) {
+                        materialcolor$brightness = MaterialColor.Brightness.LOW;
+                     } else if (l2 > 1) {
+                        materialcolor$brightness = MaterialColor.Brightness.LOW;
                      }
+                  } else if (l2 > 0) {
+                     materialcolor = MaterialColor.COLOR_BROWN;
+                     if (l2 > 3) {
+                        materialcolor$brightness = MaterialColor.Brightness.NORMAL;
+                     } else {
+                        materialcolor$brightness = MaterialColor.Brightness.LOWEST;
+                     }
+                  }
+
+                  if (materialcolor != MaterialColor.NONE) {
+                     mapitemsaveddata.setColor(j2, k2, materialcolor.getPackedId(materialcolor$brightness));
                   }
                }
             }

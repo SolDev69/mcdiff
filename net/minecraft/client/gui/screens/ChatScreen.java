@@ -17,7 +17,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 @OnlyIn(Dist.CLIENT)
 public class ChatScreen extends Screen {
-   public static final int MOUSE_SCROLL_SPEED = 7;
+   public static final double MOUSE_SCROLL_SPEED = 7.0D;
    private static final Component USAGE_TEXT = new TranslatableComponent("chat_screen.usage");
    private String historyBuffer = "";
    private int historyPos = -1;
@@ -86,10 +86,10 @@ public class ChatScreen extends Screen {
             this.moveInHistory(1);
             return true;
          } else if (p_95591_ == 266) {
-            this.minecraft.gui.getChat().scrollChat((double)(this.minecraft.gui.getChat().getLinesPerPage() - 1));
+            this.minecraft.gui.getChat().scrollChat(this.minecraft.gui.getChat().getLinesPerPage() - 1);
             return true;
          } else if (p_95591_ == 267) {
-            this.minecraft.gui.getChat().scrollChat((double)(-this.minecraft.gui.getChat().getLinesPerPage() + 1));
+            this.minecraft.gui.getChat().scrollChat(-this.minecraft.gui.getChat().getLinesPerPage() + 1);
             return true;
          } else {
             return false;
@@ -106,14 +106,7 @@ public class ChatScreen extends Screen {
    }
 
    public boolean mouseScrolled(double p_95581_, double p_95582_, double p_95583_) {
-      if (p_95583_ > 1.0D) {
-         p_95583_ = 1.0D;
-      }
-
-      if (p_95583_ < -1.0D) {
-         p_95583_ = -1.0D;
-      }
-
+      p_95583_ = Mth.clamp(p_95583_, -1.0D, 1.0D);
       if (this.commandSuggestions.mouseScrolled(p_95583_)) {
          return true;
       } else {
@@ -121,7 +114,7 @@ public class ChatScreen extends Screen {
             p_95583_ *= 7.0D;
          }
 
-         this.minecraft.gui.getChat().scrollChat(p_95583_);
+         this.minecraft.gui.getChat().scrollChat((int)p_95583_);
          return true;
       }
    }

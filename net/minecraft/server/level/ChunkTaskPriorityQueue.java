@@ -34,7 +34,7 @@ public class ChunkTaskPriorityQueue<T> {
          Long2ObjectLinkedOpenHashMap<List<Optional<T>>> long2objectlinkedopenhashmap = this.taskQueue.get(p_140522_);
          List<Optional<T>> list = long2objectlinkedopenhashmap.remove(p_140523_.toLong());
          if (p_140522_ == this.firstQueue) {
-            while(this.firstQueue < PRIORITY_LEVEL_COUNT && this.taskQueue.get(this.firstQueue).isEmpty()) {
+            while(this.hasWork() && this.taskQueue.get(this.firstQueue).isEmpty()) {
                ++this.firstQueue;
             }
          }
@@ -74,7 +74,7 @@ public class ChunkTaskPriorityQueue<T> {
          }
       }
 
-      while(this.firstQueue < PRIORITY_LEVEL_COUNT && this.taskQueue.get(this.firstQueue).isEmpty()) {
+      while(this.hasWork() && this.taskQueue.get(this.firstQueue).isEmpty()) {
          ++this.firstQueue;
       }
 
@@ -91,7 +91,7 @@ public class ChunkTaskPriorityQueue<T> {
    public Stream<Either<T, Runnable>> pop() {
       if (this.acquired.size() >= this.maxTasks) {
          return null;
-      } else if (this.firstQueue >= PRIORITY_LEVEL_COUNT) {
+      } else if (!this.hasWork()) {
          return null;
       } else {
          int i = this.firstQueue;
@@ -99,7 +99,7 @@ public class ChunkTaskPriorityQueue<T> {
          long j = long2objectlinkedopenhashmap.firstLongKey();
 
          List<Optional<T>> list;
-         for(list = long2objectlinkedopenhashmap.removeFirst(); this.firstQueue < PRIORITY_LEVEL_COUNT && this.taskQueue.get(this.firstQueue).isEmpty(); ++this.firstQueue) {
+         for(list = long2objectlinkedopenhashmap.removeFirst(); this.hasWork() && this.taskQueue.get(this.firstQueue).isEmpty(); ++this.firstQueue) {
          }
 
          return list.stream().map((p_140529_) -> {
@@ -108,6 +108,10 @@ public class ChunkTaskPriorityQueue<T> {
             });
          });
       }
+   }
+
+   public boolean hasWork() {
+      return this.firstQueue < PRIORITY_LEVEL_COUNT;
    }
 
    public String toString() {

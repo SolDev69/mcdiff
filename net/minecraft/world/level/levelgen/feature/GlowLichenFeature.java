@@ -60,7 +60,7 @@ public class GlowLichenFeature extends Feature<GlowLichenConfiguration> {
 
       for(Direction direction : p_159845_) {
          BlockState blockstate = p_159840_.getBlockState(blockpos$mutableblockpos.setWithOffset(p_159841_, direction));
-         if (p_159843_.canBePlacedOn.contains(blockstate.getBlock())) {
+         if (blockstate.is(p_159843_.canBePlacedOn)) {
             GlowLichenBlock glowlichenblock = (GlowLichenBlock)Blocks.GLOW_LICHEN;
             BlockState blockstate1 = glowlichenblock.getStateForPlacement(p_159842_, p_159840_, p_159841_, direction);
             if (blockstate1 == null) {

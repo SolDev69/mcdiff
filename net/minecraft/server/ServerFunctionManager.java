@@ -47,7 +47,7 @@ public class ServerFunctionManager {
       this.executeTagFunctions(this.ticking, TICK_FUNCTION_TAG);
       if (this.postReload) {
          this.postReload = false;
-         Collection<CommandFunction> collection = this.library.getTags().getTagOrEmpty(LOAD_FUNCTION_TAG).getValues();
+         Collection<CommandFunction> collection = this.library.getTag(LOAD_FUNCTION_TAG).getValues();
          this.executeTagFunctions(collection, LOAD_FUNCTION_TAG);
       }
 
@@ -95,7 +95,7 @@ public class ServerFunctionManager {
    }
 
    private void postReload(ServerFunctionLibrary p_136126_) {
-      this.ticking = ImmutableList.copyOf(p_136126_.getTags().getTagOrEmpty(TICK_FUNCTION_TAG).getValues());
+      this.ticking = ImmutableList.copyOf(p_136126_.getTag(TICK_FUNCTION_TAG).getValues());
       this.postReload = true;
    }
 
@@ -116,7 +116,7 @@ public class ServerFunctionManager {
    }
 
    public Iterable<ResourceLocation> getTagNames() {
-      return this.library.getTags().getAvailableTags();
+      return this.library.getAvailableTags();
    }
 
    class ExecutionContext {

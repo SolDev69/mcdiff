@@ -5,10 +5,12 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.collect.ImmutableList.Builder;
+import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2DoubleArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -59,7 +61,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.tags.FluidTags;
-import net.minecraft.tags.Tag;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -68,6 +70,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.vehicle.Boat;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.ProtectionEnchantment;
@@ -86,7 +89,6 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.border.WorldBorder;
@@ -102,6 +104,7 @@ import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.level.portal.PortalInfo;
 import net.minecraft.world.level.portal.PortalShape;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -111,11 +114,10 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
 
 public abstract class Entity implements Nameable, EntityAccess, CommandSource {
-   protected static final Logger LOGGER = LogManager.getLogger();
+   private static final Logger LOGGER = LogUtils.getLogger();
    public static final String ID_TAG = "id";
    public static final String PASSENGERS_TAG = "Passengers";
    private static final AtomicInteger ENTITY_COUNTER = new AtomicInteger();
@@ -156,6 +158,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
    protected boolean onGround;
    public boolean horizontalCollision;
    public boolean verticalCollision;
+   public boolean verticalCollisionBelow;
    public boolean minorHorizontalCollision;
    public boolean hurtMarked;
    protected Vec3 stuckSpeedMultiplier = Vec3.ZERO;
@@ -178,10 +181,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
    public int tickCount;
    private int remainingFireTicks = -this.getFireImmuneTicks();
    protected boolean wasTouchingWater;
-   protected Object2DoubleMap<Tag<Fluid>> fluidHeight = new Object2DoubleArrayMap<>(2);
+   protected Object2DoubleMap<TagKey<Fluid>> fluidHeight = new Object2DoubleArrayMap<>(2);
    protected boolean wasEyeInWater;
-   @Nullable
-   protected Tag<Fluid> fluidOnEyes;
+   private final Set<TagKey<Fluid>> fluidOnEyes = new HashSet<>();
    public int invulnerableTime;
    protected boolean firstTick = true;
    protected final SynchedEntityData entityData;
@@ -568,14 +570,25 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
          p_19974_ = this.maybeBackOffFromEdge(p_19974_, p_19973_);
          Vec3 vec3 = this.collide(p_19974_);
-         if (vec3.lengthSqr() > 1.0E-7D) {
+         double d0 = vec3.lengthSqr();
+         if (d0 > 1.0E-7D) {
+            if (this.fallDistance != 0.0F && d0 >= 1.0D) {
+               BlockHitResult blockhitresult = this.level.clip(new ClipContext(this.position(), this.position().add(vec3), ClipContext.Block.FALLDAMAGE_RESETTING, ClipContext.Fluid.WATER, this));
+               if (blockhitresult.getType() != HitResult.Type.MISS) {
+                  this.resetFallDistance();
+               }
+            }
+
             this.setPos(this.getX() + vec3.x, this.getY() + vec3.y, this.getZ() + vec3.z);
          }
 
          this.level.getProfiler().pop();
          this.level.getProfiler().push("rest");
-         this.horizontalCollision = !Mth.equal(p_19974_.x, vec3.x) || !Mth.equal(p_19974_.z, vec3.z);
+         boolean flag1 = !Mth.equal(p_19974_.x, vec3.x);
+         boolean flag = !Mth.equal(p_19974_.z, vec3.z);
+         this.horizontalCollision = flag1 || flag;
          this.verticalCollision = p_19974_.y != vec3.y;
+         this.verticalCollisionBelow = this.verticalCollision && p_19974_.y < 0.0D;
          if (this.horizontalCollision) {
             this.minorHorizontalCollision = this.isHorizontalCollisionMinor(vec3);
          } else {
@@ -589,13 +602,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
          if (this.isRemoved()) {
             this.level.getProfiler().pop();
          } else {
-            Vec3 vec31 = this.getDeltaMovement();
-            if (p_19974_.x != vec3.x) {
-               this.setDeltaMovement(0.0D, vec31.y, vec31.z);
-            }
-
-            if (p_19974_.z != vec3.z) {
-               this.setDeltaMovement(vec31.x, vec31.y, 0.0D);
+            if (this.horizontalCollision) {
+               Vec3 vec31 = this.getDeltaMovement();
+               this.setDeltaMovement(flag1 ? 0.0D : vec31.x, vec31.y, flag ? 0.0D : vec31.z);
             }
 
             Block block = blockstate.getBlock();
@@ -609,16 +618,16 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
             Entity.MovementEmission entity$movementemission = this.getMovementEmission();
             if (entity$movementemission.emitsAnything() && !this.isPassenger()) {
-               double d0 = vec3.x;
-               double d1 = vec3.y;
-               double d2 = vec3.z;
-               this.flyDist = (float)((double)this.flyDist + vec3.length() * 0.6D);
+               double d1 = vec3.x;
+               double d2 = vec3.y;
+               double d3 = vec3.z;
+               this.flyDist += (float)(vec3.length() * 0.6D);
                if (!blockstate.is(BlockTags.CLIMBABLE) && !blockstate.is(Blocks.POWDER_SNOW)) {
-                  d1 = 0.0D;
+                  d2 = 0.0D;
                }
 
                this.walkDist += (float)vec3.horizontalDistance() * 0.6F;
-               this.moveDist += (float)Math.sqrt(d0 * d0 + d1 * d1 + d2 * d2) * 0.6F;
+               this.moveDist += (float)Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3) * 0.6F;
                if (this.moveDist > this.nextStep && !blockstate.isAir()) {
                   this.nextStep = this.nextStep();
                   if (this.isInWater()) {
@@ -927,7 +936,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
    private void playAmethystStepSound(BlockState p_146883_) {
       if (p_146883_.is(BlockTags.CRYSTAL_SOUND_BLOCKS) && this.tickCount >= this.lastCrystalSoundPlayTick + 20) {
-         this.crystalSoundIntensity = (float)((double)this.crystalSoundIntensity * Math.pow((double)0.997F, (double)(this.tickCount - this.lastCrystalSoundPlayTick)));
+         this.crystalSoundIntensity *= (float)Math.pow(0.997D, (double)(this.tickCount - this.lastCrystalSoundPlayTick));
          this.crystalSoundIntensity = Math.min(1.0F, this.crystalSoundIntensity + 0.07F);
          float f = 0.5F + this.crystalSoundIntensity * this.random.nextFloat() * 1.2F;
          float f1 = 0.1F + this.crystalSoundIntensity * 1.2F;
@@ -990,7 +999,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
          this.resetFallDistance();
       } else if (p_19911_ < 0.0D) {
-         this.fallDistance = (float)((double)this.fallDistance - p_19911_);
+         this.fallDistance -= (float)p_19911_;
       }
 
    }
@@ -1074,7 +1083,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
    private void updateFluidOnEyes() {
       this.wasEyeInWater = this.isEyeInFluid(FluidTags.WATER);
-      this.fluidOnEyes = null;
+      this.fluidOnEyes.clear();
       double d0 = this.getEyeY() - (double)0.11111111F;
       Entity entity = this.getVehicle();
       if (entity instanceof Boat) {
@@ -1086,16 +1095,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
       BlockPos blockpos = new BlockPos(this.getX(), d0, this.getZ());
       FluidState fluidstate = this.level.getFluidState(blockpos);
-
-      for(Tag<Fluid> tag : FluidTags.getStaticTags()) {
-         if (fluidstate.is(tag)) {
-            double d1 = (double)((float)blockpos.getY() + fluidstate.getHeight(this.level, blockpos));
-            if (d1 > d0) {
-               this.fluidOnEyes = tag;
-            }
-
-            return;
-         }
+      double d1 = (double)((float)blockpos.getY() + fluidstate.getHeight(this.level, blockpos));
+      if (d1 > d0) {
+         fluidstate.getTags().forEach(this.fluidOnEyes::add);
       }
 
    }
@@ -1149,8 +1151,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
    }
 
-   public boolean isEyeInFluid(Tag<Fluid> p_19942_) {
-      return this.fluidOnEyes == p_19942_;
+   public boolean isEyeInFluid(TagKey<Fluid> p_204030_) {
+      return this.fluidOnEyes.contains(p_204030_);
    }
 
    public boolean isInLava() {
@@ -1651,12 +1653,11 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
       if (this.noPhysics) {
          return false;
       } else {
-         Vec3 vec3 = this.getEyePosition();
          float f = this.dimensions.width * 0.8F;
-         AABB aabb = AABB.ofSize(vec3, (double)f, 1.0E-6D, (double)f);
-         return this.level.getBlockStates(aabb).filter(Predicate.not(BlockBehaviour.BlockStateBase::isAir)).anyMatch((p_185969_) -> {
-            BlockPos blockpos = new BlockPos(vec3);
-            return p_185969_.isSuffocating(this.level, blockpos) && Shapes.joinIsNotEmpty(p_185969_.getCollisionShape(this.level, blockpos).move(vec3.x, vec3.y, vec3.z), Shapes.create(aabb), BooleanOp.AND);
+         AABB aabb = AABB.ofSize(this.getEyePosition(), (double)f, 1.0E-6D, (double)f);
+         return BlockPos.betweenClosedStream(aabb).anyMatch((p_201942_) -> {
+            BlockState blockstate = this.level.getBlockState(p_201942_);
+            return !blockstate.isAir() && blockstate.isSuffocating(this.level, p_201942_) && Shapes.joinIsNotEmpty(blockstate.getCollisionShape(this.level, p_201942_).move((double)p_201942_.getX(), (double)p_201942_.getY(), (double)p_201942_.getZ()), Shapes.create(aabb), BooleanOp.AND);
          });
       }
    }
@@ -1824,6 +1825,17 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
 
    public Vec3 getLookAngle() {
       return this.calculateViewVector(this.getXRot(), this.getYRot());
+   }
+
+   public Vec3 getHandHoldingItemAngle(Item p_204035_) {
+      if (!(this instanceof Player)) {
+         return Vec3.ZERO;
+      } else {
+         Player player = (Player)this;
+         boolean flag = player.getOffhandItem().is(p_204035_) && !player.getMainHandItem().is(p_204035_);
+         HumanoidArm humanoidarm = flag ? player.getMainArm().getOpposite() : player.getMainArm();
+         return this.calculateViewVector(0.0F, this.getYRot() + (float)(humanoidarm == HumanoidArm.RIGHT ? 80 : -80)).scale(0.5D);
+      }
    }
 
    public Vec2 getRotationVector() {
@@ -2574,9 +2586,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
    public float mirror(Mirror p_20003_) {
       float f = Mth.wrapDegrees(this.getYRot());
       switch(p_20003_) {
-      case LEFT_RIGHT:
-         return -f;
       case FRONT_BACK:
+         return -f;
+      case LEFT_RIGHT:
          return 180.0F - f;
       default:
          return f;
@@ -2732,7 +2744,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
       this.yRotO = this.getYRot();
    }
 
-   public boolean updateFluidHeightAndDoFluidPushing(Tag<Fluid> p_19944_, double p_19945_) {
+   public boolean updateFluidHeightAndDoFluidPushing(TagKey<Fluid> p_204032_, double p_204033_) {
       if (this.touchingUnloadedChunk()) {
          return false;
       } else {
@@ -2755,7 +2767,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
                for(int j2 = i1; j2 < j1; ++j2) {
                   blockpos$mutableblockpos.set(l1, i2, j2);
                   FluidState fluidstate = this.level.getFluidState(blockpos$mutableblockpos);
-                  if (fluidstate.is(p_19944_)) {
+                  if (fluidstate.is(p_204032_)) {
                      double d1 = (double)((float)i2 + fluidstate.getHeight(this.level, blockpos$mutableblockpos));
                      if (d1 >= aabb.minY) {
                         flag1 = true;
@@ -2785,7 +2797,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
             }
 
             Vec3 vec32 = this.getDeltaMovement();
-            vec3 = vec3.scale(p_19945_ * 1.0D);
+            vec3 = vec3.scale(p_204033_ * 1.0D);
             double d2 = 0.003D;
             if (Math.abs(vec32.x) < 0.003D && Math.abs(vec32.z) < 0.003D && vec3.length() < 0.0045000000000000005D) {
                vec3 = vec3.normalize().scale(0.0045000000000000005D);
@@ -2794,7 +2806,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
             this.setDeltaMovement(this.getDeltaMovement().add(vec3));
          }
 
-         this.fluidHeight.put(p_19944_, d0);
+         this.fluidHeight.put(p_204032_, d0);
          return flag1;
       }
    }
@@ -2808,8 +2820,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
       return !this.level.hasChunksAt(i, k, j, l);
    }
 
-   public double getFluidHeight(Tag<Fluid> p_20121_) {
-      return this.fluidHeight.getDouble(p_20121_);
+   public double getFluidHeight(TagKey<Fluid> p_204037_) {
+      return this.fluidHeight.getDouble(p_204037_);
    }
 
    public double getFluidJumpThreshold() {
@@ -2971,7 +2983,11 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
    }
 
    public boolean canFreeze() {
-      return !EntityTypeTags.FREEZE_IMMUNE_ENTITY_TYPES.contains(this.getType());
+      return !this.getType().is(EntityTypeTags.FREEZE_IMMUNE_ENTITY_TYPES);
+   }
+
+   public boolean isFreezing() {
+      return (this.isInPowderSnow || this.wasInPowderSnow) && this.canFreeze();
    }
 
    public float getYRot() {
@@ -3007,7 +3023,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource {
       return this.removalReason;
    }
 
-   public void setRemoved(Entity.RemovalReason p_146876_) {
+   public final void setRemoved(Entity.RemovalReason p_146876_) {
       if (this.removalReason == null) {
          this.removalReason = p_146876_;
       }

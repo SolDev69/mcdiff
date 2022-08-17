@@ -109,7 +109,7 @@ public class BellBlockEntity extends BlockEntity {
 
       if (!this.level.isClientSide) {
          for(LivingEntity livingentity : this.nearbyEntities) {
-            if (livingentity.isAlive() && !livingentity.isRemoved() && blockpos.closerThan(livingentity.position(), 32.0D)) {
+            if (livingentity.isAlive() && !livingentity.isRemoved() && blockpos.closerToCenterThan(livingentity.position(), 32.0D)) {
                livingentity.getBrain().setMemory(MemoryModuleType.HEARD_BELL_TIME, this.level.getGameTime());
             }
          }
@@ -119,7 +119,7 @@ public class BellBlockEntity extends BlockEntity {
 
    private static boolean areRaidersNearby(BlockPos p_155200_, List<LivingEntity> p_155201_) {
       for(LivingEntity livingentity : p_155201_) {
-         if (livingentity.isAlive() && !livingentity.isRemoved() && p_155200_.closerThan(livingentity.position(), 32.0D) && livingentity.getType().is(EntityTypeTags.RAIDERS)) {
+         if (livingentity.isAlive() && !livingentity.isRemoved() && p_155200_.closerToCenterThan(livingentity.position(), 32.0D) && livingentity.getType().is(EntityTypeTags.RAIDERS)) {
             return true;
          }
       }
@@ -136,7 +136,7 @@ public class BellBlockEntity extends BlockEntity {
    private static void showBellParticles(Level p_155208_, BlockPos p_155209_, List<LivingEntity> p_155210_) {
       MutableInt mutableint = new MutableInt(16700985);
       int i = (int)p_155210_.stream().filter((p_155216_) -> {
-         return p_155209_.closerThan(p_155216_.position(), 48.0D);
+         return p_155209_.closerToCenterThan(p_155216_.position(), 48.0D);
       }).count();
       p_155210_.stream().filter((p_155213_) -> {
          return isRaiderWithinRange(p_155209_, p_155213_);
@@ -159,7 +159,7 @@ public class BellBlockEntity extends BlockEntity {
    }
 
    private static boolean isRaiderWithinRange(BlockPos p_155197_, LivingEntity p_155198_) {
-      return p_155198_.isAlive() && !p_155198_.isRemoved() && p_155197_.closerThan(p_155198_.position(), 48.0D) && p_155198_.getType().is(EntityTypeTags.RAIDERS);
+      return p_155198_.isAlive() && !p_155198_.isRemoved() && p_155197_.closerToCenterThan(p_155198_.position(), 48.0D) && p_155198_.getType().is(EntityTypeTags.RAIDERS);
    }
 
    private static void glow(LivingEntity p_58841_) {

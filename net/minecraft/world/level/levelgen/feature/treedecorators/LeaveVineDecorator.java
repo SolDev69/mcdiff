@@ -12,7 +12,9 @@ import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.levelgen.feature.Feature;
 
 public class LeaveVineDecorator extends TreeDecorator {
-   public static final Codec<LeaveVineDecorator> CODEC;
+   public static final Codec<LeaveVineDecorator> CODEC = Codec.unit(() -> {
+      return LeaveVineDecorator.INSTANCE;
+   });
    public static final LeaveVineDecorator INSTANCE = new LeaveVineDecorator();
 
    protected TreeDecoratorType<?> type() {
@@ -61,11 +63,5 @@ public class LeaveVineDecorator extends TreeDecorator {
          blockpos = blockpos.below();
       }
 
-   }
-
-   static {
-      CODEC = Codec.unit(() -> {
-         return INSTANCE;
-      });
    }
 }

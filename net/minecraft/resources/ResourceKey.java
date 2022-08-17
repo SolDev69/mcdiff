@@ -55,6 +55,10 @@ public class ResourceKey<T> {
       return this.location;
    }
 
+   public ResourceLocation registry() {
+      return this.registryName;
+   }
+
    public static <T> Function<ResourceLocation, ResourceKey<T>> elementKey(ResourceKey<? extends Registry<T>> p_135798_) {
       return (p_195974_) -> {
          return create(p_135798_, p_195974_);

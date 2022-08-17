@@ -202,7 +202,7 @@ public class V1460 extends NamespacedSchema {
          return DSL.optionalFields("RootVehicle", DSL.optionalFields("Entity", References.ENTITY_TREE.in(p_17660_)), "Inventory", DSL.list(References.ITEM_STACK.in(p_17660_)), "EnderItems", DSL.list(References.ITEM_STACK.in(p_17660_)), DSL.optionalFields("ShoulderEntityLeft", References.ENTITY_TREE.in(p_17660_), "ShoulderEntityRight", References.ENTITY_TREE.in(p_17660_), "recipeBook", DSL.optionalFields("recipes", DSL.list(References.RECIPE.in(p_17660_)), "toBeDisplayed", DSL.list(References.RECIPE.in(p_17660_)))));
       });
       p_17660_.registerType(false, References.CHUNK, () -> {
-         return DSL.fields("Level", DSL.optionalFields("Entities", DSL.list(References.ENTITY_TREE.in(p_17660_)), "TileEntities", DSL.list(References.BLOCK_ENTITY.in(p_17660_)), "TileTicks", DSL.list(DSL.fields("i", References.BLOCK_NAME.in(p_17660_))), "Sections", DSL.list(DSL.optionalFields("Palette", DSL.list(References.BLOCK_STATE.in(p_17660_))))));
+         return DSL.fields("Level", DSL.optionalFields("Entities", DSL.list(References.ENTITY_TREE.in(p_17660_)), "TileEntities", DSL.list(DSL.or(References.BLOCK_ENTITY.in(p_17660_), DSL.remainder())), "TileTicks", DSL.list(DSL.fields("i", References.BLOCK_NAME.in(p_17660_))), "Sections", DSL.list(DSL.optionalFields("Palette", DSL.list(References.BLOCK_STATE.in(p_17660_))))));
       });
       p_17660_.registerType(true, References.BLOCK_ENTITY, () -> {
          return DSL.taggedChoiceLazy("id", namespacedString(), p_17662_);

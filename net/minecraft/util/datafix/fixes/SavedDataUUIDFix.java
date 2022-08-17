@@ -3,8 +3,12 @@ package net.minecraft.util.datafix.fixes;
 import com.mojang.datafixers.DSL;
 import com.mojang.datafixers.TypeRewriteRule;
 import com.mojang.datafixers.schemas.Schema;
+import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
 
 public class SavedDataUUIDFix extends AbstractUUIDFix {
+   private static final Logger LOGGER = LogUtils.getLogger();
+
    public SavedDataUUIDFix(Schema p_16863_) {
       super(p_16863_, References.SAVED_DATA);
    }

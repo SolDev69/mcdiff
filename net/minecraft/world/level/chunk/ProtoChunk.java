@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.SectionPos;
 import net.minecraft.nbt.CompoundTag;
@@ -25,7 +26,7 @@ import net.minecraft.world.level.levelgen.BelowZeroRetrogen;
 import net.minecraft.world.level.levelgen.GenerationStep;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.blending.BlendingData;
-import net.minecraft.world.level.levelgen.feature.StructureFeature;
+import net.minecraft.world.level.levelgen.feature.ConfiguredStructureFeature;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.lighting.LevelLightEngine;
@@ -186,17 +187,17 @@ public class ProtoChunk extends ChunkAccess {
       }
    }
 
-   public void setStartForFeature(StructureFeature<?> p_63207_, StructureStart<?> p_63208_) {
+   public void setStartForFeature(ConfiguredStructureFeature<?, ?> p_208116_, StructureStart p_208117_) {
       BelowZeroRetrogen belowzeroretrogen = this.getBelowZeroRetrogen();
-      if (belowzeroretrogen != null && p_63208_.isValid()) {
-         BoundingBox boundingbox = p_63208_.getBoundingBox();
+      if (belowzeroretrogen != null && p_208117_.isValid()) {
+         BoundingBox boundingbox = p_208117_.getBoundingBox();
          LevelHeightAccessor levelheightaccessor = this.getHeightAccessorForGeneration();
          if (boundingbox.minY() < levelheightaccessor.getMinBuildHeight() || boundingbox.maxY() >= levelheightaccessor.getMaxBuildHeight()) {
             return;
          }
       }
 
-      super.setStartForFeature(p_63207_, p_63208_);
+      super.setStartForFeature(p_208116_, p_208117_);
    }
 
    public List<CompoundTag> getEntities() {
@@ -216,11 +217,11 @@ public class ProtoChunk extends ChunkAccess {
       this.setUnsaved(true);
    }
 
-   public Biome getNoiseBiome(int p_188195_, int p_188196_, int p_188197_) {
+   public Holder<Biome> getNoiseBiome(int p_204450_, int p_204451_, int p_204452_) {
       if (!this.getStatus().isOrAfter(ChunkStatus.BIOMES) && (this.belowZeroRetrogen == null || !this.belowZeroRetrogen.targetStatus().isOrAfter(ChunkStatus.BIOMES))) {
          throw new IllegalStateException("Asking for biomes before we have biomes");
       } else {
-         return super.getNoiseBiome(p_188195_, p_188196_, p_188197_);
+         return super.getNoiseBiome(p_204450_, p_204451_, p_204452_);
       }
    }
 

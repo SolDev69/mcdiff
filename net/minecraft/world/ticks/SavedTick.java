@@ -10,7 +10,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.world.level.ChunkPos;
 
-record SavedTick<T>(T type, BlockPos pos, int delay, TickPriority priority) {
+public record SavedTick<T>(T type, BlockPos pos, int delay, TickPriority priority) {
    private static final String TAG_ID = "i";
    private static final String TAG_X = "x";
    private static final String TAG_Y = "y";
@@ -38,15 +38,21 @@ record SavedTick<T>(T type, BlockPos pos, int delay, TickPriority priority) {
 
       for(int j = 0; j < p_193351_.size(); ++j) {
          CompoundTag compoundtag = p_193351_.getCompound(j);
-         p_193352_.apply(compoundtag.getString("i")).ifPresent((p_193349_) -> {
-            BlockPos blockpos = new BlockPos(compoundtag.getInt("x"), compoundtag.getInt("y"), compoundtag.getInt("z"));
-            if (ChunkPos.asLong(blockpos) == i) {
-               p_193354_.accept(new SavedTick<>(p_193349_, blockpos, compoundtag.getInt("t"), TickPriority.byValue(compoundtag.getInt("p"))));
+         loadTick(compoundtag, p_193352_).ifPresent((p_210665_) -> {
+            if (ChunkPos.asLong(p_210665_.pos()) == i) {
+               p_193354_.accept(p_210665_);
             }
 
          });
       }
 
+   }
+
+   public static <T> Optional<SavedTick<T>> loadTick(CompoundTag p_210670_, Function<String, Optional<T>> p_210671_) {
+      return p_210671_.apply(p_210670_.getString("i")).map((p_210668_) -> {
+         BlockPos blockpos = new BlockPos(p_210670_.getInt("x"), p_210670_.getInt("y"), p_210670_.getInt("z"));
+         return new SavedTick<>(p_210668_, blockpos, p_210670_.getInt("t"), TickPriority.byValue(p_210670_.getInt("p")));
+      });
    }
 
    private static CompoundTag saveTick(String p_193339_, BlockPos p_193340_, int p_193341_, TickPriority p_193342_) {

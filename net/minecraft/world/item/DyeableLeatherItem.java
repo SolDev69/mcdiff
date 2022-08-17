@@ -46,10 +46,10 @@ public interface DyeableLeatherItem {
             float f = (float)(k >> 16 & 255) / 255.0F;
             float f1 = (float)(k >> 8 & 255) / 255.0F;
             float f2 = (float)(k & 255) / 255.0F;
-            i = (int)((float)i + Math.max(f, Math.max(f1, f2)) * 255.0F);
-            aint[0] = (int)((float)aint[0] + f * 255.0F);
-            aint[1] = (int)((float)aint[1] + f1 * 255.0F);
-            aint[2] = (int)((float)aint[2] + f2 * 255.0F);
+            i += (int)(Math.max(f, Math.max(f1, f2)) * 255.0F);
+            aint[0] += (int)(f * 255.0F);
+            aint[1] += (int)(f1 * 255.0F);
+            aint[2] += (int)(f2 * 255.0F);
             ++j;
          }
 
